@@ -1,0 +1,20 @@
+{
+  "name": "vivestream",
+  "version": "1.0.0",
+  "description": "A beautiful YouTube downloader and player.",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "__package": "electron-packager . ViveStream --overwrite --platform=win32 --arch=x64 --prune=true --out=release --icon=build/icon.ico --asar --extra-resource=./vendor",
+    "__make-installer": "node build-installer.js",
+    "build": "npm run __package && npm run __make-installer"
+  },
+  "keywords": [],
+  "author": "Md. Siam Mia",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^37.2.0",
+    "electron-packager": "^17.1.2",
+    "electron-winstaller": "^5.4.0"
+  }
+}

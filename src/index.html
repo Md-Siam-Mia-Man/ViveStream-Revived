@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline';">
+    <title>ViveStream</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="header-bar">
+        <div class="header-left">
+            <button class="header-button" id="sidebar-toggle"><i class="fas fa-bars"></i></button>
+             <a href="#" class="logo-container" id="logo-home-button">
+                <svg class="logo-svg" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M79.832 20H20.168C14.57 20 10 24.57 10 30.168V69.832C10 75.43 14.57 80 20.168 80H79.832C85.43 80 90 75.43 90 69.832V30.168C90 24.57 85.43 20 79.832 20Z" fill="#FF0B55"/>
+                    <path d="M66.6667 50L41.6667 64.4338V35.5662L66.6667 50Z" fill="#0F0F0F"/>
+                </svg>
+                <span class="app-title">ViveStream</span>
+            </a>
+        </div>
+    </div>
+    <div class="app-body">
+        <nav class="sidebar">
+            <ul class="sidebar-nav">
+                <li class="nav-item active" data-page="home"><i class="fas fa-home"></i><span>Home</span></li>
+                <li class="nav-item" data-page="downloads"><i class="fas fa-download"></i><span>Downloads</span></li>
+            </ul>
+        </nav>
+        <div class="content-wrapper">
+            <div id="home-page" class="page">
+                <div class="home-header">
+                    <div class="search-container">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="home-search-input" placeholder="Search downloaded videos...">
+                    </div>
+                </div>
+                <div class="video-grid" id="video-grid"></div>
+            </div>
+            <div id="player-page" class="page hidden">
+                <main class="main-content">
+                    <div class="primary-column">
+                        <div class="player-section" id="player-section">
+                             <video id="video-player"><track kind="subtitles" srclang="en" id="subtitle-track"></track></video>
+                            <div class="video-controls-container">
+                                <div class="timeline-container"><div class="timeline"><div class="timeline-progress"></div></div></div>
+                                <div class="bottom-controls">
+                                    <div class="left-controls">
+                                        <button class="control-button prev-btn"><i class="fas fa-backward-step"></i></button>
+                                        <button class="control-button play-pause-btn"><i class="fas fa-play"></i></button>
+                                        <button class="control-button next-btn"><i class="fas fa-forward-step"></i></button>
+                                        <div class="volume-container">
+                                            <button class="control-button mute-btn"><i class="fas fa-volume-high"></i></button>
+                                            <div class="volume-slider-container">
+                                                <input class="volume-slider" type="range" min="0" max="1" step="0.01" value="1">
+                                            </div>
+                                        </div>
+                                        <div class="time-container"><span class="current-time">0:00</span> / <span class="total-time">0:00</span></div>
+                                    </div>
+                                    <div class="right-controls">
+                                        <div class="autoplay-container"><label class="switch"><input type="checkbox" id="autoplay-toggle" checked><span class="slider round"></span></label></div>
+                                        <button class="control-button" id="settings-btn"><i class="fas fa-cog"></i></button>
+                                        <button class="control-button" id="miniplayer-btn"><i class="fas fa-clone"></i></button>
+                                        <button class="control-button" id="theater-btn"><i class="fas fa-film"></i></button>
+                                        <button class="control-button" id="fullscreen-btn"><i class="fas fa-expand"></i></button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="settings-menu" id="settings-menu"></div>
+                            <div class="settings-submenu" id="speed-submenu"></div>
+                            <div class="settings-submenu" id="sleep-submenu"></div>
+                        </div>
+                        <div class="video-info-section">
+                            <h1 id="video-info-title"></h1>
+                            <div class="video-actions-meta">
+                                <div class="uploader-info">
+                                    <div class="channel-thumb-container">
+                                        <img id="channel-thumb" src="" alt="channel thumbnail"/>
+                                        <div id="channel-thumb-fallback"></div>
+                                    </div>
+                                    <div class="uploader-text">
+                                        <span id="video-info-uploader"></span>
+                                        <span id="video-info-date"></span>
+                                    </div>
+                                </div>
+                                <div class="action-buttons">
+                                    <button class="action-button" id="like-btn"><i class="far fa-thumbs-up"></i><span>Like</span></button>
+                                    <button class="action-button" id="save-btn"><i class="far fa-bookmark"></i><span>Save</span></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="secondary-column">
+                        <div class="playlist-area">
+                            <h4>Up next</h4>
+                            <ul id="up-next-list"></ul>
+                        </div>
+                    </div>
+                </main>
+            </div>
+            <div id="downloads-page" class="page hidden">
+                <div class="downloads-container">
+                    <div class="download-card">
+                        <h2>Download New Media</h2>
+                        <p class="download-card-subtitle">Paste a YouTube video or playlist URL to begin.</p>
+                        <form id="download-form">
+                            <div class="url-input-container">
+                                <i class="fas fa-link"></i>
+                                <input type="text" id="url-input" placeholder="Enter YouTube URL..." required>
+                            </div>
+                            <div class="download-options">
+                                <div class="option-group select-group">
+                                    <label>Quality</label>
+                                    <div class="custom-select-container" id="quality-select-container">
+                                        <div class="selected-option" data-value="best">
+                                            <span>Best</span>
+                                            <i class="fas fa-chevron-down"></i>
+                                        </div>
+                                        <div class="options-list">
+                                            <div class="option-item" data-value="best">Best</div>
+                                            <div class="option-item" data-value="1080">1080p</div>
+                                            <div class="option-item" data-value="720">720p</div>
+                                            <div class="option-item" data-value="480">480p</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="option-group radio-group">
+                                    <label>Type</label>
+                                    <div class="radio-buttons-container">
+                                        <input type="radio" id="type-video" name="download-type" value="video" checked>
+                                        <label for="type-video" class="radio-label"><i class="fas fa-video"></i> Video</label>
+                                        <input type="radio" id="type-audio" name="download-type" value="audio">
+                                        <label for="type-audio" class="radio-label"><i class="fas fa-music"></i> Audio</label>
+                                    </div>
+                                </div>
+                            </div>
+                             <button type="submit" class="download-button">
+                                <i class="fas fa-download"></i>
+                                <span>Download</span>
+                            </button>
+                        </form>
+                    </div>
+                    <div id="status-area">
+                        <p id="status-text">Idle. Waiting for download...</p>
+                        <div class="progress-bar-container">
+                            <div id="progress-bar"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="./renderer.js"></script>
+</body>
+</html>
