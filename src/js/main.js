@@ -1,4 +1,5 @@
-// main.js
+// main.js - Production Ready
+
 const { app, BrowserWindow, ipcMain, shell } = require("electron");
 const path = require("path");
 const fs = require("fs");
@@ -6,40 +7,41 @@ const { spawn } = require("child_process");
 const https = require("https");
 
 const isDev = !app.isPackaged;
-// Correctly locate the 'vendor' folder in both dev and production
+
+// --- PATHS: PRODUCTION-READY ---
+
+// CRITICAL CHANGE: Use app.getPath('userData') for all user data.
+// This is a safe, persistent, and writable location.
+const localDataPath = app.getPath("userData");
+
+// Path to vendor files (yt-dlp, ffmpeg). This is correct for packaged apps.
 const resourcesPath = isDev
-  ? path.join(__dirname, "..", "vendor")
+  ? path.join(__dirname, "..", "..", "vendor")
   : path.join(process.resourcesPath, "vendor");
 
-// Correctly locate the 'localdata' folder next to the executable in production
-const localDataPath = isDev
-  ? path.join(__dirname, "..", "localdata")
-  : path.join(path.dirname(app.getPath("exe")), "localdata");
-
+// Define all paths based on the safe localDataPath
 const ytDlpPath = path.join(resourcesPath, "yt-dlp.exe");
 const ffmpegPath = path.join(resourcesPath, "ffmpeg.exe");
-
 const videoPath = path.join(localDataPath, "videos");
 const audioPath = path.join(localDataPath, "audio");
 const coverPath = path.join(localDataPath, "covers");
 const channelThumbPath = path.join(localDataPath, "channels");
 const subtitlePath = path.join(localDataPath, "subtitles");
-const libraryDBPath = path.join(localDataPath, "appdata", "library.json");
+const libraryDBPath = path.join(localDataPath, "library.json"); // Simplified path
 
-[
-  videoPath,
-  audioPath,
-  coverPath,
-  channelThumbPath,
-  subtitlePath,
-  path.dirname(libraryDBPath),
-].forEach((dir) => {
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-});
+// Create all necessary directories at startup
+[videoPath, audioPath, coverPath, channelThumbPath, subtitlePath].forEach(
+  (dir) => {
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  }
+);
+
+// Initialize library database if it doesn't exist
 if (!fs.existsSync(libraryDBPath)) {
   fs.writeFileSync(libraryDBPath, JSON.stringify([], null, 2));
 }
 
+// --- LIBRARY FUNCTIONS (Unchanged) ---
 function getLibrary() {
   try {
     const data = fs.readFileSync(libraryDBPath, "utf-8");
@@ -62,7 +64,7 @@ function saveToLibrary(videoData) {
   fs.writeFileSync(libraryDBPath, JSON.stringify(library, null, 2));
 }
 
-// Helper to download a file with Node's https module
+// --- HELPER FUNCTIONS (Unchanged) ---
 function downloadFile(url, dest) {
   return new Promise((resolve, reject) => {
     const file = fs.createWriteStream(dest);
@@ -83,6 +85,7 @@ function downloadFile(url, dest) {
   });
 }
 
+// --- ELECTRON APP SETUP ---
 function createWindow() {
   const win = new BrowserWindow({
     width: 1280,
@@ -101,24 +104,33 @@ function createWindow() {
       symbolColor: "#F1F1F1",
       height: 40,
     },
-    icon: path.join(__dirname, "..", "build", "icon.ico"), // Set window icon
+    // BEST PRACTICE: Simplified icon path for packaged app
+    icon: path.join(__dirname, "..", "..", "build", "icon.ico"),
   });
 
   win.loadFile("src/index.html");
-  if (isDev) win.webContents.openDevTools();
+
+  if (isDev) {
+    win.webContents.openDevTools();
+  }
 }
 
 app.whenReady().then(createWindow);
+
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
 });
+
 app.on("activate", () => {
   if (BrowserWindow.getAllWindows().length === 0) createWindow();
 });
 
-ipcMain.on("download-video", async (event, options) => {
-  const { url, type, quality } = options;
+// --- IPC HANDLERS (Mostly unchanged, small improvements) ---
 
+// Your main downloader logic (unmodified, it's solid)
+ipcMain.on("download-video", async (event, options) => {
+  // ... (Your entire download logic remains here, no changes needed)
+  const { url, type, quality } = options;
   const infoProcess = spawn(ytDlpPath, [
     url,
     "--dump-json",
@@ -132,7 +144,6 @@ ipcMain.on("download-video", async (event, options) => {
   infoProcess.stderr.on("data", (data) => {
     console.error(`yt-dlp (info) stderr: ${data}`);
   });
-
   infoProcess.on("close", (code) => {
     if (code !== 0 || allJsonData.trim() === "") {
       event.sender.send(
@@ -141,21 +152,17 @@ ipcMain.on("download-video", async (event, options) => {
       );
       return;
     }
-
     const videoInfos = allJsonData
       .trim()
       .split("\n")
       .map((line) => JSON.parse(line));
     const isPlaylist = videoInfos.length > 1;
-
     (async function processQueue(index) {
       if (index >= videoInfos.length) return;
-
       const videoInfo = videoInfos[index];
       const videoUrl =
         videoInfo.webpage_url ||
         `https://www.youtube.com/watch?v=${videoInfo.id}`;
-
       const downloadArgs = [
         videoUrl,
         "--ffmpeg-location",
@@ -164,7 +171,6 @@ ipcMain.on("download-video", async (event, options) => {
         "--no-warnings",
       ];
       let finalExtension, finalPath, metadataType;
-
       if (type === "audio") {
         finalExtension = "mp3";
         finalPath = audioPath;
@@ -192,15 +198,12 @@ ipcMain.on("download-video", async (event, options) => {
           path.join(finalPath, "%(id)s.%(ext)s")
         );
       }
-
       downloadArgs.push("--write-info-json");
       downloadArgs.push("--write-thumbnail", "--convert-thumbnails", "jpg");
       downloadArgs.push("--write-subs", "--sub-langs", "en.*,-live_chat");
-
       const downloadProcess = spawn(ytDlpPath, downloadArgs);
       const progressRegex =
         /\[download\]\s+(\d+\.?\d*)%\s+of\s+~?\s*([\d.]+\w+)\s+at\s+([\d.]+\w+\/s)\s+ETA\s+([\d:]+)/;
-
       downloadProcess.stdout.on("data", (data) => {
         const match = data.toString().match(progressRegex);
         if (match) {
@@ -217,7 +220,6 @@ ipcMain.on("download-video", async (event, options) => {
       downloadProcess.stderr.on("data", (data) =>
         console.error(`yt-dlp (download) stderr: ${data}`)
       );
-
       downloadProcess.on("close", async (downloadCode) => {
         if (downloadCode !== 0) {
           event.sender.send(
@@ -227,7 +229,6 @@ ipcMain.on("download-video", async (event, options) => {
           processQueue(index + 1);
           return;
         }
-
         const infoJsonPath = path.join(finalPath, `${videoInfo.id}.info.json`);
         if (!fs.existsSync(infoJsonPath)) {
           event.sender.send(
@@ -237,10 +238,8 @@ ipcMain.on("download-video", async (event, options) => {
           processQueue(index + 1);
           return;
         }
-
         const fullInfo = JSON.parse(fs.readFileSync(infoJsonPath, "utf-8"));
         fs.unlinkSync(infoJsonPath);
-
         let channelThumbPathFinal = null;
         if (fullInfo.channel_thumbnail_url && fullInfo.channel_id) {
           const channelThumbUrl = fullInfo.channel_thumbnail_url;
@@ -249,7 +248,6 @@ ipcMain.on("download-video", async (event, options) => {
             channelThumbPath,
             `${channelId}.jpg`
           );
-
           if (!fs.existsSync(channelThumbPathFinal)) {
             try {
               console.log(
@@ -261,16 +259,14 @@ ipcMain.on("download-video", async (event, options) => {
                 "Failed to download channel thumbnail:",
                 err.message
               );
-              channelThumbPathFinal = null; // Set to null if download fails
+              channelThumbPathFinal = null;
             }
           }
         }
-
         const tempCoverPath = path.join(finalPath, `${fullInfo.id}.jpg`);
         const finalCoverPath = path.join(coverPath, `${fullInfo.id}.jpg`);
         if (fs.existsSync(tempCoverPath))
           fs.renameSync(tempCoverPath, finalCoverPath);
-
         const tempSubPath = path.join(finalPath, `${fullInfo.id}.en.vtt`);
         const finalSubPath = path.join(subtitlePath, `${fullInfo.id}.vtt`);
         let subtitleFile = null;
@@ -278,7 +274,6 @@ ipcMain.on("download-video", async (event, options) => {
           fs.renameSync(tempSubPath, finalSubPath);
           subtitleFile = `file://${finalSubPath}`.replace(/\\/g, "/");
         }
-
         const videoData = {
           id: fullInfo.id,
           title: fullInfo.title,
@@ -303,7 +298,6 @@ ipcMain.on("download-video", async (event, options) => {
         };
         saveToLibrary(videoData);
         event.sender.send("download-complete", videoData);
-
         processQueue(index + 1);
       });
     })(0);
@@ -311,6 +305,8 @@ ipcMain.on("download-video", async (event, options) => {
 });
 
 ipcMain.handle("get-library", () => getLibrary());
+
 ipcMain.on("open-path", (event, filePath) => {
-  shell.showItemInFolder(filePath.replace("file://", ""));
+  // Use path.normalize to handle file URI correctly on Windows
+  shell.showItemInFolder(path.normalize(filePath.replace("file://", "")));
 });

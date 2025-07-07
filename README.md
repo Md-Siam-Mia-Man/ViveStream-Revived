@@ -46,20 +46,16 @@ Welcome, media hoarders and vibe connoisseurs! 🥳 **ViveStream** is your new b
 
 ### For Code Wizards & Tinkerers 🧙‍♂️
 
-1. **Install Git LFS:**
-```bash
-    git lfs install
-```
-2. **Clone this thing:**
+1️⃣ **Clone this thing:**
 ```bash
     git clone https://github.com/Md-Siam-Mia-Code/ViveStream-Revived.git
     cd ViveStream
 ```
-3. **Install the magic spells (dependencies):**
+2️⃣ **Install the magic spells (dependencies):**
 ```bash
     npm install
 ```
-4. **Fire it up!**
+3️⃣ **Fire it up!**
 ```bash
     npm start
 ```

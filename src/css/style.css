@@ -1,0 +1,175 @@
+/* style.css */
+:root {
+     --yt-black: #0F0F0F;
+     --yt-dark-grey: #272727;
+     --yt-light-grey: #AAAAAA;
+     --yt-white: #F1F1F1;
+     --yt-red: #FF0B55;
+     --yt-red-dark: #CF0F47;
+     --yt-border: #3F3F3F;
+}
+
+* {
+     box-sizing: border-box;
+     margin: 0;
+     padding: 0;
+}
+
+body {
+     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+     background-color: var(--yt-black);
+     color: var(--yt-white);
+     overflow: hidden;
+     height: 100vh;
+     display: flex;
+     flex-direction: column;
+}
+
+::-webkit-scrollbar {
+     width: 8px;
+     height: 8px;
+}
+
+::-webkit-scrollbar-track {
+     background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+     background: var(--yt-dark-grey);
+     border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+     background: var(--yt-light-grey);
+}
+
+::selection {
+     color: var(--yt-red);
+     background: transparent;
+}
+
+.header-bar {
+     display: flex;
+     align-items: center;
+     justify-content: flex-start;
+     padding: 0 16px;
+     height: 56px;
+     background-color: var(--yt-black);
+     flex-shrink: 0;
+     -webkit-app-region: drag;
+}
+
+.header-left {
+     display: flex;
+     align-items: center;
+     gap: 16px;
+     -webkit-app-region: no-drag;
+}
+
+.header-button {
+     background: none;
+     border: none;
+     color: var(--yt-white);
+     font-size: 1.2rem;
+     cursor: pointer;
+     padding: 8px;
+     border-radius: 50%;
+}
+
+.header-button:hover {
+     background-color: var(--yt-dark-grey);
+}
+
+.logo-container {
+     display: flex;
+     align-items: center;
+     gap: 8px;
+     text-decoration: none;
+     color: var(--yt-white);
+}
+
+.logo-svg {
+     width: 32px;
+     height: 32px;
+}
+
+.app-title {
+     font-size: 1.25rem;
+     font-weight: 500;
+}
+
+.app-body {
+     display: flex;
+     flex-grow: 1;
+     min-height: 0;
+}
+
+.sidebar {
+     width: 240px;
+     background-color: var(--yt-black);
+     flex-shrink: 0;
+     display: flex;
+     flex-direction: column;
+     padding: 0 12px;
+     transition: width 0.2s ease, padding 0.2s ease;
+}
+
+.sidebar.collapsed {
+     width: 72px;
+     padding: 0 4px;
+}
+
+.sidebar.collapsed .nav-item i {
+     margin-left: 8px;
+}
+
+.sidebar.collapsed .app-title,
+.sidebar.collapsed .nav-item span {
+     display: none;
+}
+
+.sidebar-nav {
+     list-style: none;
+     margin-top: 10px;
+}
+
+.nav-item {
+     display: flex;
+     align-items: center;
+     gap: 24px;
+     padding: 12px;
+     border-radius: 10px;
+     cursor: pointer;
+     transition: background-color 0.2s;
+}
+
+.nav-item:hover {
+     background-color: var(--yt-dark-grey);
+}
+
+.nav-item.active {
+     background-color: var(--yt-dark-grey);
+     font-weight: 500;
+}
+
+.nav-item i {
+     font-size: 1.2rem;
+     width: 24px;
+     text-align: center;
+}
+
+.content-wrapper {
+     flex-grow: 1;
+     overflow-y: auto;
+}
+
+.page {
+     display: flex;
+     flex-direction: column;
+     align-items: center;
+     height: 100%;
+}
+
+.page.hidden {
+     display: none;
+}

@@ -1,65 +1,85 @@
-// build-installer.js
-
-const { createWindowsInstaller } = require("electron-winstaller");
+const packager = require("electron-packager");
+const compile = require("innosetup-compiler");
 const path = require("path");
-const fs = require("fs");
+const fs = require("fs-extra");
+const packageJson = require("./package.json");
 
-// --- Configuration ---
-const appDirectory = path.join(
-  __dirname,
-  "release",
-  "ViveStream-win32-x64"
-);
-const outputDirectory = path.join(__dirname, "installers");
-const setupIconPath = path.join(__dirname, "build", "icon.ico");
-const setupExeName = `ViveStream-Setup-v${
-  require("./package.json").version
-}.exe`;
+const appName = packageJson.name;
+const appVersion = packageJson.version;
+const appAuthor = packageJson.author;
+const appExeName = `${appName}.exe`;
 
-console.log("--- Inno Setup Installer Configuration ---");
+const outputDir = path.join(__dirname, "release");
+const packagedAppDirName = `${appName}-win32-ia32`;
+const packagedAppPath = path.join(outputDir, packagedAppDirName);
 
-// --- Pre-build Checks and Logging ---
-if (!fs.existsSync(appDirectory)) {
-  console.error(`❌ ERROR: The application directory does not exist.`);
-  console.error(`   Please run the packaging script first.`);
-  console.error(`   Expected path: ${appDirectory}`);
-  process.exit(1);
-}
-console.log(`✔️ App source directory:   ${appDirectory}`);
+async function build() {
+  console.log("--- Starting Electron Build & Install Process ---");
 
-if (!fs.existsSync(setupIconPath)) {
-  console.warn(
-    `⚠️ WARNING: Setup icon not found at ${setupIconPath}. Using default icon.`
-  );
-} else {
-  console.log(`✔️ Setup icon:             ${setupIconPath}`);
-}
+  try {
+    console.log("1/4: Cleaning up previous builds...");
+    await fs.remove(outputDir);
+    await fs.ensureDir(outputDir);
+    console.log("   -> Done.");
 
-console.log(`✔️ Installer output folder:  ${outputDirectory}`);
-console.log(`✔️ Installer executable name: ${setupExeName}`);
-console.log("------------------------------------------");
-console.log("Starting Inno Setup compilation. This may take a moment...");
+    console.log("2/4: Packaging Electron app...");
+    await packager({
+      dir: __dirname,
+      out: outputDir,
+      name: appName,
+      platform: "win32",
+      arch: "ia32",
+      overwrite: true,
+      asar: true,
+      icon: path.join(__dirname, "build", "icon.ico"),
+      extraResource: [path.join(__dirname, "vendor")],
+      ignore: [
+        /^\/release($|\/)/,
+        /^\/installers($|\/)/,
+        /^\/build-installer\.js$/,
+        /^\/setup\.iss$/,
+        /\.git($|\/)/,
+        /\.vscode($|\/)/,
+      ],
+    });
+    console.log(`   -> App packaged successfully at: ${packagedAppPath}`);
 
-// --- Create the Installer ---
-createWindowsInstaller({
-  appDirectory: appDirectory,
-  outputDirectory: outputDirectory,
-  authors: "ViveStream Developer",
-  exe: "ViveStream.exe",
-  setupExe: setupExeName,
-  setupIcon: setupIconPath,
-  noMsi: true,
-  useInno: true, // Explicitly use Inno Setup
-})
-  .then(() => {
-    console.log(
-      `✅ Success! Installer created at: ${path.join(
-        outputDirectory,
-        setupExeName
-      )}`
+    console.log("3/4: Creating Windows Installer with Inno Setup...");
+    const issPath = path.join(__dirname, "setup.iss");
+    await compile(issPath, {
+      defines: {
+        MyAppName: appName,
+        MyAppVersion: appVersion,
+        MyAppPublisher: appAuthor,
+        SourceAppPath: packagedAppPath,
+        MyAppExeName: appExeName,
+      },
+    });
+    console.log("   -> Installer compiled successfully.");
+
+    const setupOutputPath = path.join(
+      __dirname,
+      "Output",
+      `${appName}-${appVersion}-setup.exe`
     );
-  })
-  .catch((error) => {
-    console.error("❌ Installer creation failed:", error.message || error);
+    const finalInstallerPath = path.join(
+      outputDir,
+      `${appName}-v${appVersion}-setup.exe`
+    );
+    await fs.move(setupOutputPath, finalInstallerPath, { overwrite: true });
+    await fs.remove(path.join(__dirname, "Output"));
+
+    console.log("4/4: Cleaning up build artifacts...");
+    await fs.remove(packagedAppPath);
+    console.log("   -> Done.");
+
+    console.log("\n--- Build Complete! ---");
+    console.log(`✅ Final installer located at: ${finalInstallerPath}`);
+  } catch (error) {
+    console.error("\n❌ Build failed:");
+    console.error(error);
     process.exit(1);
-  });
+  }
+}
+
+build();

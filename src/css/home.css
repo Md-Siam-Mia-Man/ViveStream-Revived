@@ -1,0 +1,115 @@
+/* home.css */
+#home-page {
+     padding: 24px;
+}
+
+.home-header {
+     margin-bottom: 24px;
+     display: flex;
+     justify-content: center;
+}
+
+.search-container {
+     position: relative;
+     width: 100%;
+     max-width: 600px;
+}
+
+.search-container i {
+     position: absolute;
+     left: 16px;
+     top: 50%;
+     transform: translateY(-50%);
+     color: var(--yt-light-grey);
+}
+
+#home-search-input {
+     width: 100%;
+     min-width: 600px;
+     padding: 10px 16px 10px 40px;
+     background-color: var(--yt-dark-grey);
+     border: 1px solid var(--yt-border);
+     border-radius: 20px;
+     color: var(--yt-white);
+     font-size: 1rem;
+}
+
+#home-search-input:focus {
+     outline: none;
+     border-color: var(--yt-red);
+}
+
+.video-grid {
+     display: grid;
+     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+     gap: 16px;
+     flex-grow: 1;
+     width: 100%;
+}
+
+.video-grid-item {
+     display: flex;
+     flex-direction: column;
+     gap: 12px;
+     cursor: pointer;
+}
+
+.grid-thumbnail-container {
+     position: relative;
+}
+
+.grid-thumbnail {
+     width: 100%;
+     aspect-ratio: 16/9;
+     object-fit: cover;
+     border-radius: 12px;
+     background-color: var(--yt-dark-grey);
+}
+
+.thumbnail-duration {
+     position: absolute;
+     bottom: 8px;
+     right: 8px;
+     background-color: rgba(0, 0, 0, 0.8);
+     color: var(--yt-white);
+     padding: 2px 6px;
+     border-radius: 4px;
+     font-size: 0.8rem;
+     font-weight: 500;
+}
+
+.grid-item-details {
+     display: flex;
+     gap: 12px;
+}
+
+.grid-item-info {
+     display: flex;
+     flex-direction: column;
+     gap: 4px;
+     overflow: hidden;
+}
+
+.grid-item-title {
+     font-weight: 500;
+     font-size: 1rem;
+     line-height: 1.4;
+     max-height: 2.8em;
+     overflow: hidden;
+     text-overflow: ellipsis;
+     display: -webkit-box;
+     -webkit-line-clamp: 2;
+     -webkit-box-orient: vertical;
+}
+
+.grid-item-meta {
+     font-size: 0.8rem;
+     color: var(--yt-light-grey);
+}
+
+.empty-message {
+     text-align: center;
+     color: var(--yt-light-grey);
+     font-size: 1rem;
+     margin-top: 40px;
+}
