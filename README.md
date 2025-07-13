@@ -1,6 +1,5 @@
 <div align="center">
   <img src="./assets/BannerBlack.png" alt="ViveStream Banner">
-  <h1>ViveStream - Revived</h1>
   <h2><strong>Tired of YouTube buffering? 😵‍💫 Snag your favorite videos and watch them offline in style!</strong></h2>
   <p>
     <img src="https://img.shields.io/badge/version-1.0.0-blue.svg" alt="Version">
