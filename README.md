@@ -1,6 +1,6 @@
 <div align="center">
   <img src="./assets/logo.svg" style="width: 10%" alt="ViveStream Logo">
-  <img src="./assets/Banner.png" alt="ViveStream Banner">
+  <img src="./assets/Banner.png" style="width: 75%" alt="ViveStream Banner">
   <img src="./assets/logo.svg" style="width: 10%" alt="ViveStream Logo">
   <h2><strong>Tired of YouTube buffering? 😵‍💫 Snag your favorite videos and watch them offline in style!</strong></h2>
   <p>
