@@ -1,12 +1,13 @@
-/* style.css */
 :root {
-     --yt-black: #0F0F0F;
+     --yt-black: #0f0f0f;
      --yt-dark-grey: #272727;
-     --yt-light-grey: #AAAAAA;
-     --yt-white: #F1F1F1;
-     --yt-red: #FF0B55;
-     --yt-red-dark: #CF0F47;
-     --yt-border: #3F3F3F;
+     --yt-light-grey: #aaaaaa;
+     --yt-white: #f1f1f1;
+     --yt-red: #ff0b55;
+     --yt-red-dark: #cf0f47;
+     --yt-border: #3f3f3f;
+     --font-display: "Orbitron", sans-serif;
+     --font-body: "Poppins", sans-serif;
 }
 
 * {
@@ -16,13 +17,15 @@
 }
 
 body {
-     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+     font-family: var(--font-body);
      background-color: var(--yt-black);
      color: var(--yt-white);
      overflow: hidden;
      height: 100vh;
      display: flex;
      flex-direction: column;
+     border: 1px solid var(--yt-border);
+     border-radius: 8px;
 }
 
 ::-webkit-scrollbar {
@@ -48,21 +51,39 @@ body {
      background: transparent;
 }
 
+input,
+.custom-select-container,
+.radio-label,
+.action-button,
+.download-button {
+     font-family: var(--font-body);
+}
+
 .header-bar {
      display: flex;
      align-items: center;
-     justify-content: flex-start;
-     padding: 0 16px;
+     justify-content: space-between;
+     padding: 0 4px 0 16px;
      height: 56px;
      background-color: var(--yt-black);
      flex-shrink: 0;
      -webkit-app-region: drag;
+     position: relative;
+     z-index: 100;
 }
 
 .header-left {
      display: flex;
      align-items: center;
      gap: 16px;
+     flex-shrink: 0;
+     -webkit-app-region: no-drag;
+}
+
+.header-center {
+     flex-grow: 1;
+     display: flex;
+     justify-content: center;
      -webkit-app-region: no-drag;
 }
 
@@ -74,6 +95,7 @@ body {
      cursor: pointer;
      padding: 8px;
      border-radius: 50%;
+     transition: background-color 0.2s;
 }
 
 .header-button:hover {
@@ -94,8 +116,81 @@ body {
 }
 
 .app-title {
-     font-size: 1.25rem;
-     font-weight: 500;
+     font-family: var(--font-display);
+     font-size: 1.4rem;
+     font-weight: 700;
+}
+
+.search-container {
+     position: relative;
+}
+
+.search-container i {
+     position: absolute;
+     left: 16px;
+     top: 50%;
+     transform: translateY(-50%);
+     color: var(--yt-light-grey);
+     z-index: 1;
+     pointer-events: none;
+}
+
+#home-search-input {
+     width: 220px;
+     padding: 10px 16px 10px 40px;
+     background-color: var(--yt-dark-grey);
+     border: 1px solid var(--yt-border);
+     border-radius: 20px;
+     color: var(--yt-white);
+     font-size: 0.9rem;
+     transition: width 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+}
+
+#home-search-input:focus {
+     width: 480px;
+     outline: none;
+     border-color: var(--yt-red);
+}
+
+.window-controls {
+     display: flex;
+     align-items: center;
+     height: 32px;
+     -webkit-app-region: no-drag;
+     opacity: 0;
+     transition: opacity 0.2s ease-in-out;
+}
+
+.header-bar:hover .window-controls {
+     opacity: 1;
+}
+
+.window-control-btn {
+     background: none;
+     border: none;
+     color: var(--yt-light-grey);
+     padding: 0 14px;
+     cursor: pointer;
+     transition: background-color 0.2s, color 0.2s;
+     line-height: 32px;
+}
+
+.window-control-btn i {
+     font-size: 0.8rem;
+}
+
+#tray-btn i {
+     font-size: 1rem;
+}
+
+.window-control-btn:hover {
+     background-color: var(--yt-dark-grey);
+     color: var(--yt-white);
+}
+
+.window-control-btn.close-btn:hover {
+     background-color: #E81123;
+     color: var(--yt-white);
 }
 
 .app-body {
@@ -110,6 +205,7 @@ body {
      flex-shrink: 0;
      display: flex;
      flex-direction: column;
+     justify-content: space-between;
      padding: 0 12px;
      transition: width 0.2s ease, padding 0.2s ease;
 }
@@ -133,6 +229,11 @@ body {
      margin-top: 10px;
 }
 
+.sidebar-nav-bottom {
+     list-style: none;
+     padding-bottom: 10px;
+}
+
 .nav-item {
      display: flex;
      align-items: center;
@@ -141,6 +242,7 @@ body {
      border-radius: 10px;
      cursor: pointer;
      transition: background-color 0.2s;
+     font-weight: 500;
 }
 
 .nav-item:hover {
@@ -149,7 +251,7 @@ body {
 
 .nav-item.active {
      background-color: var(--yt-dark-grey);
-     font-weight: 500;
+     font-weight: 600;
 }
 
 .nav-item i {
@@ -166,10 +268,93 @@ body {
 .page {
      display: flex;
      flex-direction: column;
-     align-items: center;
      height: 100%;
 }
 
 .page.hidden {
      display: none;
+}
+
+.placeholder-page {
+     justify-content: center;
+     align-items: center;
+     text-align: center;
+     color: var(--yt-light-grey);
+     flex-grow: 1;
+     display: flex;
+     flex-direction: column;
+}
+
+.page:not(.placeholder-page).hidden {
+     display: none;
+}
+
+.placeholder-icon {
+     font-size: 4rem;
+     margin-bottom: 24px;
+}
+
+.placeholder-title {
+     font-family: var(--font-display);
+     font-size: 1.8rem;
+     color: var(--yt-white);
+     margin-bottom: 8px;
+}
+
+.placeholder-text {
+     font-size: 1rem;
+}
+
+.link-style {
+     color: var(--yt-red);
+     font-weight: 500;
+     cursor: pointer;
+     text-decoration: underline;
+     text-decoration-color: transparent;
+     transition: text-decoration-color 0.2s;
+}
+
+.link-style:hover {
+     text-decoration-color: var(--yt-red);
+}
+
+.context-menu {
+     position: fixed;
+     z-index: 10000;
+     width: 180px;
+     background-color: #313131;
+     border-radius: 8px;
+     padding: 8px;
+     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+     border: 1px solid var(--yt-border);
+     opacity: 0;
+     transform: translateY(10px);
+     transition: opacity .2s ease, transform .2s ease;
+     pointer-events: none;
+}
+
+.context-menu.visible {
+     opacity: 1;
+     transform: translateY(0);
+     pointer-events: auto;
+}
+
+.context-menu-item {
+     display: flex;
+     align-items: center;
+     gap: 12px;
+     padding: 10px;
+     font-size: 0.9rem;
+     border-radius: 6px;
+     cursor: pointer;
+     transition: background-color 0.2s;
+}
+
+.context-menu-item:hover {
+     background-color: var(--yt-border);
+}
+
+.context-menu-item i {
+     width: 16px;
+     text-align: center;
 }

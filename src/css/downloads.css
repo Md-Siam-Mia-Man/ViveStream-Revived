@@ -1,5 +1,6 @@
 /* downloads.css */
 #downloads-page {
+     align-items: center;
      justify-content: center;
      padding: 32px;
 }
@@ -208,8 +209,17 @@
 }
 
 #downloads-page #status-area {
-     padding-top: 0;
      margin-top: 10px;
+     opacity: 0;
+     transform: translateY(-10px);
+     transition: opacity 0.3s ease, transform 0.3s ease;
+     pointer-events: none;
+}
+
+#downloads-page #status-area.visible {
+     opacity: 1;
+     transform: translateY(0);
+     pointer-events: auto;
 }
 
 #downloads-page #status-text {

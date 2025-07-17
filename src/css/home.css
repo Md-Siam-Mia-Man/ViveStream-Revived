@@ -1,49 +1,13 @@
 /* home.css */
 #home-page {
      padding: 24px;
-}
-
-.home-header {
-     margin-bottom: 24px;
-     display: flex;
-     justify-content: center;
-}
-
-.search-container {
-     position: relative;
-     width: 100%;
-     max-width: 600px;
-}
-
-.search-container i {
-     position: absolute;
-     left: 16px;
-     top: 50%;
-     transform: translateY(-50%);
-     color: var(--yt-light-grey);
-}
-
-#home-search-input {
-     width: 100%;
-     min-width: 600px;
-     padding: 10px 16px 10px 40px;
-     background-color: var(--yt-dark-grey);
-     border: 1px solid var(--yt-border);
-     border-radius: 20px;
-     color: var(--yt-white);
-     font-size: 1rem;
-}
-
-#home-search-input:focus {
-     outline: none;
-     border-color: var(--yt-red);
+     align-items: center;
 }
 
 .video-grid {
      display: grid;
      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-     gap: 16px;
-     flex-grow: 1;
+     gap: 32px 16px;
      width: 100%;
 }
 
@@ -51,11 +15,12 @@
      display: flex;
      flex-direction: column;
      gap: 12px;
-     cursor: pointer;
+     position: relative;
 }
 
 .grid-thumbnail-container {
      position: relative;
+     cursor: pointer;
 }
 
 .grid-thumbnail {
@@ -64,6 +29,11 @@
      object-fit: cover;
      border-radius: 12px;
      background-color: var(--yt-dark-grey);
+     transition: border-radius 0.2s ease;
+}
+
+.video-grid-item:hover .grid-thumbnail {
+     border-radius: 4px;
 }
 
 .thumbnail-duration {
@@ -81,6 +51,7 @@
 .grid-item-details {
      display: flex;
      gap: 12px;
+     align-items: flex-start;
 }
 
 .grid-item-info {
@@ -88,6 +59,8 @@
      flex-direction: column;
      gap: 4px;
      overflow: hidden;
+     flex-grow: 1;
+     cursor: pointer;
 }
 
 .grid-item-title {
@@ -105,6 +78,39 @@
 .grid-item-meta {
      font-size: 0.8rem;
      color: var(--yt-light-grey);
+}
+
+.grid-item-actions {
+     display: flex;
+     gap: 8px;
+     opacity: 0;
+     transition: opacity 0.2s ease;
+     pointer-events: none;
+}
+
+.video-grid-item:hover .grid-item-actions {
+     opacity: 1;
+     pointer-events: auto;
+}
+
+.grid-item-action-btn {
+     background-color: transparent;
+     border: none;
+     color: var(--yt-light-grey);
+     border-radius: 50%;
+     width: 36px;
+     height: 36px;
+     font-size: 1rem;
+     cursor: pointer;
+     display: flex;
+     align-items: center;
+     justify-content: center;
+     transition: background-color 0.2s, color 0.2s;
+}
+
+.grid-item-action-btn:hover {
+     background-color: var(--yt-dark-grey);
+     color: var(--yt-white);
 }
 
 .empty-message {

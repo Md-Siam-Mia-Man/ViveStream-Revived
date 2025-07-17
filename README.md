@@ -1,5 +1,7 @@
 <div align="center">
-  <img src="./assets/BannerBlack.png" alt="ViveStream Banner">
+  <img src="./assets/logo.svg" style="width: 10%" alt="ViveStream Logo">
+  <img src="./assets/Banner.png" alt="ViveStream Banner">
+  <img src="./assets/logo.svg" style="width: 10%" alt="ViveStream Logo">
   <h2><strong>Tired of YouTube buffering? 😵‍💫 Snag your favorite videos and watch them offline in style!</strong></h2>
   <p>
     <img src="https://img.shields.io/badge/version-1.0.0-blue.svg" alt="Version">
@@ -46,15 +48,20 @@ Welcome, media hoarders and vibe connoisseurs! 🥳 **ViveStream** is your new b
 ### For Code Wizards & Tinkerers 🧙‍♂️
 
 1️⃣ **Clone this thing:**
+
 ```bash
     git clone https://github.com/Md-Siam-Mia-Code/ViveStream-Revived.git
     cd ViveStream
 ```
+
 2️⃣ **Install the magic spells (dependencies):**
+
 ```bash
     npm install
 ```
+
 3️⃣ **Fire it up!**
+
 ```bash
     npm start
 ```

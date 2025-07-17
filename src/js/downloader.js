@@ -1,4 +1,3 @@
-// downloader.js
 downloadForm.addEventListener("submit", (e) => {
   e.preventDefault();
   const selectedQuality =
@@ -10,12 +9,14 @@ downloadForm.addEventListener("submit", (e) => {
   };
   if (options.url) {
     window.electronAPI.downloadVideo(options);
+    statusArea.classList.add("visible");
     statusText.innerText = "Requesting video info...";
     progressBar.style.width = "0%";
   }
 });
 
 window.electronAPI.onDownloadProgress((progress) => {
+  statusArea.classList.add("visible");
   const p =
     progress.playlistCount > 1
       ? `(${progress.playlistIndex}/${progress.playlistCount}) `
@@ -25,6 +26,7 @@ window.electronAPI.onDownloadProgress((progress) => {
 });
 
 window.electronAPI.onDownloadComplete((newData) => {
+  statusArea.classList.add("visible");
   statusText.innerText = `Download Complete: ${newData.title}`;
   progressBar.style.width = "100%";
   if (!newData.isPlaylist) {
@@ -34,6 +36,7 @@ window.electronAPI.onDownloadComplete((newData) => {
 });
 
 window.electronAPI.onDownloadError((error) => {
+  statusArea.classList.add("visible");
   statusText.innerText = `Error: ${error}`;
   progressBar.style.width = "0%";
 });

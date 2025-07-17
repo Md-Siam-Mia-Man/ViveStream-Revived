@@ -1,15 +1,5 @@
-# Node modules
-node_modules/
-
-# Logs
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Build
-dist/
-build/
-
-# OS junk files
-.DS_Store
-Thumbs.db
+/node_modules
+package-lock.json
+/release
+/vendor
+*.exe

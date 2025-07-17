@@ -1,6 +1,3 @@
-// player.js
-
-// --- Player Core Functions ---
 function playLibraryItem(index, options = {}) {
   if (index < 0 || index >= currentLibrary.length) return;
   const item = currentLibrary[index];
@@ -28,9 +25,9 @@ function playLibraryItem(index, options = {}) {
   renderUpNextList();
 
   if (options.stayInMiniplayer) {
-    activateMiniplayer(); // This will just update the miniplayer content
+    activateMiniplayer();
   } else {
-    showPage("player"); // This will open the main player view
+    showPage("player");
   }
 }
 
@@ -40,15 +37,12 @@ function updateVideoDetails(item) {
   videoInfoUploader.textContent = item.uploader;
 
   if (item.channelThumbPath) {
+    channelThumbContainer.style.display = "block";
+    uploaderInfo.classList.remove("no-thumb");
     channelThumb.src = item.channelThumbPath;
-    channelThumb.style.display = "block";
-    channelThumbFallback.style.display = "none";
   } else {
-    channelThumb.style.display = "none";
-    channelThumbFallback.style.display = "flex";
-    channelThumbFallback.textContent = (item.uploader || "U")
-      .charAt(0)
-      .toUpperCase();
+    channelThumbContainer.style.display = "none";
+    uploaderInfo.classList.add("no-thumb");
   }
 
   videoInfoDate.textContent = item.upload_date
@@ -58,7 +52,6 @@ function updateVideoDetails(item) {
     : "";
 }
 
-// --- Up Next List ---
 function renderUpNextList() {
   upNextList.innerHTML = "";
   const displayList = currentLibrary.filter(
@@ -88,7 +81,6 @@ upNextList.addEventListener("click", (e) => {
     );
 });
 
-// --- Player Controls & Listeners ---
 function togglePlay() {
   videoPlayer.paused ? videoPlayer.play() : videoPlayer.pause();
 }
@@ -143,7 +135,6 @@ videoPlayer.addEventListener("ended", () => {
   if (autoplayToggle.checked) {
     playNext();
   } else {
-    // If video ends, close miniplayer if it's active
     if (!miniplayer.classList.contains("hidden")) {
       closeMiniplayer();
     }
@@ -153,7 +144,6 @@ videoPlayer.addEventListener("timeupdate", () => {
   currentTimeEl.textContent = formatTime(videoPlayer.currentTime);
   const progress = (videoPlayer.currentTime / videoPlayer.duration) * 100;
   timelineProgress.style.width = `${progress}%`;
-  // Also update miniplayer progress bar if it's active
   if (!miniplayer.classList.contains("hidden")) {
     miniplayerProgressBar.style.width = `${progress}%`;
   }
@@ -197,11 +187,9 @@ fullscreenBtn.addEventListener("click", () => {
   }
 });
 
-// Re-purposed miniplayer button to activate our custom miniplayer
 miniplayerBtn.addEventListener("click", () => {
   if (videoPlayer.src) {
     activateMiniplayer();
-    // Navigate to home page after activating
     showPage("home");
   }
 });
@@ -216,7 +204,20 @@ document.addEventListener("fullscreenchange", () => {
   playerPage.classList.toggle("fullscreen-mode", !!document.fullscreenElement);
 });
 
-// --- Player Settings Menus ---
+videoMenuBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
+  const currentVideo = currentLibrary[currentlyPlayingIndex];
+  if (!currentVideo) return;
+
+  const rect = videoMenuBtn.getBoundingClientRect();
+  contextMenu.style.left = `${
+    rect.left - contextMenu.offsetWidth + rect.width
+  }px`;
+  contextMenu.style.top = `${rect.bottom + 5}px`;
+  contextMenu.dataset.videoId = currentVideo.id;
+  contextMenu.classList.add("visible");
+});
+
 function buildSettingsMenu() {
   settingsMenu.innerHTML = `
         <div class="settings-item" data-setting="subtitles"><i class="fas fa-closed-captioning"></i><span>Subtitles</span><span class="setting-value" id="subtitles-value">Off</span><i class="fas fa-chevron-right"></i></div>
@@ -358,7 +359,6 @@ playerSection.addEventListener("mouseleave", () => {
     }, 500);
 });
 
-// --- Keyboard Shortcuts ---
 document.addEventListener("keydown", (e) => {
   const isMiniplayerActive = !miniplayer.classList.contains("hidden");
   if (
@@ -384,9 +384,8 @@ document.addEventListener("keydown", (e) => {
       if (!isMiniplayerActive) theaterBtn.click();
       break;
     case "i":
-      // Toggle miniplayer
       if (isMiniplayerActive) {
-        showPage("player"); // This will also call deactivateMiniplayer
+        showPage("player");
       } else if (videoPlayer.src) {
         activateMiniplayer();
         showPage("home");

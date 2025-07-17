@@ -1,21 +1,20 @@
 {
   "name": "vivestream",
-  "version": "2.0",
+  "version": "1.6.0",
   "description": "A beautiful YouTube downloader and player.",
   "main": "src/js/main.js",
   "author": "ViveStream Developer",
-  "license": "ISC",
+  "license": "MIT",
   "scripts": {
     "start": "electron .",
     "build": "node build-installer.js"
   },
   "keywords": [],
   "devDependencies": {
-    "electron": "^37.2.0",
+    "electron": "^37.2.3",
     "electron-packager": "^17.1.2",
-    "fs-extra": "^11.3.0"
-  },
-  "dependencies": {
+    "fs-extra": "^11.3.0",
     "innosetup-compiler": "^6.3.1"
-  }
+  },
+  "dependencies": {}
 }

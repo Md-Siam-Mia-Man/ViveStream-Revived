@@ -1,47 +1,44 @@
-// main.js - Production Ready
-
-const { app, BrowserWindow, ipcMain, shell } = require("electron");
+const { app, BrowserWindow, ipcMain, shell, Tray, Menu } = require("electron");
 const path = require("path");
 const fs = require("fs");
 const { spawn } = require("child_process");
 const https = require("https");
 
 const isDev = !app.isPackaged;
+let tray = null;
+let win = null;
 
-// --- PATHS: PRODUCTION-READY ---
+const userHomePath = app.getPath("home");
+const viveStreamPath = path.join(userHomePath, "ViveStream");
 
-// CRITICAL CHANGE: Use app.getPath('userData') for all user data.
-// This is a safe, persistent, and writable location.
-const localDataPath = app.getPath("userData");
-
-// Path to vendor files (yt-dlp, ffmpeg). This is correct for packaged apps.
 const resourcesPath = isDev
   ? path.join(__dirname, "..", "..", "vendor")
   : path.join(process.resourcesPath, "vendor");
 
-// Define all paths based on the safe localDataPath
 const ytDlpPath = path.join(resourcesPath, "yt-dlp.exe");
 const ffmpegPath = path.join(resourcesPath, "ffmpeg.exe");
-const videoPath = path.join(localDataPath, "videos");
-const audioPath = path.join(localDataPath, "audio");
-const coverPath = path.join(localDataPath, "covers");
-const channelThumbPath = path.join(localDataPath, "channels");
-const subtitlePath = path.join(localDataPath, "subtitles");
-const libraryDBPath = path.join(localDataPath, "library.json"); // Simplified path
+const videoPath = path.join(viveStreamPath, "videos");
+const audioPath = path.join(viveStreamPath, "audio");
+const coverPath = path.join(viveStreamPath, "covers");
+const channelThumbPath = path.join(viveStreamPath, "channels");
+const subtitlePath = path.join(viveStreamPath, "subtitles");
+const libraryDBPath = path.join(viveStreamPath, "library.json");
 
-// Create all necessary directories at startup
-[videoPath, audioPath, coverPath, channelThumbPath, subtitlePath].forEach(
-  (dir) => {
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  }
-);
+[
+  viveStreamPath,
+  videoPath,
+  audioPath,
+  coverPath,
+  channelThumbPath,
+  subtitlePath,
+].forEach((dir) => {
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+});
 
-// Initialize library database if it doesn't exist
 if (!fs.existsSync(libraryDBPath)) {
   fs.writeFileSync(libraryDBPath, JSON.stringify([], null, 2));
 }
 
-// --- LIBRARY FUNCTIONS (Unchanged) ---
 function getLibrary() {
   try {
     const data = fs.readFileSync(libraryDBPath, "utf-8");
@@ -53,6 +50,10 @@ function getLibrary() {
   }
 }
 
+function saveLibrary(library) {
+  fs.writeFileSync(libraryDBPath, JSON.stringify(library, null, 2));
+}
+
 function saveToLibrary(videoData) {
   const library = getLibrary();
   const existingIndex = library.findIndex((v) => v.id === videoData.id);
@@ -61,10 +62,9 @@ function saveToLibrary(videoData) {
   } else {
     library.unshift(videoData);
   }
-  fs.writeFileSync(libraryDBPath, JSON.stringify(library, null, 2));
+  saveLibrary(library);
 }
 
-// --- HELPER FUNCTIONS (Unchanged) ---
 function downloadFile(url, dest) {
   return new Promise((resolve, reject) => {
     const file = fs.createWriteStream(dest);
@@ -85,12 +85,11 @@ function downloadFile(url, dest) {
   });
 }
 
-// --- ELECTRON APP SETUP ---
 function createWindow() {
-  const win = new BrowserWindow({
+  win = new BrowserWindow({
     width: 1280,
     height: 720,
-    minWidth: 800,
+    minWidth: 940,
     minHeight: 600,
     backgroundColor: "#0F0F0F",
     webPreferences: {
@@ -98,38 +97,132 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
     },
-    titleBarStyle: "hidden",
-    titleBarOverlay: {
-      color: "#0F0F0F",
-      symbolColor: "#F1F1F1",
-      height: 40,
-    },
-    // BEST PRACTICE: Simplified icon path for packaged app
-    icon: path.join(__dirname, "..", "..", "build", "icon.ico"),
+    frame: false,
+    icon: path.join(__dirname, "..", "..", "assets", "icon.ico"),
   });
 
   win.loadFile("src/index.html");
+
+  win.on("maximize", () => {
+    win.webContents.send("window-maximized", true);
+  });
+  win.on("unmaximize", () => {
+    win.webContents.send("window-maximized", false);
+  });
+  win.on("closed", () => {
+    win = null;
+  });
 
   if (isDev) {
     win.webContents.openDevTools();
   }
 }
 
-app.whenReady().then(createWindow);
+function createTray() {
+  const iconPath = path.join(__dirname, "..", "..", "assets", "icon.ico");
+  tray = new Tray(iconPath);
+  const contextMenu = Menu.buildFromTemplate([
+    {
+      label: "Show App",
+      click: () => {
+        win.show();
+      },
+    },
+    {
+      label: "Quit",
+      click: () => {
+        app.isQuitting = true;
+        app.quit();
+      },
+    },
+  ]);
+  tray.setToolTip("ViveStream");
+  tray.setContextMenu(contextMenu);
+
+  tray.on("click", () => {
+    win.show();
+  });
+}
+
+app.whenReady().then(() => {
+  createWindow();
+  createTray();
+});
 
 app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") app.quit();
+  if (process.platform !== "darwin") {
+    app.quit();
+  }
 });
 
 app.on("activate", () => {
-  if (BrowserWindow.getAllWindows().length === 0) createWindow();
+  if (BrowserWindow.getAllWindows().length === 0) {
+    createWindow();
+  }
 });
 
-// --- IPC HANDLERS (Mostly unchanged, small improvements) ---
+ipcMain.on("minimize-window", () => win.minimize());
+ipcMain.on("maximize-window", () => {
+  if (win.isMaximized()) {
+    win.unmaximize();
+  } else {
+    win.maximize();
+  }
+});
+ipcMain.on("close-window", () => win.close());
+ipcMain.on("tray-window", () => {
+  win.hide();
+});
 
-// Your main downloader logic (unmodified, it's solid)
+ipcMain.handle("delete-video", (event, videoId) => {
+  let library = getLibrary();
+  const videoToDelete = library.find((v) => v.id === videoId);
+
+  if (!videoToDelete) {
+    console.error("Video not found in library for deletion:", videoId);
+    return { success: false, error: "Video not found" };
+  }
+
+  try {
+    const filesToDelete = [
+      videoToDelete.filePath,
+      videoToDelete.coverPath,
+      videoToDelete.subtitlePath,
+    ].filter(Boolean);
+
+    filesToDelete.forEach((fileUri) => {
+      const filePath = path.normalize(fileUri.replace("file://", ""));
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    });
+
+    if (videoToDelete.channelThumbPath) {
+      const isThumbInUse = library.some(
+        (v) =>
+          v.id !== videoId &&
+          v.channelThumbPath === videoToDelete.channelThumbPath
+      );
+      if (!isThumbInUse) {
+        const thumbPath = path.normalize(
+          videoToDelete.channelThumbPath.replace("file://", "")
+        );
+        if (fs.existsSync(thumbPath)) {
+          fs.unlinkSync(thumbPath);
+        }
+      }
+    }
+
+    const updatedLibrary = library.filter((v) => v.id !== videoId);
+    saveLibrary(updatedLibrary);
+    return { success: true };
+  } catch (error) {
+    console.error("Error deleting video files:", error);
+    return { success: false, error: error.message };
+  }
+});
+
 ipcMain.on("download-video", async (event, options) => {
-  // ... (Your entire download logic remains here, no changes needed)
   const { url, type, quality } = options;
   const infoProcess = spawn(ytDlpPath, [
     url,
@@ -250,9 +343,6 @@ ipcMain.on("download-video", async (event, options) => {
           );
           if (!fs.existsSync(channelThumbPathFinal)) {
             try {
-              console.log(
-                `Downloading channel thumbnail for ${channelId} from ${channelThumbUrl}`
-              );
               await downloadFile(channelThumbUrl, channelThumbPathFinal);
             } catch (err) {
               console.error(
@@ -307,6 +397,5 @@ ipcMain.on("download-video", async (event, options) => {
 ipcMain.handle("get-library", () => getLibrary());
 
 ipcMain.on("open-path", (event, filePath) => {
-  // Use path.normalize to handle file URI correctly on Windows
   shell.showItemInFolder(path.normalize(filePath.replace("file://", "")));
 });
