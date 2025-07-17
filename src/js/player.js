@@ -1,3 +1,4 @@
+// player.js
 function playLibraryItem(index, options = {}) {
   if (index < 0 || index >= currentLibrary.length) return;
   const item = currentLibrary[index];

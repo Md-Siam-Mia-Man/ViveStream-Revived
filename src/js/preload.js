@@ -1,3 +1,4 @@
+// preload.js
 const { contextBridge, ipcRenderer } = require("electron");
 contextBridge.exposeInMainWorld("electronAPI", {
   downloadVideo: (options) => ipcRenderer.send("download-video", options),

@@ -1,3 +1,4 @@
+// ui.js
 sidebarToggle.addEventListener("click", () => {
   sidebar.classList.toggle("collapsed");
   localStorage.setItem(

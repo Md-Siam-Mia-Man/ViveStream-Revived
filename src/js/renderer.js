@@ -1,3 +1,4 @@
+// renderer.js
 const sidebar = document.querySelector(".sidebar");
 const sidebarToggle = document.getElementById("sidebar-toggle");
 const logoHomeButton = document.getElementById("logo-home-button");
