@@ -8,7 +8,7 @@
 
 ; These are passed in by build-installer.js
 #ifndef MyAppVersion
-#define MyAppVersion "1.6.0"
+#define MyAppVersion "1.7.0"
 #endif
 
 #ifndef SourceAppPath
