@@ -7,9 +7,6 @@ const sidebarNavBottom = document.querySelector(".sidebar-nav-bottom");
 const pages = document.querySelectorAll(".page");
 const downloadForm = document.getElementById("download-form");
 const urlInput = document.getElementById("url-input");
-const statusArea = document.getElementById("status-area");
-const statusText = document.getElementById("status-text");
-const progressBar = document.getElementById("progress-bar");
 const homeSearchInput = document.getElementById("home-search-input");
 const videoGrid = document.getElementById("video-grid");
 const upNextList = document.getElementById("up-next-list");
@@ -114,6 +111,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initializeMiniplayer();
   initializeWindowControls();
   initializeContextMenu();
+  initializeSettingsPage();
 
   sidebarNav.addEventListener("click", handleNav);
   sidebarNavBottom.addEventListener("click", handleNav);
@@ -159,7 +157,7 @@ function initializeContextMenu() {
         }
         loadLibrary();
       } else {
-        statusText.innerText = `Error: ${result.error}`;
+        showNotification(`Error: ${result.error}`, "error");
       }
     }
     contextMenu.classList.remove("visible");

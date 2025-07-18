@@ -1,4 +1,3 @@
-<!-- index.html -->
 <!DOCTYPE html>
 <html>
 
@@ -18,6 +17,8 @@
     <link rel="stylesheet" href="./css/downloads.css">
     <link rel="stylesheet" href="./css/player.css">
     <link rel="stylesheet" href="./css/miniplayer.css">
+    <link rel="stylesheet" href="./css/settings.css">
+    <link rel="stylesheet" href="./css/notifications.css">
 </head>
 
 <body>
@@ -105,41 +106,28 @@
                                 <div class="option-group select-group">
                                     <label>Quality</label>
                                     <div class="custom-select-container" id="quality-select-container">
-                                        <div class="selected-option" data-value="best">
-                                            <span>Best</span>
+                                        <div class="selected-option" data-value="1080">
+                                            <span>1080p</span>
                                             <i class="fas fa-chevron-down"></i>
                                         </div>
                                         <div class="options-list">
                                             <div class="option-item" data-value="best">Best</div>
-                                            <div class="option-item" data-value="1080">1080p</div>
+                                            <div class="option-item" data-value="2160">4K (2160p)</div>
+                                            <div class="option-item" data-value="1440">1440p</div>
+                                            <div class="option-item selected" data-value="1080">1080p</div>
                                             <div class="option-item" data-value="720">720p</div>
                                             <div class="option-item" data-value="480">480p</div>
                                         </div>
                                     </div>
                                 </div>
-                                <div class="option-group radio-group">
-                                    <label>Type</label>
-                                    <div class="radio-buttons-container">
-                                        <input type="radio" id="type-video" name="download-type" value="video" checked>
-                                        <label for="type-video" class="radio-label"><i class="fas fa-video"></i>
-                                            Video</label>
-                                        <input type="radio" id="type-audio" name="download-type" value="audio">
-                                        <label for="type-audio" class="radio-label"><i class="fas fa-music"></i>
-                                            Audio</label>
-                                    </div>
-                                </div>
+                                <button type="submit" class="download-button">
+                                    <i class="fas fa-download"></i>
+                                    <span>Download</span>
+                                </button>
                             </div>
-                            <button type="submit" class="download-button">
-                                <i class="fas fa-download"></i>
-                                <span>Download</span>
-                            </button>
                         </form>
                     </div>
-                    <div id="status-area">
-                        <p id="status-text"></p>
-                        <div class="progress-bar-container">
-                            <div id="progress-bar"></div>
-                        </div>
+                    <div id="download-queue-area">
                     </div>
                 </div>
             </div>
@@ -242,10 +230,23 @@
                 </div>
             </div>
 
-            <div id="settings-page" class="page placeholder-page hidden">
-                <i class="fas fa-cog placeholder-icon"></i>
-                <h2 class="placeholder-title">Settings</h2>
-                <p class="placeholder-text">Application settings and preferences will be available here.</p>
+            <div id="settings-page" class="page hidden">
+                <div class="settings-container">
+                    <h1 class="settings-header">Settings</h1>
+                    <div class="settings-section">
+                        <h2 class="settings-section-title">Downloads</h2>
+                        <div class="setting-item">
+                            <div class="setting-text">
+                                <label for="concurrent-downloads-slider">Concurrent Downloads</label>
+                                <p>Maximum number of videos to download at the same time.</p>
+                            </div>
+                            <div class="setting-control">
+                                <input type="range" id="concurrent-downloads-slider" min="1" max="5" value="3">
+                                <span id="concurrent-downloads-value">3</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="context-menu" id="video-item-context-menu">
                 <div class="context-menu-item" id="context-delete-btn"><i class="fas fa-trash-alt"></i> Delete</div>
@@ -273,11 +274,14 @@
             <div class="miniplayer-progress-bar"></div>
         </div>
     </div>
+    <div id="notification-container"></div>
+    <script src="./js/notifications.js"></script>
     <script src="./js/renderer.js"></script>
     <script src="./js/ui.js"></script>
     <script src="./js/downloader.js"></script>
     <script src="./js/player.js"></script>
     <script src="./js/miniplayer.js"></script>
+    <script src="./js/settings.js"></script>
 </body>
 
 </html>

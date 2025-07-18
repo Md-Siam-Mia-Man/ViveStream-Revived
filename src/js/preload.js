@@ -2,15 +2,21 @@
 const { contextBridge, ipcRenderer } = require("electron");
 contextBridge.exposeInMainWorld("electronAPI", {
   downloadVideo: (options) => ipcRenderer.send("download-video", options),
+  onDownloadQueueStart: (callback) =>
+    ipcRenderer.on("download-queue-start", (_event, value) => callback(value)),
   onDownloadProgress: (callback) =>
     ipcRenderer.on("download-progress", (_event, value) => callback(value)),
   onDownloadComplete: (callback) =>
     ipcRenderer.on("download-complete", (_event, value) => callback(value)),
   onDownloadError: (callback) =>
     ipcRenderer.on("download-error", (_event, value) => callback(value)),
+
   getLibrary: () => ipcRenderer.invoke("get-library"),
   deleteVideo: (videoId) => ipcRenderer.invoke("delete-video", videoId),
   openPath: (filePath) => ipcRenderer.send("open-path", filePath),
+
+  getSettings: () => ipcRenderer.invoke("get-settings"),
+  saveSettings: (settings) => ipcRenderer.send("save-settings", settings),
 
   minimizeWindow: () => ipcRenderer.send("minimize-window"),
   maximizeWindow: () => ipcRenderer.send("maximize-window"),

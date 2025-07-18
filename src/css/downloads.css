@@ -1,56 +1,57 @@
 /* downloads.css */
 #downloads-page {
-     align-items: center;
-     justify-content: center;
+     align-items: flex-start;
+     justify-content: flex-start;
      padding: 32px;
 }
 
-#downloads-page .downloads-container {
+.downloads-container {
      width: 100%;
-     max-width: 700px;
+     max-width: 900px;
+     margin: 0 auto;
      display: flex;
      flex-direction: column;
      gap: 24px;
 }
 
-#downloads-page .download-card {
+.download-card {
      background-color: var(--yt-dark-grey);
      padding: 24px;
      border-radius: 12px;
      border: 1px solid var(--yt-border);
 }
 
-#downloads-page .download-card h2 {
+.download-card h2 {
      font-size: 1.5rem;
      font-weight: 500;
 }
 
-#downloads-page .download-card-subtitle {
+.download-card-subtitle {
      color: var(--yt-light-grey);
      font-size: 0.9rem;
      margin-top: 4px;
      margin-bottom: 24px;
 }
 
-#downloads-page #download-form {
+#download-form {
      display: flex;
      flex-direction: column;
      gap: 20px;
 }
 
-#downloads-page .url-input-container {
+.url-input-container {
      position: relative;
      display: flex;
      align-items: center;
 }
 
-#downloads-page .url-input-container i {
+.url-input-container i {
      position: absolute;
      left: 16px;
      color: var(--yt-light-grey);
 }
 
-#downloads-page #url-input {
+#url-input {
      width: 100%;
      background-color: var(--yt-black);
      border: 1px solid var(--yt-border);
@@ -61,36 +62,37 @@
      transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-#downloads-page #url-input:focus {
+#url-input:focus {
      outline: none;
      border-color: var(--yt-red);
      box-shadow: 0 0 0 3px rgba(255, 11, 85, 0.3);
 }
 
-#downloads-page #download-form .download-options {
+#download-form .download-options {
      display: grid;
-     grid-template-columns: 1fr 1fr;
+     grid-template-columns: 1fr auto;
      gap: 20px;
+     align-items: flex-end;
 }
 
-#downloads-page .option-group {
+.option-group {
      display: flex;
      flex-direction: column;
      gap: 8px;
 }
 
-#downloads-page .option-group label {
+.option-group label {
      font-size: 0.9rem;
      color: var(--yt-light-grey);
      font-weight: 500;
 }
 
-#downloads-page .custom-select-container {
+.custom-select-container {
      position: relative;
      user-select: none;
 }
 
-#downloads-page .selected-option {
+.selected-option {
      display: flex;
      justify-content: space-between;
      align-items: center;
@@ -103,22 +105,22 @@
      transition: border-color 0.2s;
 }
 
-#downloads-page .custom-select-container.open .selected-option {
+.custom-select-container.open .selected-option {
      border-color: var(--yt-red);
 }
 
-#downloads-page .selected-option i {
+.selected-option i {
      color: var(--yt-light-grey);
      transition: transform 0.2s ease;
 }
 
-#downloads-page .custom-select-container.open .selected-option i {
+.custom-select-container.open .selected-option i {
      transform: rotate(180deg);
 }
 
-#downloads-page .options-list {
+.options-list {
      position: absolute;
-     top: 105%;
+     bottom: 105%;
      left: 0;
      right: 0;
      background-color: var(--yt-dark-grey);
@@ -129,118 +131,144 @@
      overflow-y: auto;
      opacity: 0;
      transform: scaleY(0.9);
-     transform-origin: top;
+     transform-origin: bottom;
      pointer-events: none;
      transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
-#downloads-page .custom-select-container.open .options-list {
+.custom-select-container.open .options-list {
      opacity: 1;
      transform: scaleY(1);
      pointer-events: auto;
 }
 
-#downloads-page .option-item {
+.option-item {
      padding: 10px 12px;
      cursor: pointer;
      font-size: 0.9rem;
      transition: background-color 0.2s;
 }
 
-#downloads-page .option-item:hover {
+.option-item:hover {
      background-color: var(--yt-border);
 }
 
-#downloads-page .option-item.selected {
+.option-item.selected {
      background-color: var(--yt-red-dark);
      font-weight: 500;
 }
 
-#downloads-page .radio-buttons-container {
-     display: flex;
-     background-color: var(--yt-black);
-     border-radius: 6px;
-     border: 1px solid var(--yt-border);
-     overflow: hidden;
-}
-
-#downloads-page .radio-buttons-container input[type="radio"] {
-     display: none;
-}
-
-#downloads-page .radio-label {
-     flex: 1;
-     text-align: center;
-     padding: 10px;
-     cursor: pointer;
-     transition: background-color 0.2s, color 0.2s;
-     color: var(--yt-light-grey);
-     font-size: 0.9rem;
-}
-
-#downloads-page .radio-label i {
-     margin-right: 6px;
-}
-
-#downloads-page .radio-buttons-container input[type="radio"]:checked+.radio-label {
-     background-color: var(--yt-border);
-     color: var(--yt-white);
-     font-weight: 500;
-}
-
-#downloads-page .download-button {
+.download-button {
      display: flex;
      align-items: center;
      justify-content: center;
      gap: 8px;
-     padding: 12px 20px;
-     font-size: 1rem;
+     padding: 10px 20px;
+     font-size: 0.9rem;
      font-weight: 500;
-     border-radius: 8px;
+     border-radius: 6px;
      background-color: var(--yt-red);
      border: none;
      color: var(--yt-white);
      cursor: pointer;
      transition: background-color 0.2s;
+     height: 41px;
 }
 
-#downloads-page .download-button:hover {
+.download-button:hover {
      background-color: var(--yt-red-dark);
 }
 
-#downloads-page #status-area {
-     margin-top: 10px;
-     opacity: 0;
-     transform: translateY(-10px);
-     transition: opacity 0.3s ease, transform 0.3s ease;
-     pointer-events: none;
+#download-queue-area {
+     display: flex;
+     flex-direction: column;
+     gap: 12px;
 }
 
-#downloads-page #status-area.visible {
-     opacity: 1;
-     transform: translateY(0);
-     pointer-events: auto;
+.download-item {
+     display: flex;
+     align-items: center;
+     gap: 16px;
+     background-color: var(--yt-dark-grey);
+     padding: 12px;
+     border-radius: 8px;
+     border: 1px solid var(--yt-border);
+     transition: all 0.3s ease;
 }
 
-#downloads-page #status-text {
-     text-align: center;
-     font-size: 0.9em;
+.download-item.completed {
+     border-left: 4px solid #4caf50;
+}
+
+.download-item.error {
+     border-left: 4px solid #f44336;
+}
+
+.download-item-thumb {
+     width: 120px;
+     height: 67px;
+     object-fit: cover;
+     border-radius: 4px;
+     flex-shrink: 0;
+     background-color: var(--yt-black);
+}
+
+.download-item-info {
+     flex-grow: 1;
+     display: flex;
+     flex-direction: column;
+     gap: 8px;
+     min-width: 0;
+}
+
+.download-item-title {
+     font-weight: 500;
+     white-space: nowrap;
+     overflow: hidden;
+     text-overflow: ellipsis;
+}
+
+.download-item-uploader {
+     font-size: 0.8rem;
      color: var(--yt-light-grey);
-     min-height: 1.2em;
 }
 
-#downloads-page .progress-bar-container {
+.download-item-progress-bar-container {
      width: 100%;
      height: 5px;
      background-color: var(--yt-border);
      border-radius: 5px;
-     margin-top: 10px;
      overflow: hidden;
 }
 
-#downloads-page #progress-bar {
+.download-item-progress-bar {
      width: 0%;
      height: 100%;
      background: var(--yt-red);
      transition: width 0.1s linear;
+}
+
+.download-item-stats {
+     display: flex;
+     justify-content: space-between;
+     align-items: center;
+     font-size: 0.8rem;
+     color: var(--yt-light-grey);
+     margin-top: 4px;
+}
+
+.download-item-status {
+     font-weight: 500;
+}
+
+.download-item-status.completed i {
+     color: #4caf50;
+}
+
+.download-item-status.error i {
+     color: #f44336;
+}
+
+.download-item-status i {
+     margin-right: 6px;
 }

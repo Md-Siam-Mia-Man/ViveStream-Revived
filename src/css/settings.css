@@ -1,0 +1,108 @@
+/* settings.css */
+#settings-page {
+     padding: 32px;
+     justify-content: flex-start;
+     align-items: center;
+}
+
+.settings-container {
+     width: 100%;
+     max-width: 800px;
+}
+
+.settings-header {
+     font-family: var(--font-display);
+     font-size: 2rem;
+     font-weight: 700;
+     margin-bottom: 24px;
+     padding-bottom: 16px;
+     border-bottom: 1px solid var(--yt-border);
+}
+
+.settings-section {
+     margin-bottom: 32px;
+}
+
+.settings-section-title {
+     font-size: 1.2rem;
+     font-weight: 600;
+     margin-bottom: 20px;
+     color: var(--yt-red);
+}
+
+.setting-item {
+     display: flex;
+     justify-content: space-between;
+     align-items: center;
+     padding: 16px 0;
+     border-bottom: 1px solid var(--yt-border);
+}
+
+.setting-item:last-child {
+     border-bottom: none;
+}
+
+.setting-text label {
+     font-weight: 500;
+     font-size: 1rem;
+     display: block;
+}
+
+.setting-text p {
+     font-size: 0.9rem;
+     color: var(--yt-light-grey);
+     margin-top: 4px;
+}
+
+.setting-control {
+     display: flex;
+     align-items: center;
+     gap: 16px;
+}
+
+.setting-control input[type="range"] {
+     -webkit-appearance: none;
+     appearance: none;
+     width: 150px;
+     height: 4px;
+     background: var(--yt-dark-grey);
+     border-radius: 4px;
+     cursor: pointer;
+}
+
+.setting-control input[type="range"]::-webkit-slider-thumb {
+     -webkit-appearance: none;
+     appearance: none;
+     width: 16px;
+     height: 16px;
+     background: var(--yt-red);
+     border-radius: 50%;
+     cursor: pointer;
+     transition: background-color 0.2s;
+}
+
+.setting-control input[type="range"]::-moz-range-thumb {
+     width: 16px;
+     height: 16px;
+     background: var(--yt-red);
+     border-radius: 50%;
+     cursor: pointer;
+     border: none;
+     transition: background-color 0.2s;
+}
+
+.setting-control input[type="range"]:hover::-webkit-slider-thumb {
+     background: var(--yt-red-dark);
+}
+
+.setting-control input[type="range"]:hover::-moz-range-thumb {
+     background: var(--yt-red-dark);
+}
+
+.setting-control span {
+     font-weight: 600;
+     font-size: 1rem;
+     width: 20px;
+     text-align: center;
+     color: var(--yt-red);
+}
