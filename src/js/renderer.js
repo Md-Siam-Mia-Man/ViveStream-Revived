@@ -13,6 +13,7 @@ const upNextList = document.getElementById("up-next-list");
 const qualitySelectContainer = document.getElementById(
   "quality-select-container"
 );
+const downloadQueueArea = document.getElementById("download-queue-area");
 const playerPage = document.getElementById("player-page");
 const playerSection = document.getElementById("player-section");
 const videoPlayer = document.getElementById("video-player");
@@ -44,7 +45,7 @@ const channelThumb = document.getElementById("channel-thumb");
 const videoInfoUploader = document.getElementById("video-info-uploader");
 const videoInfoDate = document.getElementById("video-info-date");
 const videoMenuBtn = document.getElementById("video-menu-btn");
-
+const favoriteBtn = document.getElementById("favorite-btn");
 const miniplayer = document.getElementById("miniplayer");
 const miniplayerVideoContainer = document.getElementById(
   "miniplayer-video-container"
@@ -61,7 +62,6 @@ const miniplayerExpandBtn = document.getElementById("miniplayer-expand-btn");
 const miniplayerProgressBar = document.querySelector(
   ".miniplayer-progress-bar"
 );
-
 const trayBtn = document.getElementById("tray-btn");
 const minimizeBtn = document.getElementById("minimize-btn");
 const maximizeBtn = document.getElementById("maximize-btn");
@@ -71,14 +71,13 @@ const contextDeleteBtn = document.getElementById("context-delete-btn");
 
 let currentLibrary = [];
 let currentlyPlayingIndex = -1;
-let sleepTimerId = null;
 
 function showPage(pageId) {
-  const isLeavingPlayer = !playerPage.classList.contains("hidden");
-  const willActivateMiniplayer =
-    isLeavingPlayer && pageId !== "player" && videoPlayer.src;
+  const isPlayerPageVisible = !playerPage.classList.contains("hidden");
+  const shouldActivateMiniplayer =
+    isPlayerPageVisible && pageId !== "player" && videoPlayer.src;
 
-  if (willActivateMiniplayer) {
+  if (shouldActivateMiniplayer) {
     activateMiniplayer();
   }
 
@@ -94,24 +93,32 @@ function showPage(pageId) {
     deactivateMiniplayer();
   }
 
-  if (isLeavingPlayer && !willActivateMiniplayer && videoPlayer.src) {
+  if (isPlayerPageVisible && !shouldActivateMiniplayer && pageId !== "player") {
     videoPlayer.pause();
   }
 }
 
 function handleNav(e) {
   const navItem = e.target.closest(".nav-item");
-  if (navItem) showPage(navItem.dataset.page);
+  if (navItem) {
+    const pageId = navItem.dataset.page;
+    showPage(pageId);
+    if (pageId === "home") {
+      renderHomePageGrid();
+    } else if (pageId === "favorites") {
+      renderFavoritesPage();
+    }
+  }
 }
 
 document.addEventListener("DOMContentLoaded", () => {
   showPage("home");
   loadLibrary();
-  loadSettings();
   initializeMiniplayer();
   initializeWindowControls();
   initializeContextMenu();
   initializeSettingsPage();
+  loadSettings();
 
   sidebarNav.addEventListener("click", handleNav);
   sidebarNavBottom.addEventListener("click", handleNav);
@@ -153,8 +160,11 @@ function initializeContextMenu() {
           closeMiniplayer();
           videoPlayer.src = "";
           currentlyPlayingIndex = -1;
+          updateVideoDetails(null);
+          renderUpNextList();
           showPage("home");
         }
+        showNotification("Video deleted successfully.");
         loadLibrary();
       } else {
         showNotification(`Error: ${result.error}`, "error");

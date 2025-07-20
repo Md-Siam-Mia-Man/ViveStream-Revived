@@ -6,57 +6,72 @@
      z-index: 10001;
      display: flex;
      flex-direction: column-reverse;
-     gap: 10px;
+     gap: 12px;
 }
 
 .notification {
-     width: 350px;
+     width: 380px;
      background-color: var(--yt-dark-grey);
-     border-radius: 8px;
-     padding: 12px 16px;
-     border-left: 4px solid var(--yt-red);
-     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+     border-radius: 12px;
+     padding: 16px;
+     border: 1px solid var(--yt-border);
+     border-left-width: 5px;
+     box-shadow: 0 5px 20px rgba(0, 0, 0, 0.4);
      display: flex;
-     align-items: center;
-     gap: 12px;
+     align-items: flex-start;
+     gap: 16px;
      animation: slide-in 0.3s ease-out forwards;
 }
 
 .notification.fade-out {
-     animation: slide-out 0.3s ease-in forwards;
+     animation: slide-out 0.4s ease-in forwards;
+}
+
+.notification.info {
+     border-left-color: var(--yt-red);
 }
 
 .notification.success {
      border-left-color: #4caf50;
 }
 
-.notification.success .fas {
-     color: #4caf50;
-}
-
 .notification.error {
      border-left-color: #f44336;
 }
 
-.notification.error .fas {
-     color: #f44336;
+.notification .notification-icon {
+     width: 22px;
+     height: 22px;
+     flex-shrink: 0;
+     margin-top: 2px;
+     filter: brightness(0) invert(0.8);
 }
 
-.notification .fas {
-     font-size: 1.2rem;
+.notification.success .notification-icon {
+     filter: invert(67%) sepia(34%) saturate(702%) hue-rotate(75deg) brightness(94%) contrast(88%);
+     /* Green */
 }
 
-.notification p {
+.notification.error .notification-icon {
+     filter: invert(34%) sepia(80%) saturate(2250%) hue-rotate(338deg) brightness(97%) contrast(92%);
+     /* Red */
+}
+
+.notification .notification-content {
      flex-grow: 1;
-     font-size: 0.9rem;
+}
+
+.notification-content p {
+     font-size: 0.95rem;
      line-height: 1.4;
      color: var(--yt-white);
+     font-weight: 500;
      margin: 0;
-     overflow: hidden;
-     text-overflow: ellipsis;
-     display: -webkit-box;
-     -webkit-line-clamp: 2;
-     -webkit-box-orient: vertical;
+}
+
+.notification-content span {
+     font-size: 0.85rem;
+     color: var(--yt-light-grey);
 }
 
 .close-notification {
@@ -64,14 +79,13 @@
      border: none;
      color: var(--yt-light-grey);
      cursor: pointer;
-     font-size: 1rem;
-     padding: 4px;
-     border-radius: 50%;
-     transition: background-color 0.2s;
+     font-size: 1.2rem;
+     padding: 0;
+     line-height: 1;
+     transition: color 0.2s;
 }
 
 .close-notification:hover {
-     background-color: var(--yt-border);
      color: var(--yt-white);
 }
 

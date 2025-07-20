@@ -3,12 +3,12 @@
 
 #define MyAppName "ViveStream"
 #define MyAppPublisher "Md. Siam Mia"
-#define MyAppURL "https://github.com/Md-Siam-Mia-Code/ViveStream"
+#define MyAppURL "https://github.com/Md-Siam-Mia-Code/ViveStream-Revived"
 #define MyAppExeName "vivestream.exe"
 
 ; These are passed in by build-installer.js
 #ifndef MyAppVersion
-#define MyAppVersion "1.7.0"
+#define MyAppVersion "1.8.0"
 #endif
 
 #ifndef SourceAppPath
@@ -21,8 +21,6 @@
 
 
 [Setup]
-; NOTE: The value of AppId uniquely identifies this application. Do not use the same AppId value in installers for other applications.
-; (To generate a new GUID, click Tools | Generate GUID inside the IDE.)
 AppId={{FC44F321-AE31-46B5-B6B2-BA2671A4C86C}}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
@@ -33,19 +31,21 @@ AppUpdatesURL={#MyAppURL}
 DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
-; "OutputBaseFilename" is dynamically handled by build-installer.js
-OutputBaseFilename=ViveStream-Setup
+OutputBaseFilename=ViveStream-Setup-v{#MyAppVersion}
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
 UninstallDisplayIcon={app}\{#MyAppExeName}
 SetupIconFile={#AppIcon}
+CloseApplications=yes
+RestartApplications=no
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
+Name: "deletedata"; Description: "Delete all downloaded media and settings"; GroupDescription: "Cleanup"; Flags: unchecked;
 
 [Files]
 Source: "{#SourceAppPath}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
@@ -58,3 +58,10 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: de
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
+
+[UninstallRun]
+Filename: "{cmd}"; Parameters: "/C taskkill /f /im {#MyAppExeName}"; Flags: runhidden
+
+[UninstallDelete]
+Type: filesandordirs; Name: "{app}"
+Type: filesandordirs; Name: "{userpf}\ViveStream"; Tasks: deletedata

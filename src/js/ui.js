@@ -12,26 +12,16 @@ logoHomeButton.addEventListener("click", (e) => {
   showPage("home");
 });
 
-sidebarNav.addEventListener("click", (e) => {
-  const navItem = e.target.closest(".nav-item");
-  if (navItem) showPage(navItem.dataset.page);
-});
-
-sidebarNavBottom.addEventListener("click", (e) => {
-  const navItem = e.target.closest(".nav-item");
-  if (navItem) showPage(navItem.dataset.page);
-});
-
 function renderGrid(container, library) {
+  if (!container) return;
   container.innerHTML = library
-    .map((item) => {
-      const isFavorite = item.isFavorite || false;
-      return `
+    .map(
+      (item) => `
         <div class="video-grid-item" data-id="${item.id}">
             <div class="grid-thumbnail-container">
                 <img src="${
                   item.coverPath
-                }" class="grid-thumbnail" alt="thumbnail">
+                }" class="grid-thumbnail" alt="thumbnail" onerror="this.onerror=null;this.src='../assets/logo.png';">
                 <span class="thumbnail-duration">${formatTime(
                   item.duration || 0
                 )}</span>
@@ -42,79 +32,76 @@ function renderGrid(container, library) {
                     <p class="grid-item-meta">${item.uploader || "Unknown"}</p>
                 </div>
                 <div class="grid-item-actions">
-                    <button class="grid-item-action-btn favorite-btn" title="Favorite"><i class="${
-                      isFavorite ? "fas" : "far"
-                    } fa-heart"></i></button>
-                    <button class="grid-item-action-btn save-btn" title="Save to Playlist"><i class="far fa-bookmark"></i></button>
-                    <button class="grid-item-action-btn menu-btn" title="More"><i class="fas fa-ellipsis-v"></i></button>
+                    <button class="grid-item-action-btn favorite-btn ${
+                      item.isFavorite ? "is-favorite" : ""
+                    }" title="${item.isFavorite ? "Unfavorite" : "Favorite"}">
+                        <img src="./assets/svg/Favourite.svg" class="icon-svg" alt="Favorite">
+                    </button>
+                    <button class="grid-item-action-btn save-btn" title="Save to Playlist">+</button>
+                    <button class="grid-item-action-btn menu-btn" title="More">
+                        <img src="./assets/svg/Menu.svg" class="icon-svg" alt="More">
+                    </button>
                 </div>
             </div>
-        </div>`;
-    })
+        </div>`
+    )
     .join("");
 }
 
-function renderHomePageGrid(library = currentLibrary) {
-  videoGrid.innerHTML = "";
-
-  if (library.length === 0 && homeSearchInput.value) {
-    videoGrid.innerHTML = `
-            <div class="placeholder-page" style="grid-column: 1 / -1;">
-                <i class="fas fa-search placeholder-icon"></i>
-                <h2 class="placeholder-title">No Results Found</h2>
-                <p class="placeholder-text">Try different keywords to find what you're looking for.</p>
-            </div>`;
-    return;
+function ensureGridExists(pageElement, gridId) {
+  let grid = document.getElementById(gridId);
+  if (!grid) {
+    pageElement.innerHTML = `<div class="video-grid" id="${gridId}"></div>`;
+    grid = document.getElementById(gridId);
+    grid.addEventListener("click", handleGridClick);
   }
+  return grid;
+}
 
+function renderHomePageGrid(library = currentLibrary) {
+  const homePage = document.getElementById("home-page");
   if (currentLibrary.length === 0) {
-    document.getElementById("home-page").innerHTML = `
-            <div class="placeholder-page">
-                <i class="fas fa-compact-disc placeholder-icon"></i>
-                <h2 class="placeholder-title">Your Library is Empty</h2>
-                <p class="placeholder-text">Go to the <span class="link-style" id="go-to-downloads-link">Downloads</span> page to get started.</p>
-            </div>`;
-
+    homePage.innerHTML = `<div class="placeholder-page"><img src="./assets/svg/Home.svg" class="placeholder-icon-svg" alt="Home"><h2 class="placeholder-title">Your Library is Empty</h2><p class="placeholder-text">Go to the <span class="link-style" id="go-to-downloads-link">Downloads</span> page to get started.</p></div>`;
     document
       .getElementById("go-to-downloads-link")
-      ?.addEventListener("click", () => {
-        showPage("downloads");
-      });
+      ?.addEventListener("click", () => showPage("downloads"));
     return;
   }
-  renderGrid(videoGrid, library);
+  const grid = ensureGridExists(homePage, "video-grid");
+  renderGrid(grid, library);
 }
 
 function renderFavoritesPage() {
-  const favoritesLibrary = currentLibrary.filter((video) => video.isFavorite);
   const favoritesPage = document.getElementById("favorites-page");
-  favoritesPage.innerHTML = "";
+  const favoritesLibrary = currentLibrary.filter((video) => video.isFavorite);
+  const placeholder = favoritesPage.querySelector(".placeholder-page");
 
-  if (favoritesLibrary.length > 0) {
-    const grid = document.createElement("div");
-    grid.className = "video-grid";
-    grid.id = "video-grid-favorites";
-    favoritesPage.appendChild(grid);
-    renderGrid(grid, favoritesLibrary);
+  if (favoritesLibrary.length === 0) {
+    if (placeholder) placeholder.style.display = "flex";
+    document.getElementById("video-grid-favorites").innerHTML = "";
   } else {
-    favoritesPage.innerHTML = `
-            <div class="placeholder-page">
-                <i class="fas fa-heart-crack placeholder-icon"></i>
-                <h2 class="placeholder-title">No Favorites Yet</h2>
-                <p class="placeholder-text">Click the heart icon on any video to add it to your favorites.</p>
-            </div>`;
+    if (placeholder) placeholder.style.display = "none";
+    const grid = ensureGridExists(favoritesPage, "video-grid-favorites");
+    const searchTerm = homeSearchInput.value.toLowerCase();
+    const filtered = searchTerm
+      ? favoritesLibrary.filter(
+          (v) =>
+            v.title.toLowerCase().includes(searchTerm) ||
+            (v.uploader && v.uploader.toLowerCase().includes(searchTerm))
+        )
+      : favoritesLibrary;
+    renderGrid(grid, filtered);
   }
 }
 
 function handleGridClick(event) {
-  const e = event;
-  const itemEl = e.target.closest(".video-grid-item");
+  const itemEl = event.target.closest(".video-grid-item");
   if (!itemEl) return;
   const videoId = itemEl.dataset.id;
 
-  const menuBtn = e.target.closest(".menu-btn");
-  if (menuBtn) {
-    e.stopPropagation();
+  if (event.target.closest(".menu-btn")) {
+    event.stopPropagation();
+    const menuBtn = event.target.closest(".menu-btn");
     const rect = menuBtn.getBoundingClientRect();
     contextMenu.style.left = `${
       rect.left - contextMenu.offsetWidth + rect.width
@@ -124,38 +111,23 @@ function handleGridClick(event) {
     contextMenu.classList.add("visible");
     return;
   }
-
-  const favoriteBtn = e.target.closest(".favorite-btn");
-  if (favoriteBtn) {
-    e.stopPropagation();
-    toggleFavoriteStatus(videoId, favoriteBtn);
+  if (event.target.closest(".favorite-btn")) {
+    event.stopPropagation();
+    toggleFavoriteStatus(videoId, event.target.closest(".favorite-btn"));
     return;
   }
-
-  const saveBtn = e.target.closest(".save-btn");
-  if (saveBtn) {
-    e.stopPropagation();
-    console.log("Save to playlist clicked for:", videoId);
+  if (event.target.closest(".save-btn")) {
+    event.stopPropagation();
+    showNotification("Playlist feature coming soon!", "info");
     return;
   }
-
   const videoIndex = currentLibrary.findIndex((v) => v.id === videoId);
-  if (videoIndex === -1) return;
-
-  const isMiniplayerActive = !miniplayer.classList.contains("hidden");
-
-  if (isMiniplayerActive) {
-    if (videoIndex === currentlyPlayingIndex) {
-      showPage("player");
-    } else {
-      playLibraryItem(videoIndex, { stayInMiniplayer: true });
-    }
-  } else {
-    playLibraryItem(videoIndex);
-  }
+  if (videoIndex > -1) playLibraryItem(videoIndex);
 }
 
-videoGrid.addEventListener("click", handleGridClick);
+document
+  .getElementById("video-grid")
+  .addEventListener("click", handleGridClick);
 document
   .getElementById("favorites-page")
   .addEventListener("click", handleGridClick);
@@ -163,24 +135,16 @@ document
 async function toggleFavoriteStatus(videoId, btnElement) {
   const result = await window.electronAPI.toggleFavorite(videoId);
   if (result.success) {
-    const icon = btnElement.querySelector("i");
-    icon.classList.toggle("fas", result.isFavorite);
-    icon.classList.toggle("far", !result.isFavorite);
-
+    btnElement.classList.toggle("is-favorite", result.isFavorite);
+    btnElement.title = result.isFavorite ? "Unfavorite" : "Favorite";
     const localVideo = currentLibrary.find((v) => v.id === videoId);
-    if (localVideo) {
-      localVideo.isFavorite = result.isFavorite;
-    }
-
-    const playerFavoriteIcon = favoriteBtn.querySelector("i");
+    if (localVideo) localVideo.isFavorite = result.isFavorite;
     if (
       currentlyPlayingIndex > -1 &&
       currentLibrary[currentlyPlayingIndex]?.id === videoId
     ) {
-      playerFavoriteIcon.classList.toggle("fas", result.isFavorite);
-      playerFavoriteIcon.classList.toggle("far", !result.isFavorite);
+      favoriteBtn.classList.toggle("is-favorite", result.isFavorite);
     }
-
     if (document.querySelector('.nav-item[data-page="favorites"].active')) {
       renderFavoritesPage();
     }
@@ -189,25 +153,16 @@ async function toggleFavoriteStatus(videoId, btnElement) {
 
 homeSearchInput.addEventListener("input", (e) => {
   const searchTerm = e.target.value.toLowerCase();
-  const currentActivePage =
-    document.querySelector(".nav-item.active")?.dataset.page;
-
-  const libraryToFilter =
-    currentActivePage === "favorites"
-      ? currentLibrary.filter((v) => v.isFavorite)
-      : currentLibrary;
-
-  const filteredLibrary = libraryToFilter.filter(
-    (video) =>
-      video.title.toLowerCase().includes(searchTerm) ||
-      (video.uploader && video.uploader.toLowerCase().includes(searchTerm))
-  );
-
-  if (currentActivePage === "home") {
-    renderHomePageGrid(filteredLibrary);
-  } else if (currentActivePage === "favorites") {
-    const favGrid = document.getElementById("video-grid-favorites");
-    if (favGrid) renderGrid(favGrid, filteredLibrary);
+  const activePage = document.querySelector(".nav-item.active")?.dataset.page;
+  if (activePage === "home") {
+    const filtered = currentLibrary.filter(
+      (v) =>
+        v.title.toLowerCase().includes(searchTerm) ||
+        (v.uploader && v.uploader.toLowerCase().includes(searchTerm))
+    );
+    renderHomePageGrid(filtered);
+  } else if (activePage === "favorites") {
+    renderFavoritesPage();
   }
 });
 
@@ -215,23 +170,9 @@ async function loadLibrary() {
   currentLibrary = await window.electronAPI.getLibrary();
   const activePage =
     document.querySelector(".nav-item.active")?.dataset.page || "home";
-  if (activePage === "home" || currentLibrary.length > 0) {
-    if (
-      document
-        .getElementById("home-page")
-        .innerHTML.includes("placeholder-page")
-    ) {
-      document.getElementById("home-page").innerHTML =
-        '<div class="video-grid" id="video-grid"></div>';
-      document
-        .getElementById("video-grid")
-        .addEventListener("click", handleGridClick);
-    }
-    renderHomePageGrid();
-  }
-  if (activePage === "favorites") {
-    renderFavoritesPage();
-  }
+  if (activePage === "home") renderHomePageGrid();
+  if (activePage === "favorites") renderFavoritesPage();
+  if (currentlyPlayingIndex > -1) renderUpNextList();
 }
 
 function loadSettings() {
@@ -242,23 +183,11 @@ function loadSettings() {
   const savedSidebar = localStorage.getItem("sidebarCollapsed") === "true";
 
   videoPlayer.muted = savedMuted;
-  if (savedVolume !== null && !savedMuted) {
+  if (savedVolume !== null && !savedMuted)
     videoPlayer.volume = parseFloat(savedVolume);
-  }
   updateVolumeUI(videoPlayer.volume, videoPlayer.muted);
-
-  if (savedTheater) {
-    playerPage.classList.add("theater-mode");
-  }
-
-  if (savedAutoplay !== null) {
-    autoplayToggle.checked = savedAutoplay === "true";
-  } else {
-    autoplayToggle.checked = true;
-  }
-
-  if (savedSidebar) {
-    sidebar.classList.add("collapsed");
-  }
+  if (savedTheater) playerPage.classList.add("theater-mode");
+  autoplayToggle.checked = savedAutoplay !== "false";
+  if (savedSidebar) sidebar.classList.add("collapsed");
   videoPlayer.disablePictureInPicture = true;
 }

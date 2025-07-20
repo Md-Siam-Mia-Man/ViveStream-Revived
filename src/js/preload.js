@@ -1,27 +1,35 @@
 // preload.js
 const { contextBridge, ipcRenderer } = require("electron");
+
 contextBridge.exposeInMainWorld("electronAPI", {
   downloadVideo: (options) => ipcRenderer.send("download-video", options),
-  onDownloadQueueStart: (callback) =>
-    ipcRenderer.on("download-queue-start", (_event, value) => callback(value)),
-  onDownloadProgress: (callback) =>
-    ipcRenderer.on("download-progress", (_event, value) => callback(value)),
-  onDownloadComplete: (callback) =>
-    ipcRenderer.on("download-complete", (_event, value) => callback(value)),
-  onDownloadError: (callback) =>
-    ipcRenderer.on("download-error", (_event, value) => callback(value)),
+  cancelDownload: (videoId) => ipcRenderer.send("cancel-download", videoId),
+  retryDownload: (job) => ipcRenderer.send("retry-download", job),
+  onDownloadQueueStart: (cb) =>
+    ipcRenderer.on("download-queue-start", (e, v) => cb(v)),
+  onDownloadProgress: (cb) =>
+    ipcRenderer.on("download-progress", (e, v) => cb(v)),
+  onDownloadComplete: (cb) =>
+    ipcRenderer.on("download-complete", (e, v) => cb(v)),
+  onDownloadError: (cb) => ipcRenderer.on("download-error", (e, v) => cb(v)),
 
   getLibrary: () => ipcRenderer.invoke("get-library"),
-  deleteVideo: (videoId) => ipcRenderer.invoke("delete-video", videoId),
-  openPath: (filePath) => ipcRenderer.send("open-path", filePath),
+  deleteVideo: (id) => ipcRenderer.invoke("delete-video", id),
+  toggleFavorite: (id) => ipcRenderer.invoke("toggle-favorite", id),
+  openPath: (path) => ipcRenderer.send("open-path", path),
+  openExternal: (url) => ipcRenderer.send("open-external", url),
 
   getSettings: () => ipcRenderer.invoke("get-settings"),
-  saveSettings: (settings) => ipcRenderer.send("save-settings", settings),
+  getAppVersion: () => ipcRenderer.invoke("get-app-version"),
+  saveSettings: (s) => ipcRenderer.send("save-settings", s),
+  resetApp: () => ipcRenderer.invoke("reset-app"),
+  clearAllMedia: () => ipcRenderer.invoke("clear-all-media"),
+  onClearLocalStorage: (cb) => ipcRenderer.on("clear-local-storage", cb),
 
   minimizeWindow: () => ipcRenderer.send("minimize-window"),
   maximizeWindow: () => ipcRenderer.send("maximize-window"),
   closeWindow: () => ipcRenderer.send("close-window"),
   trayWindow: () => ipcRenderer.send("tray-window"),
-  onWindowMaximized: (callback) =>
-    ipcRenderer.on("window-maximized", (_event, value) => callback(value)),
+  onWindowMaximized: (cb) =>
+    ipcRenderer.on("window-maximized", (e, v) => cb(v)),
 });

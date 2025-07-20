@@ -2,8 +2,8 @@
 const { app, BrowserWindow, ipcMain, shell, Tray, Menu } = require("electron");
 const path = require("path");
 const fs = require("fs");
+const fse = require("fs-extra");
 const { spawn } = require("child_process");
-const https = require("https");
 
 const isDev = !app.isPackaged;
 let tray = null;
@@ -15,97 +15,210 @@ const viveStreamPath = path.join(userHomePath, "ViveStream");
 const resourcesPath = isDev
   ? path.join(__dirname, "..", "..", "vendor")
   : path.join(process.resourcesPath, "vendor");
-
 const ytDlpPath = path.join(resourcesPath, "yt-dlp.exe");
 const ffmpegPath = path.join(resourcesPath, "ffmpeg.exe");
+
 const videoPath = path.join(viveStreamPath, "videos");
-const audioPath = path.join(viveStreamPath, "audio");
 const coverPath = path.join(viveStreamPath, "covers");
-const channelThumbPath = path.join(viveStreamPath, "channels");
 const subtitlePath = path.join(viveStreamPath, "subtitles");
 const libraryDBPath = path.join(viveStreamPath, "library.json");
 const settingsPath = path.join(viveStreamPath, "settings.json");
+const mediaPaths = [videoPath, coverPath, subtitlePath];
 
-[
-  viveStreamPath,
-  videoPath,
-  audioPath,
-  coverPath,
-  channelThumbPath,
-  subtitlePath,
-].forEach((dir) => {
+mediaPaths.forEach((dir) => {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 });
-
-if (!fs.existsSync(libraryDBPath)) {
+if (!fs.existsSync(libraryDBPath))
   fs.writeFileSync(libraryDBPath, JSON.stringify([], null, 2));
-}
+
+const defaultSettings = { concurrentDownloads: 3 };
 
 function getSettings() {
   if (fs.existsSync(settingsPath)) {
     try {
-      const settings = JSON.parse(fs.readFileSync(settingsPath, "utf-8"));
-      return { concurrentDownloads: 3, ...settings };
+      return {
+        ...defaultSettings,
+        ...JSON.parse(fs.readFileSync(settingsPath, "utf-8")),
+      };
     } catch (e) {
-      return { concurrentDownloads: 3 };
+      return defaultSettings;
     }
   }
-  return { concurrentDownloads: 3 };
+  return defaultSettings;
 }
 
 function saveSettings(settings) {
-  fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+  fs.writeFileSync(
+    settingsPath,
+    JSON.stringify({ ...getSettings(), ...settings }, null, 2)
+  );
 }
 
-if (!fs.existsSync(settingsPath)) {
-  saveSettings({ concurrentDownloads: 3 });
-}
+if (!fs.existsSync(settingsPath)) saveSettings(defaultSettings);
 
 function getLibrary() {
   try {
-    const data = fs.readFileSync(libraryDBPath, "utf-8");
-    if (!data) return [];
-    return JSON.parse(data);
-  } catch (error) {
-    console.error("Error reading library:", error);
+    return JSON.parse(fs.readFileSync(libraryDBPath, "utf-8"));
+  } catch {
     return [];
   }
 }
-
-function saveLibrary(library) {
-  fs.writeFileSync(libraryDBPath, JSON.stringify(library, null, 2));
+function saveLibrary(lib) {
+  fs.writeFileSync(libraryDBPath, JSON.stringify(lib, null, 2));
 }
-
 function saveToLibrary(videoData) {
-  const library = getLibrary();
-  const existingIndex = library.findIndex((v) => v.id === videoData.id);
-  if (existingIndex > -1) {
-    library[existingIndex] = { ...library[existingIndex], ...videoData };
-  } else {
-    library.unshift(videoData);
-  }
-  saveLibrary(library);
+  const lib = getLibrary();
+  const i = lib.findIndex((v) => v.id === videoData.id);
+  if (i > -1) lib[i] = { ...lib[i], ...videoData };
+  else lib.unshift(videoData);
+  saveLibrary(lib);
 }
 
-function downloadFile(url, dest) {
-  return new Promise((resolve, reject) => {
-    const file = fs.createWriteStream(dest);
-    https
-      .get(url, (response) => {
-        if (response.statusCode !== 200) {
-          reject(new Error(`Failed to get '${url}' (${response.statusCode})`));
-          return;
-        }
-        response.pipe(file);
-        file.on("finish", () => {
-          file.close(resolve);
+class Downloader {
+  constructor() {
+    this.queue = [];
+    this.activeDownloads = new Map();
+    this.settings = getSettings();
+  }
+  updateSettings(s) {
+    this.settings = s;
+    this.processQueue();
+  }
+  addToQueue(jobs) {
+    this.queue.push(...jobs);
+    this.processQueue();
+  }
+  retryDownload(job) {
+    this.queue.unshift(job);
+    this.processQueue();
+  }
+  processQueue() {
+    while (
+      this.activeDownloads.size < this.settings.concurrentDownloads &&
+      this.queue.length > 0
+    )
+      this.startDownload(this.queue.shift());
+  }
+  cancelDownload(videoId) {
+    const p = this.activeDownloads.get(videoId);
+    if (p) {
+      p.kill();
+      this.activeDownloads.delete(videoId);
+      this.processQueue();
+    }
+  }
+
+  shutdown() {
+    this.queue = [];
+    for (const process of this.activeDownloads.values()) {
+      process.kill();
+    }
+    this.activeDownloads.clear();
+  }
+
+  startDownload(job) {
+    const { videoInfo, quality } = job;
+    const args = [
+      videoInfo.webpage_url ||
+        `https://www.youtube.com/watch?v=${videoInfo.id}`,
+      "--ffmpeg-location",
+      ffmpegPath,
+      "--progress",
+      "--no-warnings",
+      "--retries",
+      "5",
+      "-f",
+      `bestvideo${
+        quality === "best" ? "" : `[height<=${quality}]`
+      }+bestaudio/best`,
+      "--merge-output-format",
+      "mp4",
+      "--output",
+      path.join(videoPath, "%(id)s.%(ext)s"),
+      "--write-info-json",
+      "--write-thumbnail",
+      "--convert-thumbnails",
+      "jpg",
+      "--write-subs",
+      "--sub-langs",
+      "en.*,-live_chat",
+    ];
+    const proc = spawn(ytDlpPath, args);
+    this.activeDownloads.set(videoInfo.id, proc);
+    proc.stdout.on("data", (data) => {
+      const m = data
+        .toString()
+        .match(
+          /\[download\]\s+(\d+\.?\d*)%\s+of\s+~?\s*([\d.]+\w+)\s+at\s+([\d.]+\w+\/s)\s+ETA\s+([\d:]+)/
+        );
+      if (m)
+        win.webContents.send("download-progress", {
+          id: videoInfo.id,
+          percent: parseFloat(m[1]),
+          totalSize: m[2],
+          currentSpeed: m[3],
+          eta: m[4],
         });
-      })
-      .on("error", (err) => {
-        fs.unlink(dest, () => reject(err));
+    });
+    proc.stderr.on("data", (data) =>
+      console.error(`E: ${videoInfo.id}: ${data}`)
+    );
+    proc.on("close", async (code) => {
+      this.activeDownloads.delete(videoInfo.id);
+      this.processQueue();
+      if (code === 0) await this.postProcess(videoInfo);
+      else if (code !== null)
+        win.webContents.send("download-error", {
+          id: videoInfo.id,
+          error: `Code: ${code}`,
+          job,
+        });
+    });
+  }
+
+  async postProcess(videoInfo) {
+    try {
+      const infoPath = path.join(videoPath, `${videoInfo.id}.info.json`);
+      const fullInfo = JSON.parse(fs.readFileSync(infoPath, "utf-8"));
+      fs.unlinkSync(infoPath);
+      const cover = path.join(coverPath, `${fullInfo.id}.jpg`);
+      fs.renameSync(path.join(videoPath, `${fullInfo.id}.jpg`), cover);
+      const sub = path.join(subtitlePath, `${fullInfo.id}.vtt`);
+      const tempSub = path.join(videoPath, `${fullInfo.id}.en.vtt`);
+      const subFile = fs.existsSync(tempSub)
+        ? (fs.renameSync(tempSub, sub), `file://${sub}`.replace(/\\/g, "/"))
+        : null;
+      const videoData = {
+        id: fullInfo.id,
+        title: fullInfo.title,
+        uploader: fullInfo.uploader,
+        duration: fullInfo.duration,
+        upload_date: fullInfo.upload_date,
+        originalUrl: fullInfo.webpage_url,
+        filePath: `file://${path.join(
+          videoPath,
+          `${fullInfo.id}.mp4`
+        )}`.replace(/\\/g, "/"),
+        coverPath: `file://${cover}`.replace(/\\/g, "/"),
+        subtitlePath: subFile,
+        type: "video",
+        downloadedAt: new Date().toISOString(),
+        isFavorite: false,
+      };
+      saveToLibrary(videoData);
+      win.webContents.send("download-complete", {
+        id: videoInfo.id,
+        videoData,
       });
-  });
+    } catch (e) {
+      win.webContents.send("download-error", {
+        id: videoInfo.id,
+        error: e.message || "Post-processing failed.",
+      });
+    }
+  }
 }
+const downloader = new Downloader();
 
 function createWindow() {
   win = new BrowserWindow({
@@ -122,318 +235,120 @@ function createWindow() {
     frame: false,
     icon: path.join(__dirname, "..", "..", "assets", "icon.ico"),
   });
-
   win.loadFile("src/index.html");
-
-  win.on("maximize", () => {
-    win.webContents.send("window-maximized", true);
-  });
-  win.on("unmaximize", () => {
-    win.webContents.send("window-maximized", false);
-  });
-  win.on("closed", () => {
-    win = null;
-  });
+  win.on("maximize", () => win.webContents.send("window-maximized", true));
+  win.on("unmaximize", () => win.webContents.send("window-maximized", false));
+  win.on("closed", () => (win = null));
 
   if (isDev) {
-    win.webContents.openDevTools();
+    win.webContents.openDevTools({ mode: "detach" });
   }
 }
-
 function createTray() {
-  const iconPath = path.join(__dirname, "..", "..", "assets", "icon.ico");
-  tray = new Tray(iconPath);
-  const contextMenu = Menu.buildFromTemplate([
-    {
-      label: "Show App",
-      click: () => {
-        win.show();
-      },
-    },
-    {
-      label: "Quit",
-      click: () => {
-        app.isQuitting = true;
-        app.quit();
-      },
-    },
-  ]);
+  tray = new Tray(path.join(__dirname, "..", "..", "assets", "icon.ico"));
   tray.setToolTip("ViveStream");
-  tray.setContextMenu(contextMenu);
-
-  tray.on("click", () => {
-    win.show();
-  });
+  tray.setContextMenu(
+    Menu.buildFromTemplate([
+      { label: "Show App", click: () => win.show() },
+      {
+        label: "Quit",
+        click: () => {
+          app.isQuitting = true;
+          app.quit();
+        },
+      },
+    ])
+  );
+  tray.on("click", () => win.show());
 }
 
-app.whenReady().then(() => {
-  createWindow();
-  createTray();
+app.on("before-quit", () => {
+  downloader.shutdown();
 });
 
-app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") {
-    app.quit();
-  }
-});
-
-app.on("activate", () => {
-  if (BrowserWindow.getAllWindows().length === 0) {
-    createWindow();
-  }
-});
+app.whenReady().then(createWindow).then(createTray);
+app.on("window-all-closed", () => process.platform !== "darwin" && app.quit());
+app.on(
+  "activate",
+  () => BrowserWindow.getAllWindows().length === 0 && createWindow()
+);
 
 ipcMain.on("minimize-window", () => win.minimize());
-ipcMain.on("maximize-window", () => {
-  if (win.isMaximized()) {
-    win.unmaximize();
-  } else {
-    win.maximize();
-  }
-});
+ipcMain.on("maximize-window", () =>
+  win.isMaximized() ? win.unmaximize() : win.maximize()
+);
 ipcMain.on("close-window", () => win.close());
-ipcMain.on("tray-window", () => {
-  win.hide();
+ipcMain.on("tray-window", () => win.hide());
+ipcMain.on("open-external", (e, url) => shell.openExternal(url));
+
+ipcMain.handle("get-settings", getSettings);
+ipcMain.handle("get-app-version", () => app.getVersion());
+ipcMain.on("save-settings", (e, s) => {
+  saveSettings(s);
+  downloader.updateSettings(getSettings());
 });
-
-ipcMain.handle("get-settings", () => getSettings());
-ipcMain.on("save-settings", (event, settings) => saveSettings(settings));
-
-ipcMain.handle("delete-video", (event, videoId) => {
-  let library = getLibrary();
-  const videoToDelete = library.find((v) => v.id === videoId);
-
-  if (!videoToDelete) {
-    console.error("Video not found in library for deletion:", videoId);
-    return { success: false, error: "Video not found" };
-  }
-
-  try {
-    const filesToDelete = [
-      videoToDelete.filePath,
-      videoToDelete.coverPath,
-      videoToDelete.subtitlePath,
-    ].filter(Boolean);
-
-    filesToDelete.forEach((fileUri) => {
-      const filePath = path.normalize(fileUri.replace("file://", ""));
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-      }
+ipcMain.handle("reset-app", () => {
+  saveSettings(defaultSettings);
+  win.webContents.send("clear-local-storage");
+  mediaPaths.forEach((dir) => {
+    fs.readdirSync(dir).forEach((file) => {
+      if (file.endsWith(".part")) fs.unlinkSync(path.join(dir, file));
     });
-
-    if (videoToDelete.channelThumbPath) {
-      const isThumbInUse = library.some(
-        (v) =>
-          v.id !== videoId &&
-          v.channelThumbPath === videoToDelete.channelThumbPath
-      );
-      if (!isThumbInUse) {
-        const thumbPath = path.normalize(
-          videoToDelete.channelThumbPath.replace("file://", "")
-        );
-        if (fs.existsSync(thumbPath)) {
-          fs.unlinkSync(thumbPath);
-        }
-      }
-    }
-
-    const updatedLibrary = library.filter((v) => v.id !== videoId);
-    saveLibrary(updatedLibrary);
+  });
+  return getSettings();
+});
+ipcMain.handle("clear-all-media", async () => {
+  try {
+    for (const dir of mediaPaths) await fse.emptyDir(dir);
+    saveLibrary([]);
     return { success: true };
-  } catch (error) {
-    console.error("Error deleting video files:", error);
-    return { success: false, error: error.message };
+  } catch (e) {
+    return { success: false, error: e.message };
   }
 });
-
-let downloadQueue = [];
-let activeDownloads = 0;
-
-async function startNextDownload() {
-  const settings = getSettings();
-  if (
-    activeDownloads >= settings.concurrentDownloads ||
-    downloadQueue.length === 0
-  ) {
-    return;
+ipcMain.handle("toggle-favorite", (e, id) => {
+  const lib = getLibrary();
+  const i = lib.findIndex((v) => v.id === id);
+  if (i > -1) {
+    lib[i].isFavorite = !lib[i].isFavorite;
+    saveLibrary(lib);
+    return { success: true, isFavorite: lib[i].isFavorite };
   }
-
-  activeDownloads++;
-  const { videoInfo, quality } = downloadQueue.shift();
-  const videoUrl =
-    videoInfo.webpage_url || `https://www.youtube.com/watch?v=${videoInfo.id}`;
-
-  const downloadArgs = [
-    videoUrl,
-    "--ffmpeg-location",
-    ffmpegPath,
-    "--progress",
-    "--no-warnings",
-  ];
-
-  const finalExtension = "mp4";
-  const finalPath = videoPath;
-  const qualityFilter = quality === "best" ? "" : `[height<=${quality}]`;
-  downloadArgs.push(
-    "-f",
-    `bestvideo${qualityFilter}+bestaudio/best${qualityFilter}`,
-    "--merge-output-format",
-    "mp4",
-    "--output",
-    path.join(finalPath, "%(id)s.%(ext)s")
-  );
-
-  downloadArgs.push("--write-info-json");
-  downloadArgs.push("--write-thumbnail", "--convert-thumbnails", "jpg");
-  downloadArgs.push("--write-subs", "--sub-langs", "en.*,-live_chat");
-
-  const downloadProcess = spawn(ytDlpPath, downloadArgs);
-
-  const progressRegex =
-    /\[download\]\s+(\d+\.?\d*)%\s+of\s+~?\s*([\d.]+\w+)\s+at\s+([\d.]+\w+\/s)\s+ETA\s+([\d:]+)/;
-
-  downloadProcess.stdout.on("data", (data) => {
-    const match = data.toString().match(progressRegex);
-    if (match) {
-      win.webContents.send("download-progress", {
-        id: videoInfo.id,
-        percent: parseFloat(match[1]),
-        totalSize: match[2],
-        currentSpeed: match[3],
-        eta: match[4],
-      });
-    }
+  return { success: false };
+});
+ipcMain.handle("delete-video", (e, id) => {
+  const lib = getLibrary();
+  const v = lib.find((i) => i.id === id);
+  if (!v) return { success: false };
+  [v.filePath, v.coverPath, v.subtitlePath].filter(Boolean).forEach((uri) => {
+    const p = path.normalize(uri.replace("file://", ""));
+    if (fs.existsSync(p)) fs.unlinkSync(p);
   });
-
-  downloadProcess.stderr.on("data", (data) =>
-    console.error(`yt-dlp (download) stderr: ${data}`)
-  );
-
-  downloadProcess.on("close", async (downloadCode) => {
-    activeDownloads--;
-    startNextDownload();
-
-    if (downloadCode !== 0) {
-      win.webContents.send("download-error", {
-        id: videoInfo.id,
-        error: `Download failed. Exit code: ${downloadCode}`,
-      });
-      return;
-    }
-
-    const infoJsonPath = path.join(finalPath, `${videoInfo.id}.info.json`);
-    if (!fs.existsSync(infoJsonPath)) {
-      win.webContents.send("download-error", {
-        id: videoInfo.id,
-        error: "Metadata file not found.",
-      });
-      return;
-    }
-
-    const fullInfo = JSON.parse(fs.readFileSync(infoJsonPath, "utf-8"));
-    fs.unlinkSync(infoJsonPath);
-
-    let channelThumbPathFinal = null;
-    if (fullInfo.channel_thumbnail_url && fullInfo.channel_id) {
-      const channelThumbUrl = fullInfo.channel_thumbnail_url;
-      const channelId = fullInfo.channel_id;
-      channelThumbPathFinal = path.join(channelThumbPath, `${channelId}.jpg`);
-      if (!fs.existsSync(channelThumbPathFinal)) {
-        try {
-          await downloadFile(channelThumbUrl, channelThumbPathFinal);
-        } catch (err) {
-          channelThumbPathFinal = null;
-        }
-      }
-    }
-
-    const tempCoverPath = path.join(finalPath, `${fullInfo.id}.jpg`);
-    const finalCoverPath = path.join(coverPath, `${fullInfo.id}.jpg`);
-    if (fs.existsSync(tempCoverPath))
-      fs.renameSync(tempCoverPath, finalCoverPath);
-
-    const tempSubPath = path.join(finalPath, `${fullInfo.id}.en.vtt`);
-    const finalSubPath = path.join(subtitlePath, `${fullInfo.id}.vtt`);
-    let subtitleFile = null;
-    if (fs.existsSync(tempSubPath)) {
-      fs.renameSync(tempSubPath, finalSubPath);
-      subtitleFile = `file://${finalSubPath}`.replace(/\\/g, "/");
-    }
-
-    const videoData = {
-      id: fullInfo.id,
-      title: fullInfo.title,
-      uploader: fullInfo.uploader,
-      uploader_id: fullInfo.channel_id,
-      duration: fullInfo.duration,
-      view_count: fullInfo.view_count,
-      upload_date: fullInfo.upload_date,
-      originalUrl: fullInfo.webpage_url,
-      filePath: `file://${path.join(
-        finalPath,
-        `${fullInfo.id}.${finalExtension}`
-      )}`.replace(/\\/g, "/"),
-      coverPath: `file://${finalCoverPath}`.replace(/\\/g, "/"),
-      channelThumbPath: channelThumbPathFinal
-        ? `file://${channelThumbPathFinal}`.replace(/\\/g, "/")
-        : null,
-      subtitlePath: subtitleFile,
-      type: "video",
-      downloadedAt: new Date().toISOString(),
-    };
-
-    saveToLibrary(videoData);
-    win.webContents.send("download-complete", { id: videoInfo.id, videoData });
-  });
-}
-
-ipcMain.on("download-video", async (event, options) => {
-  const { url, quality } = options;
-
-  const infoProcess = spawn(ytDlpPath, [
-    url,
+  saveLibrary(lib.filter((i) => i.id !== id));
+  return { success: true };
+});
+ipcMain.on("download-video", (e, o) => {
+  const proc = spawn(ytDlpPath, [
+    o.url,
     "--dump-json",
     "--no-warnings",
     "--flat-playlist",
   ]);
-
-  let allJsonData = "";
-  infoProcess.stdout.on("data", (data) => {
-    allJsonData += data.toString();
-  });
-  infoProcess.stderr.on("data", (data) =>
-    console.error(`yt-dlp (info) stderr: ${data}`)
-  );
-
-  infoProcess.on("close", (code) => {
-    if (code !== 0 || allJsonData.trim() === "") {
-      event.sender.send("download-error", {
-        id: null,
-        error: `Failed to get video info. Exit code: ${code}`,
-      });
-      return;
-    }
-
-    const videoInfos = allJsonData
-      .trim()
-      .split("\n")
-      .map((line) => JSON.parse(line));
-    event.sender.send("download-queue-start", videoInfos);
-
-    videoInfos.forEach((videoInfo) => {
-      downloadQueue.push({ videoInfo, quality });
-    });
-
-    const settings = getSettings();
-    for (let i = 0; i < settings.concurrentDownloads; i++) {
-      startNextDownload();
+  let j = "";
+  proc.stdout.on("data", (d) => (j += d));
+  proc.on("close", (c) => {
+    if (c === 0 && j.trim()) {
+      const infos = j
+        .trim()
+        .split("\n")
+        .map((l) => JSON.parse(l));
+      win.webContents.send("download-queue-start", infos);
+      downloader.addToQueue(
+        infos.map((i) => ({ videoInfo: i, quality: o.quality }))
+      );
     }
   });
 });
-
-ipcMain.handle("get-library", () => getLibrary());
-
-ipcMain.on("open-path", (event, filePath) => {
-  shell.showItemInFolder(path.normalize(filePath.replace("file://", "")));
-});
+ipcMain.on("cancel-download", (e, id) => downloader.cancelDownload(id));
+ipcMain.on("retry-download", (e, job) => downloader.retryDownload(job));
+ipcMain.handle("get-library", getLibrary);

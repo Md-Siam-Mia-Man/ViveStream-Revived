@@ -1,9 +1,9 @@
 {
   "name": "vivestream",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "description": "A beautiful YouTube downloader and player.",
   "main": "src/js/main.js",
-  "author": "ViveStream Developer",
+  "author": "Md. Siam Mia",
   "license": "MIT",
   "scripts": {
     "start": "electron .",
@@ -13,8 +13,9 @@
   "devDependencies": {
     "electron": "^37.2.3",
     "electron-packager": "^17.1.2",
-    "fs-extra": "^11.3.0",
     "innosetup-compiler": "^6.3.1"
   },
-  "dependencies": {}
+  "dependencies": {
+    "fs-extra": "^11.3.0"
+  }
 }

@@ -1,17 +1,21 @@
+// notifications.js
 const notificationContainer = document.getElementById("notification-container");
 
-function showNotification(message, type = "success") {
+function showNotification(message, type = "success", details = "") {
   if (!notificationContainer) return;
 
   const notification = document.createElement("div");
   notification.className = `notification ${type}`;
 
-  const iconClass =
-    type === "success" ? "fa-check-circle" : "fa-exclamation-triangle";
+  const detailsHTML = details ? `<span>${details}</span>` : "";
+
   notification.innerHTML = `
-        <i class="fas ${iconClass}"></i>
-        <p>${message}</p>
-        <button class="close-notification"><i class="fas fa-xmark"></i></button>
+        <img src="./assets/svg/Notifications.svg" class="icon-svg notification-icon" alt="Notification">
+        <div class="notification-content">
+            <p>${message}</p>
+            ${detailsHTML}
+        </div>
+        <button class="close-notification" title="Close">✕</button>
     `;
 
   notificationContainer.appendChild(notification);
@@ -27,5 +31,5 @@ function showNotification(message, type = "success") {
   };
 
   closeButton.addEventListener("click", close);
-  setTimeout(close, 2000);
+  setTimeout(close, 5000);
 }

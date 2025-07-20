@@ -3,15 +3,8 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline';">
+    <meta http-equiv="Content-Security-Policy" content="font-src 'self'; script-src 'self' 'unsafe-inline';">
     <title>ViveStream</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link
-        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Poppins:wght@400;500;600&display=swap"
-        rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.3.0/font/bootstrap-icons.css">
     <link rel="stylesheet" href="./css/style.css">
     <link rel="stylesheet" href="./css/home.css">
     <link rel="stylesheet" href="./css/downloads.css">
@@ -24,7 +17,8 @@
 <body>
     <div class="header-bar">
         <div class="header-left">
-            <button class="header-button" id="sidebar-toggle"><i class="fas fa-bars"></i></button>
+            <button class="header-button" id="sidebar-toggle"><img src="./assets/svg/Menu.svg" class="icon-svg"
+                    alt="Menu"></button>
             <a href="#" class="logo-container" id="logo-home-button">
                 <svg class="logo-svg" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
                     <style>
@@ -60,31 +54,36 @@
         </div>
         <div class="header-center">
             <div class="search-container">
-                <i class="fas fa-search"></i>
+                <img src="./assets/svg/Search.svg" class="icon-svg search-icon" alt="Search">
                 <input type="text" id="home-search-input" placeholder="Search...">
             </div>
         </div>
         <div class="window-controls">
-            <button id="tray-btn" class="window-control-btn" title="Minimize to Tray"><i
-                    class="fa-solid fa-angle-down"></i></button>
-            <button id="minimize-btn" class="window-control-btn" title="Minimize"><i
-                    class="far fa-window-minimize"></i></button>
-            <button id="maximize-btn" class="window-control-btn" title="Maximize"><i class="far fa-square"></i></button>
-            <button id="close-btn" class="window-control-btn close-btn" title="Close"><i
-                    class="fas fa-xmark"></i></button>
+            <button id="tray-btn" class="window-control-btn" title="Minimize to Tray"><img
+                    src="./assets/svg/MinimizeTray.svg" class="icon-svg" alt="Tray"></button>
+            <button id="minimize-btn" class="window-control-btn" title="Minimize"><img src="./assets/svg/Minimize.svg"
+                    class="icon-svg" alt="Minimize"></button>
+            <button id="maximize-btn" class="window-control-btn" title="Maximize"><img src="./assets/svg/Maximize.svg"
+                    class="icon-svg" alt="Maximize"></button>
+            <button id="close-btn" class="window-control-btn close-btn" title="Close"><img src="./assets/svg/Close.svg"
+                    class="icon-svg" alt="Close"></button>
         </div>
     </div>
     <div class="app-body">
         <nav class="sidebar">
             <ul class="sidebar-nav">
-                <li class="nav-item active" data-page="home"><i class="fas fa-home"></i><span>Home</span></li>
-                <li class="nav-item" data-page="favorites"><i class="fas fa-heart"></i><span>Favorites</span></li>
-                <li class="nav-item" data-page="playlists"><i class="bi bi-music-note-list"></i><span>Playlists</span>
-                </li>
-                <li class="nav-item" data-page="downloads"><i class="fas fa-download"></i><span>Downloads</span></li>
+                <li class="nav-item active" data-page="home"><img src="./assets/svg/Home.svg" class="icon-svg"
+                        alt="Home"><span>Home</span></li>
+                <li class="nav-item" data-page="favorites"><img src="./assets/svg/Favourite.svg" class="icon-svg"
+                        alt="Favorites"><span>Favorites</span></li>
+                <li class="nav-item" data-page="playlists"><img src="./assets/svg/Musiclibrary.svg" class="icon-svg"
+                        alt="Playlists"><span>Playlists</span></li>
+                <li class="nav-item" data-page="downloads"><img src="./assets/svg/Download.svg" class="icon-svg"
+                        alt="Downloads"><span>Downloads</span></li>
             </ul>
             <ul class="sidebar-nav-bottom">
-                <li class="nav-item" data-page="settings"><i class="fas fa-cog"></i><span>Settings</span></li>
+                <li class="nav-item" data-page="settings"><img src="./assets/svg/Setting.svg" class="icon-svg"
+                        alt="Settings"><span>Settings</span></li>
             </ul>
         </nav>
         <div class="content-wrapper">
@@ -98,8 +97,9 @@
                         <h2>Download New Media</h2>
                         <p class="download-card-subtitle">Paste a YouTube video or playlist URL to begin.</p>
                         <form id="download-form">
+                            <label for="url-input">URL</label>
                             <div class="url-input-container">
-                                <i class="fas fa-link"></i>
+                                <img src="./assets/svg/Link.svg" class="icon-svg url-icon" alt="Link">
                                 <input type="text" id="url-input" placeholder="Enter YouTube URL..." required>
                             </div>
                             <div class="download-options">
@@ -108,7 +108,7 @@
                                     <div class="custom-select-container" id="quality-select-container">
                                         <div class="selected-option" data-value="1080">
                                             <span>1080p</span>
-                                            <i class="fas fa-chevron-down"></i>
+                                            <span class="chevron"><img src="./assets/svg/ArrowDrop.svg" alt=""></span>
                                         </div>
                                         <div class="options-list">
                                             <div class="option-item" data-value="best">Best</div>
@@ -121,13 +121,25 @@
                                     </div>
                                 </div>
                                 <button type="submit" class="download-button">
-                                    <i class="fas fa-download"></i>
+                                    <img src="./assets/svg/Download.svg" class="icon-svg" alt="Download">
                                     <span>Download</span>
                                 </button>
                             </div>
                         </form>
                     </div>
-                    <div id="download-queue-area">
+                    <div class="download-queue-header">
+                        <h3>Download Queue</h3>
+                        <div class="queue-actions">
+                            <button id="clear-completed-btn" class="queue-action-btn">✔ Clear Completed</button>
+                            <button id="clear-all-btn" class="queue-action-btn"><img src="./assets/svg/ClearAll.svg"
+                                    class="icon-svg" alt="Clear All"> Clear All</button>
+                        </div>
+                    </div>
+                    <div id="download-queue-area"></div>
+                    <div id="empty-queue-placeholder" class="hidden">
+                        <img src="./assets/svg/Download.svg" class="placeholder-icon-svg" alt="Download">
+                        <p>Your download queue is empty</p>
+                        <span>Paste a link above to get started</span>
                     </div>
                 </div>
             </div>
@@ -148,15 +160,11 @@
                                 </div>
                                 <div class="bottom-controls">
                                     <div class="left-controls">
-                                        <button class="control-button prev-btn"><i
-                                                class="fas fa-backward-step"></i></button>
-                                        <button class="control-button play-pause-btn"><i
-                                                class="fas fa-play"></i></button>
-                                        <button class="control-button next-btn"><i
-                                                class="fas fa-forward-step"></i></button>
+                                        <button class="control-button prev-btn">«</button>
+                                        <button class="control-button play-pause-btn">▶</button>
+                                        <button class="control-button next-btn">»</button>
                                         <div class="volume-container">
-                                            <button class="control-button mute-btn"><i
-                                                    class="fas fa-volume-high"></i></button>
+                                            <button class="control-button mute-btn">🔊</button>
                                             <div class="volume-slider-container">
                                                 <input class="volume-slider" type="range" min="0" max="1" step="0.01"
                                                     value="1">
@@ -169,14 +177,10 @@
                                         <div class="autoplay-container"><label class="switch"><input type="checkbox"
                                                     id="autoplay-toggle" checked><span
                                                     class="slider round"></span></label></div>
-                                        <button class="control-button" id="settings-btn"><i
-                                                class="fas fa-cog"></i></button>
-                                        <button class="control-button" id="miniplayer-btn"><i
-                                                class="fas fa-clone"></i></button>
-                                        <button class="control-button" id="theater-btn"><i
-                                                class="fas fa-film"></i></button>
-                                        <button class="control-button" id="fullscreen-btn"><i
-                                                class="fas fa-expand"></i></button>
+                                        <button class="control-button" id="settings-btn" title="Settings">⚙</button>
+                                        <button class="control-button" id="miniplayer-btn" title="Miniplayer">❐</button>
+                                        <button class="control-button" id="theater-btn" title="Theater Mode">▭</button>
+                                        <button class="control-button" id="fullscreen-btn" title="Fullscreen">⛶</button>
                                     </div>
                                 </div>
                             </div>
@@ -188,21 +192,20 @@
                             <h1 id="video-info-title"></h1>
                             <div class="video-actions-meta">
                                 <div class="uploader-info">
-                                    <div class="channel-thumb-container">
-                                        <img id="channel-thumb" src="" alt="channel thumbnail" />
-                                    </div>
+                                    <div class="channel-thumb-container"><img id="channel-thumb" src=""
+                                            alt="channel thumbnail" /></div>
                                     <div class="uploader-text">
                                         <span id="video-info-uploader"></span>
                                         <span id="video-info-date"></span>
                                     </div>
                                 </div>
                                 <div class="action-buttons">
-                                    <button class="action-button" id="favorite-btn"><i
-                                            class="far fa-heart"></i><span>Favorite</span></button>
-                                    <button class="action-button" id="save-btn"><i
-                                            class="far fa-bookmark"></i><span>Save</span></button>
-                                    <button class="action-button" id="video-menu-btn"><i
-                                            class="fas fa-ellipsis-v"></i></button>
+                                    <button class="action-button favorite-btn" id="favorite-btn"><img
+                                            src="./assets/svg/Favourite.svg" class="icon-svg"
+                                            alt="Favorite"><span>Favorite</span></button>
+                                    <button class="action-button" id="save-btn"><span>+</span><span>Save</span></button>
+                                    <button class="action-button" id="video-menu-btn"><img src="./assets/svg/Menu.svg"
+                                            class="icon-svg" alt="Menu"></button>
                                 </div>
                             </div>
                         </div>
@@ -217,17 +220,18 @@
             </div>
 
             <div id="playlists-page" class="page placeholder-page hidden">
-                <i class="bi bi-music-note-list placeholder-icon"></i>
+                <img src="./assets/svg/Musiclibrary.svg" class="placeholder-icon-svg" alt="Playlists">
                 <h2 class="placeholder-title">Playlists coming soon!</h2>
                 <p class="placeholder-text">Create and manage your video playlists here.</p>
             </div>
 
             <div id="favorites-page" class="page hidden">
                 <div class="placeholder-page">
-                    <i class="fas fa-heart placeholder-icon"></i>
-                    <h2 class="placeholder-title">Your Favorites</h2>
-                    <p class="placeholder-text">Videos you mark as favorite will appear here.</p>
+                    <img src="./assets/svg/BrokenHeart.svg" class="placeholder-icon-svg" alt="No Favorites">
+                    <h2 class="placeholder-title">No Favorites Yet</h2>
+                    <p class="placeholder-text">Click the heart icon on any video to add it to your favorites.</p>
                 </div>
+                <div class="video-grid" id="video-grid-favorites"></div>
             </div>
 
             <div id="settings-page" class="page hidden">
@@ -241,47 +245,118 @@
                                 <p>Maximum number of videos to download at the same time.</p>
                             </div>
                             <div class="setting-control">
-                                <input type="range" id="concurrent-downloads-slider" min="1" max="5" value="3">
+                                <input type="range" id="concurrent-downloads-slider" min="1" max="10" value="3">
                                 <span id="concurrent-downloads-value">3</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="settings-section danger-zone">
+                        <h2 class="settings-section-title">Danger Zone</h2>
+                        <div class="setting-item">
+                            <div class="setting-text">
+                                <label>Reset ViveStream</label>
+                                <p>Resets all settings to their defaults. Your downloaded media will not be affected.
+                                </p>
+                            </div>
+                            <div class="setting-control"><button class="danger-btn" id="reset-app-btn">Reset
+                                    Now</button></div>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-text">
+                                <label>Clear All Local Media</label>
+                                <p><strong>Warning:</strong> This will permanently delete all your downloaded videos,
+                                    audio, and metadata.</p>
+                            </div>
+                            <div class="setting-control"><button class="danger-btn" id="clear-media-btn"><img
+                                        src="./assets/svg/Database.svg" class="icon-svg" alt="Clear"> Clear
+                                    Media</button></div>
+                        </div>
+                    </div>
+                    <div class="settings-section about-section">
+                        <h2 class="settings-section-title">About ViveStream</h2>
+                        <div class="about-content">
+                            <svg class="about-logo" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+                                <style>
+                                    @keyframes pulse-glow {
+                                        0% {
+                                            stroke-dashoffset: 1000;
+                                            stroke: #fff;
+                                            filter: drop-shadow(0 0 2px #fff) drop-shadow(0 0 5px #fff)
+                                        }
+
+                                        50% {
+                                            stroke-dashoffset: 500;
+                                            stroke: #f1f1f1;
+                                            filter: drop-shadow(0 0 4px #fff) drop-shadow(0 0 8px #f1f1f1)
+                                        }
+
+                                        to {
+                                            stroke-dashoffset: 0;
+                                            stroke: #fff;
+                                            filter: drop-shadow(0 0 2px #fff) drop-shadow(0 0 5px #fff)
+                                        }
+                                    }
+                                </style>
+                                <rect width="120" height="120" rx="20" fill="#ff0b55" />
+                                <path d="m30 30 30 60 30-60" stroke="#f1f1f1" stroke-width="6" fill="none"
+                                    stroke-linecap="round" />
+                                <path
+                                    d="M90 30c-58 15-65-10-54 0 2 10 4-5 6 0s4-15 6 0 4-8 6 0 4-2 6 0c2 12 4-14 6 0 2 5 4-10 6 0 2 15 4-5 6 0 2 10 4-12 6 0 2 6 4-8 6 0"
+                                    stroke="#fff" stroke-width="1.25" fill="none" stroke-linecap="round"
+                                    style="stroke-dasharray:1000;stroke-dashoffset:1000;animation:pulse-glow 5s ease-in-out infinite" />
+                            </svg>
+                            <h3 class="about-app-name">ViveStream</h3>
+                            <p class="about-version" id="app-version"></p>
+                            <p class="about-dev">Developed Md. Siam Mia</p>
+                            <div class="about-links">
+                                <a id="github-view-link" class="about-btn github-view-btn">View on GitHub</a>
+                                <a id="github-star-link" class="about-btn github-star-btn">⭐ Star on GitHub</a>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
             <div class="context-menu" id="video-item-context-menu">
-                <div class="context-menu-item" id="context-delete-btn"><i class="fas fa-trash-alt"></i> Delete</div>
+                <div class="context-menu-item" id="context-delete-btn"><img src="./assets/svg/Delete.svg"
+                        class="icon-svg" alt="Delete"> Delete</div>
             </div>
         </div>
     </div>
     <div id="miniplayer" class="hidden">
-        <div id="miniplayer-video-container">
-        </div>
+        <div id="miniplayer-video-container"></div>
         <div class="miniplayer-info">
             <p class="miniplayer-title">Video Title</p>
             <p class="miniplayer-uploader">Uploader</p>
         </div>
         <div class="miniplayer-controls">
-            <button class="mini-control-button" id="miniplayer-prev-btn"><i class="fas fa-backward-step"></i></button>
-            <button class="mini-control-button" id="miniplayer-play-pause-btn"><i class="fas fa-play"></i></button>
-            <button class="mini-control-button" id="miniplayer-next-btn"><i class="fas fa-forward-step"></i></button>
+            <button class="mini-control-button" id="miniplayer-prev-btn">«</button>
+            <button class="mini-control-button" id="miniplayer-play-pause-btn">▶</button>
+            <button class="mini-control-button" id="miniplayer-next-btn">»</button>
         </div>
         <div class="miniplayer-actions">
-            <button class="mini-action-button" id="miniplayer-expand-btn"><i
-                    class="fas fa-up-right-and-down-left-from-center"></i></button>
-            <button class="mini-action-button" id="miniplayer-close-btn"><i class="fas fa-xmark"></i></button>
+            <button class="mini-action-button" id="miniplayer-expand-btn">⛶</button>
+            <button class="mini-action-button" id="miniplayer-close-btn">✕</button>
         </div>
         <div class="miniplayer-progress-container">
             <div class="miniplayer-progress-bar"></div>
         </div>
     </div>
     <div id="notification-container"></div>
-    <script src="./js/notifications.js"></script>
+    <div id="confirmation-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h3 id="modal-title">Are you sure?</h3>
+            <p id="modal-text">This action cannot be undone.</p>
+            <div class="modal-actions">
+                <button id="modal-cancel-btn" class="modal-btn">Cancel</button>
+                <button id="modal-confirm-btn" class="modal-btn danger-btn">Confirm</button>
+            </div>
+        </div>
+    </div>
     <script src="./js/renderer.js"></script>
+    <script src="./js/notifications.js"></script>
     <script src="./js/ui.js"></script>
     <script src="./js/downloader.js"></script>
     <script src="./js/player.js"></script>
     <script src="./js/miniplayer.js"></script>
     <script src="./js/settings.js"></script>
 </body>
-
-</html>
