@@ -1,6 +1,6 @@
 {
   "name": "vivestream",
-  "version": "1.8.0",
+  "version": "2.0.0",
   "description": "A beautiful YouTube downloader and player.",
   "main": "src/js/main.js",
   "author": "Md. Siam Mia",
@@ -11,11 +11,14 @@
   },
   "keywords": [],
   "devDependencies": {
+    "@electron/packager": "^18.3.6",
     "electron": "^37.2.3",
-    "electron-packager": "^17.1.2",
     "innosetup-compiler": "^6.3.1"
   },
   "dependencies": {
-    "fs-extra": "^11.3.0"
+    "@fortawesome/fontawesome-free": "^6.7.2",
+    "fs-extra": "^11.3.0",
+    "knex": "^3.1.0",
+    "sqlite3": "^5.1.7"
   }
 }

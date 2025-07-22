@@ -1,4 +1,4 @@
-// settings.js
+// src/js/settings.js
 let currentSettings = {};
 const confirmationModal = document.getElementById("confirmation-modal");
 const modalTitle = document.getElementById("modal-title");
@@ -61,7 +61,10 @@ function initializeSettingsPage() {
         const newSettings = await window.electronAPI.resetApp();
         updateSettingsUI(newSettings);
         loadSettings(); // Reload all settings in the UI
-        showNotification("ViveStream has been reset to default settings.");
+        showNotification(
+          "ViveStream has been reset to default settings.",
+          "info"
+        );
       }
     );
   });
@@ -76,7 +79,8 @@ function initializeSettingsPage() {
           showNotification("All local media has been deleted.", "success");
           currentlyPlayingIndex = -1;
           videoPlayer.src = "";
-          loadLibrary();
+          closeMiniplayer();
+          await loadLibrary();
           showPage("home");
         } else {
           showNotification(`Error: ${result.error}`, "error");
@@ -106,7 +110,6 @@ window.electronAPI.onClearLocalStorage(() => {
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i);
     if (!key.startsWith("viveStream_")) {
-      // Example to keep non-app keys
       keysToKeep.push({ key: key, value: localStorage.getItem(key) });
     }
   }
@@ -117,7 +120,6 @@ window.electronAPI.onClearLocalStorage(() => {
   );
 });
 
-// Initial call in case settings page is the first page loaded
 document.addEventListener("DOMContentLoaded", () => {
   if (document.getElementById("settings-page")) {
     initializeSettingsPage();

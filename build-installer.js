@@ -1,5 +1,5 @@
 // build-installer.js
-const packager = require("electron-packager");
+const packager = require("@electron/packager");
 const compile = require("innosetup-compiler");
 const path = require("path");
 const fs = require("fs-extra");

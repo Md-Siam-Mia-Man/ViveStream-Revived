@@ -1,4 +1,4 @@
-/* downloads.css */
+/* src/css/downloads.css */
 #downloads-page {
      align-items: flex-start;
      justify-content: flex-start;
@@ -49,8 +49,7 @@
 .url-input-container .url-icon {
      position: absolute;
      left: 16px;
-     width: 16px;
-     height: 16px;
+     font-size: 16px;
      opacity: 0.6;
 }
 
@@ -87,7 +86,7 @@
 }
 
 .option-group label,
-.download-form label {
+#download-form label {
      font-size: 0.9rem;
      color: var(--yt-light-grey);
      font-weight: 500;
@@ -129,6 +128,7 @@
      position: absolute;
      left: 0;
      right: 0;
+     bottom: calc(100% + 5px);
      background-color: var(--yt-dark-grey);
      border: 1px solid var(--yt-border);
      border-radius: 6px;
@@ -169,7 +169,7 @@
      align-items: center;
      justify-content: center;
      gap: 8px;
-     padding: 24px 20px;
+     padding: 12px 20px;
      font-size: 0.9rem;
      font-weight: 500;
      border-radius: 6px;
@@ -179,10 +179,6 @@
      cursor: pointer;
      transition: background-color 0.2s;
      height: 41px;
-}
-
-.download-button .icon-svg {
-     filter: brightness(0) invert(1);
 }
 
 .download-button:hover {
@@ -222,9 +218,8 @@
      transition: all 0.2s ease;
 }
 
-.queue-action-btn .icon-svg {
-     width: 14px;
-     height: 14px;
+.queue-action-btn i {
+     font-size: 12px;
 }
 
 .queue-action-btn:hover {
@@ -370,16 +365,11 @@
      height: 32px;
      border-radius: 50%;
      cursor: pointer;
-     font-size: 1.2rem;
+     font-size: 14px;
      display: flex;
      align-items: center;
      justify-content: center;
      transition: all 0.2s ease;
-}
-
-.download-action-btn .icon-svg {
-     width: 14px;
-     height: 14px;
 }
 
 .download-action-btn:hover {
@@ -403,9 +393,8 @@
      display: none;
 }
 
-#empty-queue-placeholder .placeholder-icon-svg {
-     width: 48px;
-     height: 48px;
+#empty-queue-placeholder .placeholder-icon {
+     font-size: 48px;
      margin-bottom: 16px;
      opacity: 0.5;
 }

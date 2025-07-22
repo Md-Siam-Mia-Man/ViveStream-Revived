@@ -1,4 +1,4 @@
-// preload.js
+// src/js/preload.js
 const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("electronAPI", {
@@ -12,6 +12,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   onDownloadComplete: (cb) =>
     ipcRenderer.on("download-complete", (e, v) => cb(v)),
   onDownloadError: (cb) => ipcRenderer.on("download-error", (e, v) => cb(v)),
+  onDownloadInfoError: (cb) =>
+    ipcRenderer.on("download-info-error", (e, v) => cb(v)),
 
   getLibrary: () => ipcRenderer.invoke("get-library"),
   deleteVideo: (id) => ipcRenderer.invoke("delete-video", id),

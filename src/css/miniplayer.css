@@ -1,4 +1,4 @@
-/* miniplayer.css */
+/* src/css/miniplayer.css */
 #miniplayer {
      position: fixed;
      bottom: 20px;
@@ -44,8 +44,6 @@
      object-fit: cover;
 }
 
-/* --- Overlays --- */
-
 .miniplayer-info,
 .miniplayer-controls,
 .miniplayer-actions {
@@ -54,7 +52,6 @@
      transition: opacity 0.2s ease-in-out;
 }
 
-/* Show controls and actions only on hover */
 .miniplayer-controls,
 .miniplayer-actions {
      opacity: 0;
@@ -65,8 +62,6 @@
      opacity: 1;
 }
 
-
-/* --- Info (Title/Uploader) --- */
 .miniplayer-info {
      bottom: 5px;
      left: 12px;
@@ -74,7 +69,6 @@
      background: linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent);
      padding: 25px 0 5px 0;
      pointer-events: none;
-     /* Allows clicks on video through the info text area */
 }
 
 .miniplayer-title,
@@ -96,7 +90,6 @@
      color: var(--yt-light-grey);
 }
 
-/* --- Main Controls (Play/Pause, etc.) --- */
 .miniplayer-controls {
      top: 50%;
      left: 50%;
@@ -109,7 +102,7 @@
      background: rgba(0, 0, 0, 0.5);
      border: none;
      color: var(--yt-white);
-     font-size: 1.5rem;
+     font-size: 1.2rem;
      cursor: pointer;
      border-radius: 50%;
      width: 45px;
@@ -123,7 +116,6 @@
      background: rgba(0, 0, 0, 0.8);
 }
 
-/* --- Action Buttons (Expand/Close) --- */
 .miniplayer-actions {
      top: 8px;
      right: 8px;
@@ -135,7 +127,7 @@
      background: rgba(0, 0, 0, 0.5);
      border: none;
      color: var(--yt-light-grey);
-     font-size: 1rem;
+     font-size: 0.9rem;
      cursor: pointer;
      padding: 5px;
      border-radius: 50%;
@@ -151,7 +143,6 @@
      background: rgba(0, 0, 0, 0.8);
 }
 
-/* --- Progress Bar --- */
 .miniplayer-progress-container {
      position: absolute;
      bottom: 0;

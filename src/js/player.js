@@ -1,18 +1,30 @@
-// player.js
+// src/js/player.js
 function playLibraryItem(index, options = {}) {
   if (index < 0 || index >= currentLibrary.length) return;
   const item = currentLibrary[index];
   currentlyPlayingIndex = index;
 
   if (item.type === "video" || item.type === "audio") {
-    videoPlayer.src = item.filePath;
+    const videoSrc = decodeURIComponent(item.filePath);
+    videoPlayer.src = videoSrc;
     const subtitlesEnabled =
       localStorage.getItem("subtitlesEnabled") === "true";
-    subtitleTrack.src = item.subtitlePath || "";
-    subtitleTrack.track.mode =
-      item.subtitlePath && subtitlesEnabled ? "showing" : "hidden";
-    if (!item.subtitlePath) subtitleTrack.track.mode = "disabled";
-    videoPlayer.play();
+    if (item.subtitlePath) {
+      subtitleTrack.src = decodeURIComponent(item.subtitlePath);
+      subtitleTrack.track.mode = subtitlesEnabled ? "showing" : "hidden";
+    } else {
+      subtitleTrack.src = "";
+      subtitleTrack.track.mode = "disabled";
+    }
+    const playPromise = videoPlayer.play();
+    if (playPromise !== undefined) {
+      playPromise.catch((error) => {
+        if (error.name !== "AbortError") {
+          console.error("Playback error:", error);
+          showNotification("Error playing video", "error", error.message);
+        }
+      });
+    }
   }
   updateVideoDetails(item);
   renderUpNextList();
@@ -27,20 +39,25 @@ function playLibraryItem(index, options = {}) {
 }
 
 function updateVideoDetails(item) {
-  if (!item) return;
+  if (!item) {
+    videoInfoTitle.textContent = "No video selected";
+    videoInfoUploader.textContent = "";
+    videoInfoDate.textContent = "";
+    channelThumb.src = "";
+    updateFavoriteStatusInUI(null, false);
+    return;
+  }
+
   videoInfoTitle.textContent = item.title;
   videoInfoUploader.textContent = item.uploader;
 
-  if (item.channelThumbPath) {
-    channelThumbContainer.style.display = "block";
-    uploaderInfo.classList.remove("no-thumb");
-    channelThumb.src = item.channelThumbPath;
+  if (item.coverPath) {
+    channelThumb.src = decodeURIComponent(item.coverPath);
     channelThumb.onerror = () => {
       channelThumb.src = "../assets/logo.png";
     };
   } else {
-    channelThumbContainer.style.display = "none";
-    uploaderInfo.classList.add("no-thumb");
+    channelThumb.src = "../assets/logo.png";
   }
 
   videoInfoDate.textContent = item.upload_date
@@ -48,11 +65,13 @@ function updateVideoDetails(item) {
         item.upload_date.replace(/(\d{4})(\d{2})(\d{2})/, "$1-$2-$3")
       ).toLocaleDateString()}`
     : "";
-  favoriteBtn.classList.toggle("is-favorite", !!item.isFavorite);
+  updateFavoriteStatusInUI(item.id, !!item.isFavorite);
 }
 
 function renderUpNextList() {
   upNextList.innerHTML = "";
+  if (currentlyPlayingIndex < 0) return;
+
   const upNextItems = [];
   for (let i = 1; i < currentLibrary.length; i++) {
     const itemIndex = (currentlyPlayingIndex + i) % currentLibrary.length;
@@ -65,7 +84,9 @@ function renderUpNextList() {
     li.dataset.id = video.id;
     li.innerHTML = `<img src="${
       video.coverPath
-    }" class="thumbnail" alt="thumbnail"><div class="item-info"><p class="item-title">${
+        ? decodeURIComponent(video.coverPath)
+        : "../assets/logo.png"
+    }" class="thumbnail" alt="thumbnail" onerror="this.onerror=null;this.src='../assets/logo.png';"><div class="item-info"><p class="item-title">${
       video.title
     }</p><p class="item-uploader">${video.uploader || "Unknown"}</p></div>`;
     upNextList.appendChild(li);
@@ -83,10 +104,11 @@ upNextList.addEventListener("click", (e) => {
 favoriteBtn.addEventListener("click", (e) => {
   if (currentlyPlayingIndex === -1) return;
   const videoId = currentLibrary[currentlyPlayingIndex].id;
-  toggleFavoriteStatus(videoId, e.currentTarget);
+  toggleFavoriteStatus(videoId);
 });
 
 function togglePlay() {
+  if (!videoPlayer.src || videoPlayer.src === window.location.href) return;
   videoPlayer.paused ? videoPlayer.play() : videoPlayer.pause();
 }
 function formatTime(seconds) {
@@ -119,7 +141,14 @@ function updateVolumeUI(
     "--volume-progress",
     `${(muted ? 0 : volume) * 100}%`
   );
-  muteBtn.textContent = muted || volume === 0 ? "🔇" : "🔊";
+  const icon = muteBtn.querySelector("i");
+  if (muted || volume === 0) {
+    icon.className = "fa-solid fa-volume-xmark";
+  } else if (volume < 0.5) {
+    icon.className = "fa-solid fa-volume-low";
+  } else {
+    icon.className = "fa-solid fa-volume-high";
+  }
 }
 
 playerSection.addEventListener("click", (e) => {
@@ -127,11 +156,11 @@ playerSection.addEventListener("click", (e) => {
 });
 videoPlayer.addEventListener("play", () => {
   playerSection.classList.remove("paused");
-  playPauseBtn.textContent = "⏸";
+  playPauseBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
 });
 videoPlayer.addEventListener("pause", () => {
   playerSection.classList.add("paused");
-  playPauseBtn.textContent = "▶";
+  playPauseBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
 });
 videoPlayer.addEventListener("ended", () => {
   if (autoplayToggle.checked) playNext();
@@ -145,7 +174,7 @@ videoPlayer.addEventListener("timeupdate", () => {
     miniplayerProgressBar.style.width = `${progress}%`;
 });
 videoPlayer.addEventListener(
-  "loadeddata",
+  "loadedmetadata",
   () => (totalTimeEl.textContent = formatTime(videoPlayer.duration))
 );
 videoPlayer.addEventListener("volumechange", () => {
@@ -163,6 +192,7 @@ volumeSlider.addEventListener("input", (e) => {
   updateVolume(parseFloat(e.target.value));
 });
 timelineContainer.addEventListener("click", (e) => {
+  if (!videoPlayer.duration) return;
   const rect = timelineContainer.getBoundingClientRect();
   videoPlayer.currentTime =
     ((e.clientX - rect.left) / rect.width) * videoPlayer.duration;
@@ -188,8 +218,11 @@ autoplayToggle.addEventListener("change", (e) => {
   localStorage.setItem("autoplayEnabled", e.target.checked);
 });
 document.addEventListener("fullscreenchange", () => {
-  playerPage.classList.toggle("fullscreen-mode", !!document.fullscreenElement);
-  fullscreenBtn.textContent = document.fullscreenElement ? "✕" : "⛶";
+  const isFullscreen = !!document.fullscreenElement;
+  playerPage.classList.toggle("fullscreen-mode", isFullscreen);
+  fullscreenBtn.innerHTML = `<i class="fa-solid ${
+    isFullscreen ? "fa-compress" : "fa-expand"
+  }"></i>`;
 });
 
 videoMenuBtn.addEventListener("click", (e) => {
@@ -208,26 +241,56 @@ videoMenuBtn.addEventListener("click", (e) => {
 let sleepTimerId = null;
 
 function buildSettingsMenu() {
+  const hasSubtitles =
+    subtitleTrack.track.src && subtitleTrack.track.src.startsWith("file");
+  const isSubtitlesOn = hasSubtitles && subtitleTrack.track.mode === "showing";
+
   settingsMenu.innerHTML = `
-        <div class="settings-item" data-setting="subtitles"><span>🔤</span><span>Subtitles</span><span class="setting-value" id="subtitles-value">Off</span><span class="chevron">></span></div>
-        <div class="settings-item" data-setting="speed"><span> speedometer </span><span>Playback Speed</span><span class="setting-value" id="speed-value">Normal</span><span class="chevron">></span></div>
-        <div class="settings-item" data-setting="sleep"><span>🌙</span><span>Sleep Timer</span><span class="setting-value" id="sleep-value">Off</span><span class="chevron">></span></div>`;
-  document
-    .querySelector('[data-setting="subtitles"]')
-    .addEventListener("click", () => {
-      if (subtitleTrack.src) {
-        subtitleTrack.track.mode =
+        <div class="settings-item ${
+          !hasSubtitles ? "disabled" : ""
+        }" data-setting="subtitles">
+            <i class="fa-solid fa-closed-captioning"></i>
+            <span>Subtitles</span>
+            <span class="setting-value" id="subtitles-value">${
+              isSubtitlesOn ? "On" : "Off"
+            }</span>
+            <span class="chevron"><i class="fa-solid fa-chevron-right"></i></span>
+        </div>
+        <div class="settings-item" data-setting="speed">
+            <i class="fa-solid fa-gauge-high"></i>
+            <span>Playback Speed</span>
+            <span class="setting-value" id="speed-value">${
+              videoPlayer.playbackRate === 1
+                ? "Normal"
+                : videoPlayer.playbackRate + "x"
+            }</span>
+            <span class="chevron"><i class="fa-solid fa-chevron-right"></i></span>
+        </div>
+        <div class="settings-item" data-setting="sleep">
+            <i class="fa-solid fa-moon"></i>
+            <span>Sleep Timer</span>
+            <span class="setting-value" id="sleep-value">Off</span>
+            <span class="chevron"><i class="fa-solid fa-chevron-right"></i></span>
+        </div>`;
+
+  const subtitlesItem = settingsMenu.querySelector(
+    '[data-setting="subtitles"]'
+  );
+  if (subtitlesItem) {
+    subtitlesItem.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (hasSubtitles) {
+        const newMode =
           subtitleTrack.track.mode === "showing" ? "hidden" : "showing";
+        subtitleTrack.track.mode = newMode;
         document.getElementById("subtitles-value").textContent =
-          subtitleTrack.track.mode === "showing" ? "On" : "Off";
-        localStorage.setItem(
-          "subtitlesEnabled",
-          subtitleTrack.track.mode === "showing"
-        );
+          newMode === "showing" ? "On" : "Off";
+        localStorage.setItem("subtitlesEnabled", newMode === "showing");
+        settingsMenu.classList.remove("active");
       }
     });
-  document.getElementById("subtitles-value").textContent =
-    subtitleTrack.track.mode === "showing" ? "On" : "Off";
+  }
+
   handleSubmenu(
     '[data-setting="speed"]',
     speedSubmenu,
@@ -247,35 +310,53 @@ function buildSettingsMenu() {
 function handleSubmenu(mainSel, subMenuEl, values, type, labelFormatter) {
   const mainItem = document.querySelector(mainSel);
   if (!mainItem) return;
+
   mainItem.addEventListener("click", (e) => {
     e.stopPropagation();
+    if (mainItem.classList.contains("disabled")) return;
+
     settingsMenu.classList.remove("active");
-    const currentVal = type === "speed" ? videoPlayer.playbackRate : 0; // Simplified for this example
+
+    let currentVal;
+    if (type === "speed") {
+      currentVal = videoPlayer.playbackRate;
+    } else {
+      currentVal = null;
+    }
+
     subMenuEl.innerHTML =
-      `<div class="submenu-item" data-action="back"><span class="chevron"><</span><span>${
-        mainItem.querySelector("span:nth-child(2)").textContent
-      }</span></div>` +
+      `
+        <div class="submenu-item" data-action="back">
+            <span class="chevron"><i class="fa-solid fa-chevron-left"></i></span>
+            <span>${
+              mainItem.querySelector("span:nth-child(2)").textContent
+            }</span>
+        </div>` +
       values
         .map(
-          (v) =>
-            `<div class="submenu-item ${
+          (v) => `
+            <div class="submenu-item ${
               v == currentVal ? "active" : ""
-            }" data-${type}="${v}"><span class="check">✔</span><span>${labelFormatter(
-              v
-            )}</span></div>`
+            }" data-${type}="${v}">
+                <span class="check"><i class="fa-solid fa-check"></i></span>
+                <span>${labelFormatter(v)}</span>
+            </div>`
         )
         .join("");
     subMenuEl.classList.add("active");
   });
+
   subMenuEl.addEventListener("click", (e) => {
     e.stopPropagation();
     const target = e.target.closest(".submenu-item");
     if (!target) return;
+
     if (target.dataset.action === "back") {
       subMenuEl.classList.remove("active");
       settingsMenu.classList.add("active");
       return;
     }
+
     const value = parseFloat(target.dataset[type]);
     subMenuEl
       .querySelectorAll(".active")
@@ -283,13 +364,24 @@ function handleSubmenu(mainSel, subMenuEl, values, type, labelFormatter) {
     target.classList.add("active");
     subMenuEl.classList.remove("active");
     settingsMenu.classList.remove("active");
-    mainItem.querySelector(".setting-value").textContent =
-      labelFormatter(value);
-    if (type === "speed") videoPlayer.playbackRate = value;
-    if (type === "minutes") {
+
+    const valueLabel = labelFormatter(value);
+    mainItem.querySelector(".setting-value").textContent = valueLabel;
+
+    if (type === "speed") {
+      videoPlayer.playbackRate = value;
+    } else if (type === "minutes") {
       clearTimeout(sleepTimerId);
-      if (value > 0)
-        sleepTimerId = setTimeout(() => videoPlayer.pause(), value * 60 * 1000);
+      if (value > 0) {
+        sleepTimerId = setTimeout(() => {
+          videoPlayer.pause();
+          showNotification(`Sleep timer ended. Playback paused.`, "info");
+          mainItem.querySelector(".setting-value").textContent = "Off";
+        }, value * 60 * 1000);
+        showNotification(`Sleep timer set for ${valueLabel}.`, "info");
+      } else {
+        showNotification(`Sleep timer cleared.`, "info");
+      }
     }
   });
 }
@@ -307,12 +399,18 @@ settingsBtn.addEventListener("click", (e) => {
 });
 
 document.addEventListener("click", (e) => {
-  if (!settingsBtn.contains(e.target) && !settingsMenu.contains(e.target)) {
+  if (
+    !settingsBtn.contains(e.target) &&
+    !settingsMenu.contains(e.target) &&
+    !speedSubmenu.contains(e.target) &&
+    !sleepSubmenu.contains(e.target)
+  ) {
     settingsMenu.classList.remove("active");
     speedSubmenu.classList.remove("active");
     sleepSubmenu.classList.remove("active");
   }
 });
+
 let hideControlsTimeout;
 playerSection.addEventListener("mousemove", () => {
   controlsContainer.style.opacity = 1;
@@ -320,10 +418,17 @@ playerSection.addEventListener("mousemove", () => {
   clearTimeout(hideControlsTimeout);
   if (!videoPlayer.paused)
     hideControlsTimeout = setTimeout(() => {
-      controlsContainer.style.opacity = 0;
-      playerSection.style.cursor = "none";
+      if (
+        !settingsMenu.classList.contains("active") &&
+        !speedSubmenu.classList.contains("active") &&
+        !sleepSubmenu.classList.contains("active")
+      ) {
+        controlsContainer.style.opacity = 0;
+        playerSection.style.cursor = "none";
+      }
     }, 3000);
 });
+
 playerSection.addEventListener("mouseleave", () => {
   if (!videoPlayer.paused)
     hideControlsTimeout = setTimeout(() => {
@@ -331,6 +436,7 @@ playerSection.addEventListener("mouseleave", () => {
       playerSection.style.cursor = "none";
     }, 500);
 });
+
 document.addEventListener("keydown", (e) => {
   const isPlayerActive =
     !playerPage.classList.contains("hidden") ||
@@ -350,24 +456,30 @@ document.addEventListener("keydown", (e) => {
       videoPlayer.muted = !videoPlayer.muted;
       break;
     case "f":
-      if (!miniplayer.classList.contains("hidden")) return;
-      fullscreenBtn.click();
+      if (miniplayer.classList.contains("hidden")) {
+        fullscreenBtn.click();
+      }
       break;
     case "t":
-      if (!miniplayer.classList.contains("hidden")) return;
-      theaterBtn.click();
+      if (miniplayer.classList.contains("hidden")) {
+        theaterBtn.click();
+      }
       break;
     case "i":
-      if (videoPlayer.src)
-        miniplayer.classList.contains("hidden")
-          ? (activateMiniplayer(), showPage("home"))
-          : showPage("player");
+      if (videoPlayer.src && videoPlayer.src !== window.location.href) {
+        if (miniplayer.classList.contains("hidden")) {
+          activateMiniplayer();
+          showPage("home");
+        } else {
+          showPage("player");
+        }
+      }
       break;
     case "arrowleft":
-      videoPlayer.currentTime -= 5;
+      if (videoPlayer.duration) videoPlayer.currentTime -= 5;
       break;
     case "arrowright":
-      videoPlayer.currentTime += 5;
+      if (videoPlayer.duration) videoPlayer.currentTime += 5;
       break;
     case "arrowup":
       updateVolume(videoPlayer.volume + 0.1);

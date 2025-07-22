@@ -1,4 +1,4 @@
-/* settings.css */
+/* src/css/settings.css */
 #settings-page {
      padding: 32px;
      justify-content: flex-start;
@@ -127,15 +127,14 @@
      border: none;
      padding: 8px 16px;
      border-radius: 6px;
+     font-family: 'Poppins';
      font-weight: 500;
      cursor: pointer;
      transition: background-color 0.2s;
 }
 
-.danger-btn .icon-svg {
-     filter: brightness(0) invert(1);
-     width: 14px;
-     height: 14px;
+.danger-btn i {
+     font-size: 14px;
 }
 
 .danger-btn:hover {
@@ -187,13 +186,16 @@
 }
 
 .about-btn {
-     text-decoration: none;
-     padding: 8px 16px;
-     border-radius: 6px;
-     font-weight: 500;
-     transition: all 0.2s ease;
-     border: 1px solid var(--yt-border);
-     cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    border: 1px solid var(--yt-border);
+    cursor: pointer;
 }
 
 .github-view-btn {

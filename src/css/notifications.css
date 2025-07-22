@@ -1,4 +1,4 @@
-/* notifications.css */
+/* src/css/notifications.css */
 #notification-container {
      position: fixed;
      bottom: 20px;
@@ -28,33 +28,30 @@
 }
 
 .notification.info {
-     border-left-color: var(--yt-red);
+     border-left-color: #3498db; /* Blue for info */
+}
+.notification.info .notification-icon {
+    color: #3498db;
 }
 
 .notification.success {
      border-left-color: #4caf50;
 }
+.notification.success .notification-icon {
+    color: #4caf50;
+}
 
 .notification.error {
      border-left-color: #f44336;
 }
+.notification.error .notification-icon {
+    color: #f44336;
+}
 
 .notification .notification-icon {
-     width: 22px;
-     height: 22px;
+     font-size: 22px;
      flex-shrink: 0;
      margin-top: 2px;
-     filter: brightness(0) invert(0.8);
-}
-
-.notification.success .notification-icon {
-     filter: invert(67%) sepia(34%) saturate(702%) hue-rotate(75deg) brightness(94%) contrast(88%);
-     /* Green */
-}
-
-.notification.error .notification-icon {
-     filter: invert(34%) sepia(80%) saturate(2250%) hue-rotate(338deg) brightness(97%) contrast(92%);
-     /* Red */
 }
 
 .notification .notification-content {

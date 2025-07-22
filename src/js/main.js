@@ -1,9 +1,10 @@
-// main.js
+// src/js/main.js
 const { app, BrowserWindow, ipcMain, shell, Tray, Menu } = require("electron");
 const path = require("path");
 const fs = require("fs");
 const fse = require("fs-extra");
 const { spawn } = require("child_process");
+const db = require("./database");
 
 const isDev = !app.isPackaged;
 let tray = null;
@@ -21,15 +22,12 @@ const ffmpegPath = path.join(resourcesPath, "ffmpeg.exe");
 const videoPath = path.join(viveStreamPath, "videos");
 const coverPath = path.join(viveStreamPath, "covers");
 const subtitlePath = path.join(viveStreamPath, "subtitles");
-const libraryDBPath = path.join(viveStreamPath, "library.json");
-const settingsPath = path.join(viveStreamPath, "settings.json");
+const settingsPath = path.join(app.getPath("userData"), "settings.json");
 const mediaPaths = [videoPath, coverPath, subtitlePath];
 
 mediaPaths.forEach((dir) => {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 });
-if (!fs.existsSync(libraryDBPath))
-  fs.writeFileSync(libraryDBPath, JSON.stringify([], null, 2));
 
 const defaultSettings = { concurrentDownloads: 3 };
 
@@ -48,6 +46,10 @@ function getSettings() {
 }
 
 function saveSettings(settings) {
+  const settingsDir = path.dirname(settingsPath);
+  if (!fs.existsSync(settingsDir)) {
+    fs.mkdirSync(settingsDir, { recursive: true });
+  }
   fs.writeFileSync(
     settingsPath,
     JSON.stringify({ ...getSettings(), ...settings }, null, 2)
@@ -55,24 +57,6 @@ function saveSettings(settings) {
 }
 
 if (!fs.existsSync(settingsPath)) saveSettings(defaultSettings);
-
-function getLibrary() {
-  try {
-    return JSON.parse(fs.readFileSync(libraryDBPath, "utf-8"));
-  } catch {
-    return [];
-  }
-}
-function saveLibrary(lib) {
-  fs.writeFileSync(libraryDBPath, JSON.stringify(lib, null, 2));
-}
-function saveToLibrary(videoData) {
-  const lib = getLibrary();
-  const i = lib.findIndex((v) => v.id === videoData.id);
-  if (i > -1) lib[i] = { ...lib[i], ...videoData };
-  else lib.unshift(videoData);
-  saveLibrary(lib);
-}
 
 class Downloader {
   constructor() {
@@ -103,8 +87,6 @@ class Downloader {
     const p = this.activeDownloads.get(videoId);
     if (p) {
       p.kill();
-      this.activeDownloads.delete(videoId);
-      this.processQueue();
     }
   }
 
@@ -151,7 +133,7 @@ class Downloader {
         .match(
           /\[download\]\s+(\d+\.?\d*)%\s+of\s+~?\s*([\d.]+\w+)\s+at\s+([\d.]+\w+\/s)\s+ETA\s+([\d:]+)/
         );
-      if (m)
+      if (m && win)
         win.webContents.send("download-progress", {
           id: videoInfo.id,
           percent: parseFloat(m[1]),
@@ -165,29 +147,43 @@ class Downloader {
     );
     proc.on("close", async (code) => {
       this.activeDownloads.delete(videoInfo.id);
+      if (code === 0) {
+        await this.postProcess(videoInfo, job);
+      } else if (code !== null) {
+        if (win)
+          win.webContents.send("download-error", {
+            id: videoInfo.id,
+            error: `Downloader exited with code: ${code}`,
+            job,
+          });
+      }
       this.processQueue();
-      if (code === 0) await this.postProcess(videoInfo);
-      else if (code !== null)
-        win.webContents.send("download-error", {
-          id: videoInfo.id,
-          error: `Code: ${code}`,
-          job,
-        });
     });
   }
 
-  async postProcess(videoInfo) {
+  async postProcess(videoInfo, job) {
     try {
-      const infoPath = path.join(videoPath, `${videoInfo.id}.info.json`);
-      const fullInfo = JSON.parse(fs.readFileSync(infoPath, "utf-8"));
-      fs.unlinkSync(infoPath);
-      const cover = path.join(coverPath, `${fullInfo.id}.jpg`);
-      fs.renameSync(path.join(videoPath, `${fullInfo.id}.jpg`), cover);
-      const sub = path.join(subtitlePath, `${fullInfo.id}.vtt`);
-      const tempSub = path.join(videoPath, `${fullInfo.id}.en.vtt`);
-      const subFile = fs.existsSync(tempSub)
-        ? (fs.renameSync(tempSub, sub), `file://${sub}`.replace(/\\/g, "/"))
+      const infoJsonPath = path.join(videoPath, `${videoInfo.id}.info.json`);
+      if (!fs.existsSync(infoJsonPath)) {
+        throw new Error(".info.json file not found after download.");
+      }
+      const fullInfo = JSON.parse(fs.readFileSync(infoJsonPath, "utf-8"));
+      fs.unlinkSync(infoJsonPath);
+
+      let finalCoverPath = null;
+      const tempCoverPath = path.join(videoPath, `${fullInfo.id}.jpg`);
+      if (fs.existsSync(tempCoverPath)) {
+        finalCoverPath = path.join(coverPath, `${fullInfo.id}.jpg`);
+        fs.renameSync(tempCoverPath, finalCoverPath);
+      }
+
+      const tempSubPath = path.join(videoPath, `${fullInfo.id}.en.vtt`);
+      const finalSubPath = path.join(subtitlePath, `${fullInfo.id}.vtt`);
+      const subFileUri = fs.existsSync(tempSubPath)
+        ? (fs.renameSync(tempSubPath, finalSubPath),
+          `file://${finalSubPath}`.replace(/\\/g, "/"))
         : null;
+
       const videoData = {
         id: fullInfo.id,
         title: fullInfo.title,
@@ -195,26 +191,30 @@ class Downloader {
         duration: fullInfo.duration,
         upload_date: fullInfo.upload_date,
         originalUrl: fullInfo.webpage_url,
-        filePath: `file://${path.join(
-          videoPath,
-          `${fullInfo.id}.mp4`
-        )}`.replace(/\\/g, "/"),
-        coverPath: `file://${cover}`.replace(/\\/g, "/"),
-        subtitlePath: subFile,
+        filePath: `file://${path
+          .join(videoPath, `${fullInfo.id}.mp4`)
+          .replace(/\\/g, "/")}`,
+        coverPath: finalCoverPath
+          ? `file://${finalCoverPath.replace(/\\/g, "/")}`
+          : null,
+        subtitlePath: subFileUri,
         type: "video",
         downloadedAt: new Date().toISOString(),
         isFavorite: false,
       };
-      saveToLibrary(videoData);
-      win.webContents.send("download-complete", {
-        id: videoInfo.id,
-        videoData,
-      });
+      await db.addOrUpdateVideo(videoData);
+      if (win)
+        win.webContents.send("download-complete", {
+          id: videoInfo.id,
+          videoData,
+        });
     } catch (e) {
-      win.webContents.send("download-error", {
-        id: videoInfo.id,
-        error: e.message || "Post-processing failed.",
-      });
+      if (win)
+        win.webContents.send("download-error", {
+          id: videoInfo.id,
+          error: e.message || "Post-processing failed.",
+          job: job,
+        });
     }
   }
 }
@@ -262,11 +262,17 @@ function createTray() {
   tray.on("click", () => win.show());
 }
 
-app.on("before-quit", () => {
+app.on("before-quit", async () => {
   downloader.shutdown();
+  await db.shutdown();
 });
 
-app.whenReady().then(createWindow).then(createTray);
+app
+  .whenReady()
+  .then(() => db.initialize(app))
+  .then(createWindow)
+  .then(createTray);
+
 app.on("window-all-closed", () => process.platform !== "darwin" && app.quit());
 app.on(
   "activate",
@@ -289,7 +295,7 @@ ipcMain.on("save-settings", (e, s) => {
 });
 ipcMain.handle("reset-app", () => {
   saveSettings(defaultSettings);
-  win.webContents.send("clear-local-storage");
+  if (win) win.webContents.send("clear-local-storage");
   mediaPaths.forEach((dir) => {
     fs.readdirSync(dir).forEach((file) => {
       if (file.endsWith(".part")) fs.unlinkSync(path.join(dir, file));
@@ -297,36 +303,40 @@ ipcMain.handle("reset-app", () => {
   });
   return getSettings();
 });
+
+ipcMain.handle("get-library", () => db.getLibrary());
+ipcMain.handle("toggle-favorite", (e, id) => db.toggleFavorite(id));
+
 ipcMain.handle("clear-all-media", async () => {
   try {
     for (const dir of mediaPaths) await fse.emptyDir(dir);
-    saveLibrary([]);
+    await db.clearAllMedia();
     return { success: true };
   } catch (e) {
     return { success: false, error: e.message };
   }
 });
-ipcMain.handle("toggle-favorite", (e, id) => {
-  const lib = getLibrary();
-  const i = lib.findIndex((v) => v.id === id);
-  if (i > -1) {
-    lib[i].isFavorite = !lib[i].isFavorite;
-    saveLibrary(lib);
-    return { success: true, isFavorite: lib[i].isFavorite };
-  }
-  return { success: false };
+
+ipcMain.handle("delete-video", async (e, id) => {
+  const video = await db.getVideoById(id);
+  if (!video) return { success: false, message: "Video not found in DB." };
+
+  [video.filePath, video.coverPath, video.subtitlePath]
+    .filter(Boolean)
+    .forEach((uri) => {
+      try {
+        const p = path.normalize(
+          decodeURIComponent(uri.replace("file://", ""))
+        );
+        if (fs.existsSync(p)) fs.unlinkSync(p);
+      } catch (err) {
+        console.error(`Failed to delete file ${uri}:`, err);
+      }
+    });
+
+  return await db.deleteVideo(id);
 });
-ipcMain.handle("delete-video", (e, id) => {
-  const lib = getLibrary();
-  const v = lib.find((i) => i.id === id);
-  if (!v) return { success: false };
-  [v.filePath, v.coverPath, v.subtitlePath].filter(Boolean).forEach((uri) => {
-    const p = path.normalize(uri.replace("file://", ""));
-    if (fs.existsSync(p)) fs.unlinkSync(p);
-  });
-  saveLibrary(lib.filter((i) => i.id !== id));
-  return { success: true };
-});
+
 ipcMain.on("download-video", (e, o) => {
   const proc = spawn(ytDlpPath, [
     o.url,
@@ -335,20 +345,31 @@ ipcMain.on("download-video", (e, o) => {
     "--flat-playlist",
   ]);
   let j = "";
+  let errorOutput = "";
   proc.stdout.on("data", (d) => (j += d));
+  proc.stderr.on("data", (d) => (errorOutput += d));
   proc.on("close", (c) => {
     if (c === 0 && j.trim()) {
       const infos = j
         .trim()
         .split("\n")
         .map((l) => JSON.parse(l));
-      win.webContents.send("download-queue-start", infos);
+      if (win) win.webContents.send("download-queue-start", infos);
       downloader.addToQueue(
         infos.map((i) => ({ videoInfo: i, quality: o.quality }))
       );
+    } else {
+      console.error(
+        `Failed to get video info for ${o.url}. Stderr: ${errorOutput}`
+      );
+      if (win)
+        win.webContents.send("download-info-error", {
+          url: o.url,
+          error: errorOutput,
+        });
     }
   });
 });
+
 ipcMain.on("cancel-download", (e, id) => downloader.cancelDownload(id));
 ipcMain.on("retry-download", (e, job) => downloader.retryDownload(job));
-ipcMain.handle("get-library", getLibrary);

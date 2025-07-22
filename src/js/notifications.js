@@ -1,4 +1,4 @@
-// notifications.js
+// src/js/notifications.js
 const notificationContainer = document.getElementById("notification-container");
 
 function showNotification(message, type = "success", details = "") {
@@ -8,14 +8,19 @@ function showNotification(message, type = "success", details = "") {
   notification.className = `notification ${type}`;
 
   const detailsHTML = details ? `<span>${details}</span>` : "";
+  const iconClass = {
+    success: "fa-solid fa-check-circle",
+    error: "fa-solid fa-triangle-exclamation",
+    info: "fa-solid fa-circle-info",
+  }[type];
 
   notification.innerHTML = `
-        <img src="./assets/svg/Notifications.svg" class="icon-svg notification-icon" alt="Notification">
+        <i class="${iconClass} notification-icon"></i>
         <div class="notification-content">
             <p>${message}</p>
             ${detailsHTML}
         </div>
-        <button class="close-notification" title="Close">✕</button>
+        <button class="close-notification" title="Close"><i class="fa-solid fa-xmark"></i></button>
     `;
 
   notificationContainer.appendChild(notification);

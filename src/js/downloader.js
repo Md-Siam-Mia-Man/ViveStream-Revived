@@ -1,4 +1,4 @@
-// downloader.js
+// src/js/downloader.js
 const downloadJobs = new Map();
 
 function updateQueuePlaceholder() {
@@ -23,13 +23,15 @@ downloadForm.addEventListener("submit", (e) => {
 window.electronAPI.onDownloadQueueStart((videos) => {
   videos.forEach((video) => {
     if (downloadJobs.has(video.id)) return;
-    const job = { videoInfo: video };
+    const job = {
+      videoInfo: video,
+      quality: downloadForm.querySelector(".selected-option").dataset.value,
+    };
     downloadJobs.set(video.id, job);
+    const thumb = video.thumbnail || "../assets/logo.png";
     const itemHTML = `
         <div class="download-item" data-id="${video.id}" data-status="queued">
-            <img src="${
-              video.thumbnail
-            }" class="download-item-thumb" alt="thumbnail" onerror="this.onerror=null;this.src='../assets/logo.png';">
+            <img src="${thumb}" class="download-item-thumb" alt="thumbnail" onerror="this.onerror=null;this.src='../assets/logo.png';">
             <div class="download-item-info">
                 <p class="download-item-title">${video.title}</p>
                 <p class="download-item-uploader">${
@@ -39,7 +41,7 @@ window.electronAPI.onDownloadQueueStart((videos) => {
                     <div class="download-item-progress-bar"></div>
                 </div>
                 <div class="download-item-stats">
-                    <span class="download-item-status"><i class="fas fa-clock"></i> Queued</span>
+                    <span class="download-item-status"><i class="fa-solid fa-clock"></i> Queued</span>
                     <span class="download-item-speed"></span>
                     <span class="download-item-eta"></span>
                 </div>
@@ -65,7 +67,7 @@ window.electronAPI.onDownloadProgress((data) => {
   ).style.width = `${data.percent}%`;
   item.querySelector(
     ".download-item-status"
-  ).innerHTML = `<i class="fas fa-download"></i> Downloading (${data.percent.toFixed(
+  ).innerHTML = `<i class="fa-solid fa-download"></i> Downloading (${data.percent.toFixed(
     1
   )}%)`;
   item.querySelector(".download-item-speed").textContent = data.currentSpeed;
@@ -85,12 +87,17 @@ window.electronAPI.onDownloadComplete((data) => {
     item.classList.remove("downloading", "error");
     item.querySelector(
       ".download-item-status"
-    ).innerHTML = `<i class="fas fa-check-circle"></i> Completed`;
-    if (item.querySelector(".download-item-thumb"))
-      item.querySelector(".download-item-thumb").src = data.videoData.coverPath;
+    ).innerHTML = `<i class="fa-solid fa-check-circle"></i> Completed`;
+    const thumb = item.querySelector(".download-item-thumb");
+    if (thumb && data.videoData.coverPath) {
+      thumb.src = data.videoData.coverPath;
+    }
     item.querySelector(".download-item-speed").textContent = "";
     item.querySelector(".download-item-eta").textContent = "";
-    showNotification(`'${data.videoData.title}' downloaded successfully.`);
+    showNotification(
+      `'${data.videoData.title}' downloaded successfully.`,
+      "success"
+    );
     updateItemActions(data.id, "completed");
   }
   loadLibrary();
@@ -106,13 +113,21 @@ window.electronAPI.onDownloadError((data) => {
     item.classList.remove("downloading", "completed");
     item.querySelector(
       ".download-item-status"
-    ).innerHTML = `<i class="fas fa-exclamation-triangle"></i> Error`;
+    ).innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> Error`;
     item.querySelector(".download-item-eta").textContent =
       (data.error || "Unknown").substring(0, 50) + "...";
     showNotification(`Download failed: ${data.error || "Unknown"}`, "error");
     if (data.job) downloadJobs.set(data.id, data.job);
     updateItemActions(data.id, "error");
   }
+});
+
+window.electronAPI.onDownloadInfoError((data) => {
+  showNotification(
+    `Could not get info for URL: ${data.url}`,
+    "error",
+    "Please check the URL and your connection."
+  );
 });
 
 function updateItemActions(videoId, status) {
@@ -123,11 +138,11 @@ function updateItemActions(videoId, status) {
   const actionsContainer = item.querySelector(".download-item-actions");
   let actionsHTML = "";
   if (status === "downloading" || status === "queued") {
-    actionsHTML = `<button class="download-action-btn cancel-btn" title="Cancel"><i class="fas fa-times"></i></button>`;
+    actionsHTML = `<button class="download-action-btn cancel-btn" title="Cancel"><i class="fa-solid fa-times"></i></button>`;
   } else if (status === "error") {
-    actionsHTML = `<button class="download-action-btn retry-btn" title="Retry"><i class="fas fa-sync-alt"></i></button>`;
+    actionsHTML = `<button class="download-action-btn retry-btn" title="Retry"><i class="fa-solid fa-sync-alt"></i></button>`;
   }
-  actionsHTML += `<button class="download-action-btn remove-btn" title="Remove from list"><i class="fas fa-trash-alt"></i></button>`;
+  actionsHTML += `<button class="download-action-btn remove-btn" title="Remove from list"><i class="fa-solid fa-trash-alt"></i></button>`;
   actionsContainer.innerHTML = actionsHTML;
 }
 
@@ -146,7 +161,7 @@ downloadQueueArea.addEventListener("click", (e) => {
     if (job) window.electronAPI.retryDownload(job);
     item.querySelector(
       ".download-item-status"
-    ).innerHTML = `<i class="fas fa-clock"></i> Queued for retry...`;
+    ).innerHTML = `<i class="fa-solid fa-clock"></i> Queued for retry...`;
     item.classList.remove("error");
   } else if (btn.classList.contains("remove-btn")) {
     item.remove();

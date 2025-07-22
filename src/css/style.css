@@ -1,4 +1,4 @@
-/* style.css */
+/* src/css/style.css */
 @font-face {
      font-family: 'Poppins';
      src: url('../assets/fonts/Poppins.ttf') format('truetype');
@@ -28,6 +28,7 @@
      box-sizing: border-box;
      margin: 0;
      padding: 0;
+     user-select: none;
 }
 
 body {
@@ -41,6 +42,66 @@ body {
      border: 1px solid var(--yt-border);
      border-radius: 8px;
 }
+
+.title-bar {
+     position: fixed;
+     top: 0;
+     left: 0;
+     right: 0;
+     height: 32px;
+     z-index: 9999;
+     border-top-left-radius: 8px;
+     border-top-right-radius: 8px;
+}
+
+.title-bar-drag-region {
+     width: 100%;
+     height: 100%;
+     -webkit-app-region: drag;
+}
+
+.window-controls-container {
+     position: absolute;
+     top: 0;
+     right: 0;
+     height: 100%;
+     display: flex;
+     align-items: center;
+     -webkit-app-region: no-drag;
+     background-color: var(--yt-black);
+     opacity: 0;
+     transition: opacity 0.2s ease-in-out;
+     border-top-right-radius: 8px;
+}
+
+.title-bar:hover .window-controls-container {
+     opacity: 1;
+}
+
+.window-control-btn {
+     background: none;
+     border: none;
+     color: var(--yt-light-grey);
+     padding: 0 12px;
+     height: 100%;
+     font-size: 16px;
+     cursor: pointer;
+     transition: background-color 0.2s, color 0.2s;
+     display: flex;
+     align-items: center;
+     justify-content: center;
+}
+
+.window-control-btn:hover {
+     color: var(--yt-white);
+     background-color: var(--yt-dark-grey);
+}
+
+.window-control-btn.close-btn:hover {
+     background-color: #E81123;
+     color: var(--yt-white);
+}
+
 
 ::-webkit-scrollbar {
      width: 8px;
@@ -73,23 +134,22 @@ input,
      font-family: var(--font-body);
 }
 
-.icon-svg {
-     width: 1em;
-     height: 1em;
-     filter: brightness(0) invert(0.9);
-}
-
 .header-bar {
      display: flex;
      align-items: center;
      justify-content: space-between;
-     padding: 0 4px 0 16px;
+     padding: 0 16px;
      height: 56px;
      background-color: var(--yt-black);
      flex-shrink: 0;
-     -webkit-app-region: drag;
      position: relative;
      z-index: 100;
+}
+
+.header-left,
+.header-center,
+.header-right {
+     -webkit-app-region: no-drag;
 }
 
 .header-left {
@@ -97,14 +157,17 @@ input,
      align-items: center;
      gap: 16px;
      flex-shrink: 0;
-     -webkit-app-region: no-drag;
 }
 
 .header-center {
      flex-grow: 1;
      display: flex;
      justify-content: center;
-     -webkit-app-region: no-drag;
+}
+
+.header-right {
+     width: 140px;
+     flex-shrink: 0;
 }
 
 .header-button {
@@ -114,15 +177,13 @@ input,
      cursor: pointer;
      padding: 8px;
      border-radius: 50%;
+     font-size: 22px;
+     width: 40px;
+     height: 40px;
      transition: background-color 0.2s;
      display: flex;
      align-items: center;
      justify-content: center;
-}
-
-.header-button .icon-svg {
-     width: 24px;
-     height: 24px;
 }
 
 .header-button:hover {
@@ -181,44 +242,6 @@ input,
      border-color: var(--yt-red);
 }
 
-.window-controls {
-     display: flex;
-     align-items: center;
-     height: 100%;
-     -webkit-app-region: no-drag;
-}
-
-.window-control-btn {
-     background: none;
-     border: none;
-     color: var(--yt-light-grey);
-     padding: 0 14px;
-     height: 50%;
-     cursor: pointer;
-     transition: background-color 0.2s, color 0.2s;
-     display: flex;
-     align-items: center;
-     justify-content: center;
-}
-
-.window-control-btn .icon-svg {
-     width: 20px;
-     height: 20px;
-     filter: brightness(0) invert(0.7);
-}
-
-.window-control-btn:hover .icon-svg {
-     filter: brightness(0) invert(1);
-}
-
-.window-control-btn:hover {
-     background-color: var(--yt-dark-grey);
-}
-
-.window-control-btn.close-btn:hover {
-     background-color: #E81123;
-}
-
 .app-body {
      display: flex;
      flex-grow: 1;
@@ -272,9 +295,10 @@ input,
      font-weight: 500;
 }
 
-.nav-item .icon-svg {
+.nav-item i {
+     font-size: 20px;
      width: 24px;
-     height: 24px;
+     text-align: center;
      flex-shrink: 0;
 }
 
@@ -316,9 +340,8 @@ input,
      display: none;
 }
 
-.placeholder-icon-svg {
-     width: 64px;
-     height: 64px;
+.placeholder-icon {
+     font-size: 64px;
      margin-bottom: 24px;
      opacity: 0.4;
 }
@@ -379,9 +402,9 @@ input,
      transition: background-color 0.2s;
 }
 
-.context-menu-item .icon-svg {
+.context-menu-item i {
      width: 16px;
-     height: 16px;
+     text-align: center;
 }
 
 .context-menu-item:hover {

@@ -1,4 +1,4 @@
-// miniplayer.js
+// src/js/miniplayer.js
 function activateMiniplayer() {
   if (!videoPlayer.src) return;
 
@@ -65,9 +65,9 @@ function initializeMiniplayer() {
   });
 
   videoPlayer.addEventListener("play", () => {
-    miniplayerPlayPauseBtn.innerHTML = '<i class="fas fa-pause"></i>';
+    miniplayerPlayPauseBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
   });
   videoPlayer.addEventListener("pause", () => {
-    miniplayerPlayPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
+    miniplayerPlayPauseBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
   });
 }

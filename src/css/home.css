@@ -1,7 +1,8 @@
-/* home.css */
+/* src/css/home.css */
 #home-page {
      padding: 24px;
      align-items: center;
+     justify-content: flex-start;
 }
 
 .video-grid {
@@ -111,6 +112,10 @@
 .grid-item-action-btn:hover {
      background-color: var(--yt-dark-grey);
      color: var(--yt-white);
+}
+
+.grid-item-action-btn.favorite-btn.is-favorite {
+     color: var(--yt-red);
 }
 
 .empty-message {

@@ -1,4 +1,4 @@
-// renderer.js
+// src/js/renderer.js
 const sidebar = document.querySelector(".sidebar");
 const sidebarToggle = document.getElementById("sidebar-toggle");
 const logoHomeButton = document.getElementById("logo-home-button");
@@ -75,7 +75,10 @@ let currentlyPlayingIndex = -1;
 function showPage(pageId) {
   const isPlayerPageVisible = !playerPage.classList.contains("hidden");
   const shouldActivateMiniplayer =
-    isPlayerPageVisible && pageId !== "player" && videoPlayer.src;
+    isPlayerPageVisible &&
+    pageId !== "player" &&
+    videoPlayer.src &&
+    !videoPlayer.ended;
 
   if (shouldActivateMiniplayer) {
     activateMiniplayer();
@@ -94,7 +97,9 @@ function showPage(pageId) {
   }
 
   if (isPlayerPageVisible && !shouldActivateMiniplayer && pageId !== "player") {
-    videoPlayer.pause();
+    if (!videoPlayer.paused) {
+      videoPlayer.pause();
+    }
   }
 }
 
@@ -112,8 +117,11 @@ function handleNav(e) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  showPage("home");
-  loadLibrary();
+  loadLibrary().then(() => {
+    renderHomePageGrid();
+    showPage("home");
+  });
+
   initializeMiniplayer();
   initializeWindowControls();
   initializeContextMenu();
@@ -135,9 +143,10 @@ function initializeWindowControls() {
   closeBtn.addEventListener("click", () => window.electronAPI.closeWindow());
 
   window.electronAPI.onWindowMaximized((isMaximized) => {
-    maximizeBtn.innerHTML = `<i class="far ${
+    const icon = maximizeBtn.querySelector("i");
+    icon.className = `fa-regular ${
       isMaximized ? "fa-window-restore" : "fa-square"
-    }"></i>`;
+    }`;
   });
 }
 
@@ -151,24 +160,33 @@ function initializeContextMenu() {
   contextDeleteBtn.addEventListener("click", async () => {
     const videoId = contextMenu.dataset.videoId;
     if (videoId) {
-      const result = await window.electronAPI.deleteVideo(videoId);
-      if (result.success) {
-        if (
-          currentlyPlayingIndex > -1 &&
-          currentLibrary[currentlyPlayingIndex]?.id === videoId
-        ) {
-          closeMiniplayer();
-          videoPlayer.src = "";
-          currentlyPlayingIndex = -1;
-          updateVideoDetails(null);
-          renderUpNextList();
-          showPage("home");
+      showConfirmationModal(
+        "Delete Video?",
+        "Are you sure you want to permanently delete this video and its associated files?",
+        async () => {
+          const result = await window.electronAPI.deleteVideo(videoId);
+          if (result.success) {
+            if (
+              currentlyPlayingIndex > -1 &&
+              currentLibrary[currentlyPlayingIndex]?.id === videoId
+            ) {
+              closeMiniplayer();
+              videoPlayer.src = "";
+              currentlyPlayingIndex = -1;
+              updateVideoDetails(null);
+              renderUpNextList();
+            }
+            showNotification("Video deleted successfully.", "success");
+            await loadLibrary();
+            // Go home if we deleted the currently playing video from the player page
+            if (playerPage.classList.contains("hidden")) {
+              showPage("home");
+            }
+          } else {
+            showNotification(`Error: ${result.error}`, "error");
+          }
         }
-        showNotification("Video deleted successfully.");
-        loadLibrary();
-      } else {
-        showNotification(`Error: ${result.error}`, "error");
-      }
+      );
     }
     contextMenu.classList.remove("visible");
   });
