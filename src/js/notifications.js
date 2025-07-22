@@ -1,4 +1,4 @@
-// src/js/notifications.js
+// notifications.js
 const notificationContainer = document.getElementById("notification-container");
 
 function showNotification(message, type = "success", details = "") {

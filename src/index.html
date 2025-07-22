@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="Content-Security-Policy" content="font-src 'self' data:; script-src 'self' 'unsafe-inline';">
+    <meta http-equiv="Content-Security-Policy" content="font-src 'self' data:; script-src 'self';">
     <title>ViveStream</title>
     <link rel="stylesheet" href="../node_modules/@fortawesome/fontawesome-free/css/all.min.css">
     <link rel="stylesheet" href="./css/style.css">
@@ -13,6 +13,7 @@
     <link rel="stylesheet" href="./css/miniplayer.css">
     <link rel="stylesheet" href="./css/settings.css">
     <link rel="stylesheet" href="./css/notifications.css">
+    <link rel="stylesheet" href="./css/playlists.css">
 </head>
 
 <body>
@@ -68,9 +69,7 @@
             </ul>
         </nav>
         <div class="content-wrapper">
-            <div id="home-page" class="page">
-            </div>
-
+            <div id="home-page" class="page"></div>
             <div id="downloads-page" class="page hidden">
                 <div class="downloads-container">
                     <div class="download-card">
@@ -100,10 +99,8 @@
                                         </div>
                                     </div>
                                 </div>
-                                <button type="submit" class="download-button">
-                                    <i class="fa-solid fa-download"></i>
-                                    <span>Download</span>
-                                </button>
+                                <button type="submit" class="download-button"><i
+                                        class="fa-solid fa-download"></i><span>Download</span></button>
                             </div>
                         </form>
                     </div>
@@ -124,7 +121,6 @@
                     </div>
                 </div>
             </div>
-
             <div id="player-page" class="page hidden">
                 <main class="main-content">
                     <div class="primary-column">
@@ -190,7 +186,7 @@
                                 <div class="action-buttons">
                                     <button class="action-button favorite-btn" id="favorite-btn"><i
                                             class="fa-solid fa-heart"></i><span>Favorite</span></button>
-                                    <button class="action-button" id="save-btn"><i
+                                    <button class="action-button" id="save-to-playlist-btn"><i
                                             class="fa-solid fa-plus"></i><span>Save</span></button>
                                     <button class="action-button" id="video-menu-btn"><i
                                             class="fa-solid fa-ellipsis-vertical"></i></button>
@@ -206,13 +202,8 @@
                     </div>
                 </main>
             </div>
-
-            <div id="playlists-page" class="page placeholder-page hidden">
-                <i class="fa-solid fa-layer-group placeholder-icon"></i>
-                <h2 class="placeholder-title">Playlists coming soon!</h2>
-                <p class="placeholder-text">Create and manage your video playlists here.</p>
-            </div>
-
+            <div id="playlists-page" class="page hidden"></div>
+            <div id="playlist-detail-page" class="page hidden"></div>
             <div id="favorites-page" class="page hidden">
                 <div class="placeholder-page">
                     <i class="fa-solid fa-heart-crack placeholder-icon"></i>
@@ -221,7 +212,6 @@
                 </div>
                 <div class="video-grid" id="video-grid-favorites"></div>
             </div>
-
             <div id="settings-page" class="page hidden">
                 <div class="settings-container">
                     <h1 class="settings-header">Settings</h1>
@@ -287,6 +277,14 @@
             <div class="context-menu" id="video-item-context-menu">
                 <div class="context-menu-item" id="context-delete-btn"><i class="fa-solid fa-trash-can"></i> Delete
                 </div>
+                <div class="context-menu-item" id="context-remove-from-playlist-btn"><i class="fa-solid fa-times"></i>
+                    Remove from Playlist</div>
+            </div>
+            <div class="context-menu" id="playlist-item-context-menu">
+                <div class="context-menu-item" id="context-playlist-rename-btn"><i class="fa-solid fa-pencil"></i>
+                    Rename</div>
+                <div class="context-menu-item" id="context-playlist-delete-btn"><i class="fa-solid fa-trash-can"></i>
+                    Delete</div>
             </div>
         </div>
     </div>
@@ -312,6 +310,20 @@
         </div>
     </div>
     <div id="notification-container"></div>
+    <div id="add-to-playlist-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h3>Add to playlist</h3>
+            <div class="add-playlist-list"></div>
+            <div class="add-playlist-new">
+                <input type="text" id="new-playlist-input" placeholder="...or create new playlist">
+                <button id="create-playlist-confirm-btn" class="modal-btn"><i class="fa-solid fa-plus"></i>
+                    Create</button>
+            </div>
+            <div class="modal-actions">
+                <button id="modal-done-btn" class="modal-btn">Done</button>
+            </div>
+        </div>
+    </div>
     <div id="confirmation-modal" class="modal-overlay hidden">
         <div class="modal-content">
             <h3 id="modal-title">Are you sure?</h3>
@@ -322,6 +334,20 @@
             </div>
         </div>
     </div>
+    <div id="prompt-modal" class="modal-overlay hidden">
+        <div class="modal-content prompt-modal-content">
+            <h3 id="prompt-title">Prompt</h3>
+            <p id="prompt-text">Enter a value:</p>
+            <input type="text" id="prompt-input">
+            <div class="modal-actions">
+                <button id="prompt-cancel-btn" class="modal-btn">Cancel</button>
+                <button id="prompt-confirm-btn" class="modal-btn">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../node_modules/sortablejs/Sortable.min.js"></script>
+    <script src="./js/modals.js"></script>
     <script src="./js/renderer.js"></script>
     <script src="./js/notifications.js"></script>
     <script src="./js/ui.js"></script>
@@ -329,6 +355,7 @@
     <script src="./js/player.js"></script>
     <script src="./js/miniplayer.js"></script>
     <script src="./js/settings.js"></script>
+    <script src="./js/playlists.js"></script>
 </body>
 
 </html>

@@ -1,4 +1,4 @@
-// src/js/renderer.js
+// renderer.js
 const sidebar = document.querySelector(".sidebar");
 const sidebarToggle = document.getElementById("sidebar-toggle");
 const logoHomeButton = document.getElementById("logo-home-button");
@@ -8,7 +8,6 @@ const pages = document.querySelectorAll(".page");
 const downloadForm = document.getElementById("download-form");
 const urlInput = document.getElementById("url-input");
 const homeSearchInput = document.getElementById("home-search-input");
-const videoGrid = document.getElementById("video-grid");
 const upNextList = document.getElementById("up-next-list");
 const qualitySelectContainer = document.getElementById(
   "quality-select-container"
@@ -46,6 +45,7 @@ const videoInfoUploader = document.getElementById("video-info-uploader");
 const videoInfoDate = document.getElementById("video-info-date");
 const videoMenuBtn = document.getElementById("video-menu-btn");
 const favoriteBtn = document.getElementById("favorite-btn");
+const saveToPlaylistBtn = document.getElementById("save-to-playlist-btn");
 const miniplayer = document.getElementById("miniplayer");
 const miniplayerVideoContainer = document.getElementById(
   "miniplayer-video-container"
@@ -66,17 +66,26 @@ const trayBtn = document.getElementById("tray-btn");
 const minimizeBtn = document.getElementById("minimize-btn");
 const maximizeBtn = document.getElementById("maximize-btn");
 const closeBtn = document.getElementById("close-btn");
-const contextMenu = document.getElementById("video-item-context-menu");
+
+const videoContextMenu = document.getElementById("video-item-context-menu");
 const contextDeleteBtn = document.getElementById("context-delete-btn");
+const contextRemoveFromPlaylistBtn = document.getElementById(
+  "context-remove-from-playlist-btn"
+);
+const playlistContextMenu = document.getElementById(
+  "playlist-item-context-menu"
+);
 
 let currentLibrary = [];
 let currentlyPlayingIndex = -1;
 
-function showPage(pageId) {
+function showPage(pageId, isSubPage = false) {
   const isPlayerPageVisible = !playerPage.classList.contains("hidden");
+  const targetPageId = isSubPage ? pageId : `${pageId}-page`;
+
   const shouldActivateMiniplayer =
     isPlayerPageVisible &&
-    pageId !== "player" &&
+    targetPageId !== "player-page" &&
     videoPlayer.src &&
     !videoPlayer.ended;
 
@@ -85,18 +94,24 @@ function showPage(pageId) {
   }
 
   pages.forEach((page) =>
-    page.classList.toggle("hidden", page.id !== `${pageId}-page`)
+    page.classList.toggle("hidden", page.id !== targetPageId)
   );
 
-  document.querySelectorAll(".nav-item").forEach((item) => {
-    item.classList.toggle("active", item.dataset.page === pageId);
-  });
+  if (!isSubPage) {
+    document.querySelectorAll(".nav-item").forEach((item) => {
+      item.classList.toggle("active", item.dataset.page === pageId);
+    });
+  }
 
-  if (pageId === "player") {
+  if (targetPageId === "player-page") {
     deactivateMiniplayer();
   }
 
-  if (isPlayerPageVisible && !shouldActivateMiniplayer && pageId !== "player") {
+  if (
+    isPlayerPageVisible &&
+    !shouldActivateMiniplayer &&
+    targetPageId !== "player-page"
+  ) {
     if (!videoPlayer.paused) {
       videoPlayer.pause();
     }
@@ -112,6 +127,8 @@ function handleNav(e) {
       renderHomePageGrid();
     } else if (pageId === "favorites") {
       renderFavoritesPage();
+    } else if (pageId === "playlists") {
+      renderPlaylistsPage();
     }
   }
 }
@@ -125,6 +142,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initializeMiniplayer();
   initializeWindowControls();
   initializeContextMenu();
+  initializePlaylistContextMenus();
   initializeSettingsPage();
   loadSettings();
 
@@ -152,13 +170,15 @@ function initializeWindowControls() {
 
 function initializeContextMenu() {
   document.addEventListener("click", () => {
-    contextMenu.classList.remove("visible");
+    videoContextMenu.classList.remove("visible");
+    playlistContextMenu.classList.remove("visible");
   });
 
-  contextMenu.addEventListener("click", (e) => e.stopPropagation());
+  videoContextMenu.addEventListener("click", (e) => e.stopPropagation());
+  playlistContextMenu.addEventListener("click", (e) => e.stopPropagation());
 
   contextDeleteBtn.addEventListener("click", async () => {
-    const videoId = contextMenu.dataset.videoId;
+    const videoId = videoContextMenu.dataset.videoId;
     if (videoId) {
       showConfirmationModal(
         "Delete Video?",
@@ -178,9 +198,13 @@ function initializeContextMenu() {
             }
             showNotification("Video deleted successfully.", "success");
             await loadLibrary();
-            // Go home if we deleted the currently playing video from the player page
-            if (playerPage.classList.contains("hidden")) {
-              showPage("home");
+            const activePage =
+              document.querySelector(".nav-item.active")?.dataset.page ||
+              "home";
+            if (activePage === "playlists") {
+              await renderPlaylistDetailPage(currentPlaylistId);
+            } else {
+              showPage(activePage);
             }
           } else {
             showNotification(`Error: ${result.error}`, "error");
@@ -188,6 +212,24 @@ function initializeContextMenu() {
         }
       );
     }
-    contextMenu.classList.remove("visible");
+    videoContextMenu.classList.remove("visible");
+  });
+
+  contextRemoveFromPlaylistBtn.addEventListener("click", async () => {
+    const videoId = videoContextMenu.dataset.videoId;
+    const playlistId = videoContextMenu.dataset.playlistId;
+    if (videoId && playlistId) {
+      const result = await window.electronAPI.playlistRemoveVideo(
+        playlistId,
+        videoId
+      );
+      if (result.success) {
+        showNotification("Removed video from playlist.", "success");
+        await renderPlaylistDetailPage(playlistId);
+      } else {
+        showNotification(`Error: ${result.error}`, "error");
+      }
+    }
+    videoContextMenu.classList.remove("visible");
   });
 }

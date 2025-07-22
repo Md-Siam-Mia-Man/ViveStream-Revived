@@ -1,4 +1,4 @@
-// src/js/main.js
+// main.js
 const { app, BrowserWindow, ipcMain, shell, Tray, Menu } = require("electron");
 const path = require("path");
 const fs = require("fs");
@@ -373,3 +373,24 @@ ipcMain.on("download-video", (e, o) => {
 
 ipcMain.on("cancel-download", (e, id) => downloader.cancelDownload(id));
 ipcMain.on("retry-download", (e, job) => downloader.retryDownload(job));
+
+// Playlist IPC Handlers
+ipcMain.handle("playlist:create", (e, name) => db.createPlaylist(name));
+ipcMain.handle("playlist:get-all", () => db.getAllPlaylistsWithStats());
+ipcMain.handle("playlist:get-details", (e, id) => db.getPlaylistDetails(id));
+ipcMain.handle("playlist:rename", (e, id, newName) =>
+  db.renamePlaylist(id, newName)
+);
+ipcMain.handle("playlist:delete", (e, id) => db.deletePlaylist(id));
+ipcMain.handle("playlist:add-video", (e, playlistId, videoId) =>
+  db.addVideoToPlaylist(playlistId, videoId)
+);
+ipcMain.handle("playlist:remove-video", (e, playlistId, videoId) =>
+  db.removeVideoFromPlaylist(playlistId, videoId)
+);
+ipcMain.handle("playlist:update-order", (e, playlistId, videoIds) =>
+  db.updateVideoOrderInPlaylist(playlistId, videoIds)
+);
+ipcMain.handle("playlist:get-for-video", (e, videoId) =>
+  db.getPlaylistsForVideo(videoId)
+);

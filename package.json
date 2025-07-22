@@ -19,6 +19,7 @@
     "@fortawesome/fontawesome-free": "^6.7.2",
     "fs-extra": "^11.3.0",
     "knex": "^3.1.0",
+    "sortablejs": "^1.15.6",
     "sqlite3": "^5.1.7"
   }
 }

@@ -1,4 +1,4 @@
-// src/js/preload.js
+// preload.js
 const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("electronAPI", {
@@ -34,4 +34,20 @@ contextBridge.exposeInMainWorld("electronAPI", {
   trayWindow: () => ipcRenderer.send("tray-window"),
   onWindowMaximized: (cb) =>
     ipcRenderer.on("window-maximized", (e, v) => cb(v)),
+
+  // Playlist API
+  playlistCreate: (name) => ipcRenderer.invoke("playlist:create", name),
+  playlistGetAll: () => ipcRenderer.invoke("playlist:get-all"),
+  playlistGetDetails: (id) => ipcRenderer.invoke("playlist:get-details", id),
+  playlistRename: (id, newName) =>
+    ipcRenderer.invoke("playlist:rename", id, newName),
+  playlistDelete: (id) => ipcRenderer.invoke("playlist:delete", id),
+  playlistAddVideo: (playlistId, videoId) =>
+    ipcRenderer.invoke("playlist:add-video", playlistId, videoId),
+  playlistRemoveVideo: (playlistId, videoId) =>
+    ipcRenderer.invoke("playlist:remove-video", playlistId, videoId),
+  playlistUpdateOrder: (playlistId, videoIds) =>
+    ipcRenderer.invoke("playlist:update-order", playlistId, videoIds),
+  playlistGetForVideo: (videoId) =>
+    ipcRenderer.invoke("playlist:get-for-video", videoId),
 });

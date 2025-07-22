@@ -1,4 +1,4 @@
-// src/js/downloader.js
+// downloader.js
 const downloadJobs = new Map();
 
 function updateQueuePlaceholder() {

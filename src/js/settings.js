@@ -1,29 +1,5 @@
-// src/js/settings.js
+// settings.js
 let currentSettings = {};
-const confirmationModal = document.getElementById("confirmation-modal");
-const modalTitle = document.getElementById("modal-title");
-const modalText = document.getElementById("modal-text");
-const modalConfirmBtn = document.getElementById("modal-confirm-btn");
-const modalCancelBtn = document.getElementById("modal-cancel-btn");
-let onConfirmAction = null;
-
-function showConfirmationModal(title, text, confirmAction) {
-  modalTitle.textContent = title;
-  modalText.innerHTML = text;
-  onConfirmAction = confirmAction;
-  confirmationModal.classList.remove("hidden");
-}
-
-modalCancelBtn.addEventListener("click", () => {
-  confirmationModal.classList.add("hidden");
-  onConfirmAction = null;
-});
-
-modalConfirmBtn.addEventListener("click", () => {
-  if (typeof onConfirmAction === "function") onConfirmAction();
-  confirmationModal.classList.add("hidden");
-  onConfirmAction = null;
-});
 
 function initializeSettingsPage() {
   const slider = document.getElementById("concurrent-downloads-slider");
@@ -118,10 +94,4 @@ window.electronAPI.onClearLocalStorage(() => {
   console.log(
     "Cleared app-specific localStorage as requested by main process."
   );
-});
-
-document.addEventListener("DOMContentLoaded", () => {
-  if (document.getElementById("settings-page")) {
-    initializeSettingsPage();
-  }
 });

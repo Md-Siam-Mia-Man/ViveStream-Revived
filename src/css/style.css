@@ -1,4 +1,4 @@
-/* src/css/style.css */
+/* style.css */
 @font-face {
      font-family: 'Poppins';
      src: url('../assets/fonts/Poppins.ttf') format('truetype');
@@ -326,6 +326,35 @@ input,
      display: none;
 }
 
+.page-header {
+     display: flex;
+     justify-content: space-between;
+     align-items: center;
+     padding: 24px 24px 16px 24px;
+     border-bottom: 1px solid var(--yt-border);
+}
+
+.page-header-title {
+     font-family: var(--font-display);
+     font-size: 1.8rem;
+     font-weight: 600;
+}
+
+.page-header-actions {
+     display: flex;
+     gap: 12px;
+}
+
+.page-header-actions .action-button {
+     background-color: var(--yt-dark-grey);
+     border: 1px solid var(--yt-border);
+     padding: 8px 16px;
+}
+
+.page-header-actions .action-button:hover {
+     background-color: var(--yt-border);
+}
+
 .placeholder-page {
      justify-content: center;
      align-items: center;
@@ -402,6 +431,11 @@ input,
      transition: background-color 0.2s;
 }
 
+#context-remove-from-playlist-btn {
+     display: none;
+     /* Hidden by default */
+}
+
 .context-menu-item i {
      width: 16px;
      text-align: center;
@@ -465,6 +499,7 @@ input,
      display: flex;
      justify-content: center;
      gap: 12px;
+     margin-top: 24px;
 }
 
 .modal-btn {
@@ -476,11 +511,119 @@ input,
      transition: background-color 0.2s;
 }
 
-#modal-cancel-btn {
+#modal-cancel-btn,
+#prompt-cancel-btn {
      background-color: var(--yt-border);
      color: var(--yt-white);
 }
 
-#modal-cancel-btn:hover {
+#modal-cancel-btn:hover,
+#prompt-cancel-btn:hover {
      background-color: #555;
+}
+
+#prompt-confirm-btn,
+#modal-confirm-btn {
+     background-color: var(--yt-red);
+     color: var(--yt-white);
+}
+
+#prompt-confirm-btn:hover,
+#modal-confirm-btn:hover {
+     background-color: var(--yt-red-dark);
+}
+
+#add-to-playlist-modal .modal-content {
+     text-align: left;
+}
+
+.add-playlist-list {
+     max-height: 200px;
+     overflow-y: auto;
+     margin-bottom: 16px;
+}
+
+.add-playlist-item {
+     display: flex;
+     align-items: center;
+     padding: 8px;
+     border-radius: 6px;
+}
+
+.add-playlist-item:hover {
+     background-color: var(--yt-border);
+}
+
+.add-playlist-item input[type="checkbox"] {
+     width: 18px;
+     height: 18px;
+     margin-right: 12px;
+     accent-color: var(--yt-red);
+}
+
+.add-playlist-item label {
+     font-size: 1rem;
+     cursor: pointer;
+}
+
+.add-playlist-new {
+     display: flex;
+     gap: 8px;
+     padding-top: 16px;
+     border-top: 1px solid var(--yt-border);
+}
+
+#new-playlist-input {
+     flex-grow: 1;
+     background: var(--yt-black);
+     border: 1px solid var(--yt-border);
+     color: var(--yt-white);
+     padding: 8px 12px;
+     border-radius: 6px;
+     font-size: 0.9rem;
+}
+
+#new-playlist-input:focus {
+     outline: none;
+     border-color: var(--yt-red);
+}
+
+#create-playlist-confirm-btn {
+     background-color: var(--yt-red);
+     color: var(--yt-white);
+     flex-shrink: 0;
+}
+
+#create-playlist-confirm-btn:hover {
+     background-color: var(--yt-red-dark);
+}
+
+#add-to-playlist-modal .modal-actions {
+     justify-content: flex-end;
+}
+
+.prompt-modal-content {
+     text-align: left;
+}
+
+#prompt-input {
+     width: 100%;
+     background: var(--yt-black);
+     border: 1px solid var(--yt-border);
+     color: var(--yt-white);
+     padding: 10px 14px;
+     border-radius: 6px;
+     font-size: 1rem;
+     margin-top: 16px;
+}
+
+#prompt-input:focus {
+     outline: none;
+     border-color: var(--yt-red);
+     box-shadow: 0 0 0 3px rgba(255, 11, 85, 0.3);
+}
+
+.sortable-ghost {
+     opacity: 0.4;
+     background-color: var(--yt-red-dark);
 }

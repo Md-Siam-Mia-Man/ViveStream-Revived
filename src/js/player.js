@@ -1,7 +1,11 @@
-// src/js/player.js
-function playLibraryItem(index, options = {}) {
-  if (index < 0 || index >= currentLibrary.length) return;
-  const item = currentLibrary[index];
+// player.js
+let playbackQueue = [];
+
+function playLibraryItem(index, sourceLibrary = currentLibrary, options = {}) {
+  if (!sourceLibrary || index < 0 || index >= sourceLibrary.length) return;
+
+  playbackQueue = sourceLibrary;
+  const item = playbackQueue[index];
   currentlyPlayingIndex = index;
 
   if (item.type === "video" || item.type === "audio") {
@@ -70,12 +74,12 @@ function updateVideoDetails(item) {
 
 function renderUpNextList() {
   upNextList.innerHTML = "";
-  if (currentlyPlayingIndex < 0) return;
+  if (currentlyPlayingIndex < 0 || playbackQueue.length === 0) return;
 
   const upNextItems = [];
-  for (let i = 1; i < currentLibrary.length; i++) {
-    const itemIndex = (currentlyPlayingIndex + i) % currentLibrary.length;
-    upNextItems.push(currentLibrary[itemIndex]);
+  for (let i = 1; i < playbackQueue.length; i++) {
+    const itemIndex = (currentlyPlayingIndex + i) % playbackQueue.length;
+    upNextItems.push(playbackQueue[itemIndex]);
   }
 
   upNextItems.forEach((video) => {
@@ -97,14 +101,21 @@ upNextList.addEventListener("click", (e) => {
   const itemEl = e.target.closest(".up-next-item");
   if (itemEl)
     playLibraryItem(
-      currentLibrary.findIndex((v) => v.id === itemEl.dataset.id)
+      playbackQueue.findIndex((v) => v.id === itemEl.dataset.id),
+      playbackQueue
     );
 });
 
 favoriteBtn.addEventListener("click", (e) => {
   if (currentlyPlayingIndex === -1) return;
-  const videoId = currentLibrary[currentlyPlayingIndex].id;
+  const videoId = playbackQueue[currentlyPlayingIndex].id;
   toggleFavoriteStatus(videoId);
+});
+
+saveToPlaylistBtn.addEventListener("click", () => {
+  if (currentlyPlayingIndex === -1) return;
+  const videoId = playbackQueue[currentlyPlayingIndex].id;
+  openAddToPlaylistModal(videoId);
 });
 
 function togglePlay() {
@@ -117,14 +128,17 @@ function formatTime(seconds) {
   return seconds < 3600 ? result.substring(3) : result;
 }
 function playNext() {
-  if (currentLibrary.length > 1)
-    playLibraryItem((currentlyPlayingIndex + 1) % currentLibrary.length);
+  if (playbackQueue.length > 1)
+    playLibraryItem(
+      (currentlyPlayingIndex + 1) % playbackQueue.length,
+      playbackQueue
+    );
 }
 function playPrevious() {
-  if (currentLibrary.length > 1)
+  if (playbackQueue.length > 1)
     playLibraryItem(
-      (currentlyPlayingIndex - 1 + currentLibrary.length) %
-        currentLibrary.length
+      (currentlyPlayingIndex - 1 + playbackQueue.length) % playbackQueue.length,
+      playbackQueue
     );
 }
 function updateVolume(newVolume) {
@@ -227,15 +241,15 @@ document.addEventListener("fullscreenchange", () => {
 
 videoMenuBtn.addEventListener("click", (e) => {
   e.stopPropagation();
-  const currentVideo = currentLibrary[currentlyPlayingIndex];
+  const currentVideo = playbackQueue[currentlyPlayingIndex];
   if (!currentVideo) return;
   const rect = videoMenuBtn.getBoundingClientRect();
-  contextMenu.style.left = `${
-    rect.left - contextMenu.offsetWidth + rect.width
+  videoContextMenu.style.left = `${
+    rect.left - videoContextMenu.offsetWidth + rect.width
   }px`;
-  contextMenu.style.top = `${rect.bottom + 5}px`;
-  contextMenu.dataset.videoId = currentVideo.id;
-  contextMenu.classList.add("visible");
+  videoContextMenu.style.top = `${rect.bottom + 5}px`;
+  videoContextMenu.dataset.videoId = currentVideo.id;
+  videoContextMenu.classList.add("visible");
 });
 
 let sleepTimerId = null;
@@ -442,10 +456,12 @@ document.addEventListener("keydown", (e) => {
     !playerPage.classList.contains("hidden") ||
     !miniplayer.classList.contains("hidden");
   if (
-    !isPlayerActive ||
-    document.activeElement.tagName.toLowerCase() === "input"
+    document.activeElement.tagName.toLowerCase() === "input" ||
+    document.querySelector(".modal-overlay:not(.hidden)")
   )
     return;
+  if (!isPlayerActive) return;
+
   e.preventDefault();
   switch (e.key.toLowerCase()) {
     case "k":

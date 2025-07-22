@@ -4,7 +4,7 @@
   <img src="./assets/logo.svg" style="width: 10%" alt="ViveStream Logo">
   <h2><strong>Tired of YouTube buffering? 😵‍💫 Snag your favorite videos and watch them offline in style!</strong></h2>
   <p>
-    <img src="https://img.shields.io/badge/version-1.0.0-blue.svg" alt="Version">
+    <img src="https://img.shields.io/badge/version-2.0.0-blue.svg" alt="Version">
     <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License">
     <img src="https://img.shields.io/badge/platform-Windows-informational.svg" alt="Platform">
   </p>
@@ -23,6 +23,8 @@ Welcome, media hoarders and vibe connoisseurs! 🥳 **ViveStream** is your new b
 
 - 📥 **Snag Anything!** Paste a URL (video, playlist, you name it!) and download it as a video (`.mp4`) or just the audio (`.mp3`). Easy peasy.
 - 👑 **Choose Your Quality:** Go from standard 480p to glorious, pixel-perfect HD. You're the boss!
+- ✨ **Powerful Playlist Manager:** Don't just download—organize! Create custom playlists, add videos with a single click, and reorder them with intuitive drag-and-drop.
+- ❤️ **Favorites Collection:** Keep your most-loved videos in a dedicated Favorites section for instant access.
 - 🎬 **Built-in Player:** Why open another app? Watch everything right here in our slick, integrated player.
 - 🎛️ **Pro-Level Controls:**
   - 🎭 **Theater & Fullscreen:** For that cinematic feel.
@@ -32,6 +34,7 @@ Welcome, media hoarders and vibe connoisseurs! 🥳 **ViveStream** is your new b
   - 😴 **Sleep Timer:** Binge-watch responsibly... or try to.
   - 🔁 **Autoplay:** Keep the good times rolling, non-stop.
 - 📚 **Your Personal Library:** All your downloads live in a beautiful, searchable grid of awesome.
+- 🔒 **Rock-Solid Database:** Your library is now powered by a robust SQLite database, ensuring your collection is safe, fast, and corruption-free.
 - 📦 **All-in-One-Box:** No need to install Python, yt-dlp, or FFmpeg. We packed everything you need. It just works!™️
 - ⌨️ **Ninja-Fast Hotkeys:** Control the player without ever touching your mouse. (See the list below!)
 
@@ -71,16 +74,17 @@ Welcome, media hoarders and vibe connoisseurs! 🥳 **ViveStream** is your new b
 ## 🎮 How to Use
 
 1.  **Feed the Beast 🐲**
-
-    - Point it to the **Downloads** page on the sidebar.
-    - Slap a YouTube URL in the box.
-    - Pick your poison: quality and type (Video/Audio).
-    - Hit `Download` and watch the progress bar go _brrrr_.
+    -   Navigate to the **Downloads** page on the sidebar.
+    -   Paste a YouTube URL into the box.
+    -   Choose your desired quality and format.
+    -   Hit `Download` and watch the progress bar go _brrrr_.
 
 2.  **Enjoy the Spoils 🍿**
-    - Head to the **Home** page and gaze upon your collection.
-    - Use the search bar if your library gets too epic.
-    - Click any video to start the show!
+    -   Head to the **Home** page to see your entire collection.
+    -   Use the **Playlists** tab to create and manage your curated lists.
+    -   Mark videos as ❤️ **Favorites** to find them in their own dedicated section.
+    -   Use the search bar if your library gets too epic.
+    -   Click any video thumbnail to start playing it!
 
 ---
 

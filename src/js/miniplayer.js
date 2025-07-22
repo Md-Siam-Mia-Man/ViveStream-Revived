@@ -1,4 +1,4 @@
-// src/js/miniplayer.js
+// miniplayer.js
 function activateMiniplayer() {
   if (!videoPlayer.src) return;
 
