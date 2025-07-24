@@ -12,11 +12,11 @@
   "keywords": [],
   "devDependencies": {
     "@electron/packager": "^18.3.6",
-    "electron": "^37.2.3",
+    "electron": "^37.2.4",
     "innosetup-compiler": "^6.3.1"
   },
   "dependencies": {
-    "@fortawesome/fontawesome-free": "^6.7.2",
+    "@fortawesome/fontawesome-free": "^7.0.0",
     "fs-extra": "^11.3.0",
     "knex": "^3.1.0",
     "sortablejs": "^1.15.6",

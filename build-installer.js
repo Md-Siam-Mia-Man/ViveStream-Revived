@@ -4,13 +4,11 @@ const compile = require("innosetup-compiler");
 const path = require("path");
 const fs = require("fs-extra");
 const packageJson = require("./package.json");
-
 const appName = packageJson.name;
 const appVersion = packageJson.version;
 const appAuthor = packageJson.author;
 const appExeName = `${appName}.exe`;
 const iconPath = path.join(__dirname, "assets", "icon.ico");
-
 const outputDir = path.join(__dirname, "release");
 const packagedAppDirName = `${appName}-win32-ia32`;
 const packagedAppPath = path.join(outputDir, packagedAppDirName);
@@ -38,7 +36,11 @@ async function build() {
       overwrite: true,
       asar: true,
       icon: iconPath,
-      extraResource: [path.join(__dirname, "vendor")],
+      extraResource: [
+        path.join(__dirname, "vendor"),
+        path.join(__dirname, "assets"),
+      ],
+
       ignore: [
         /^\/release($|\/)/,
         /^\/InnoSetupOutput($|\/)/,

@@ -1,5 +1,13 @@
 // main.js
-const { app, BrowserWindow, ipcMain, shell, Tray, Menu } = require("electron");
+const {
+  app,
+  BrowserWindow,
+  ipcMain,
+  shell,
+  Tray,
+  Menu,
+  dialog,
+} = require("electron");
 const path = require("path");
 const fs = require("fs");
 const fse = require("fs-extra");
@@ -10,15 +18,19 @@ const isDev = !app.isPackaged;
 let tray = null;
 let win = null;
 
-const userHomePath = app.getPath("home");
-const viveStreamPath = path.join(userHomePath, "ViveStream");
+const assetsPath = isDev
+  ? path.join(__dirname, "..", "..", "assets")
+  : path.join(process.resourcesPath, "assets");
 
 const resourcesPath = isDev
   ? path.join(__dirname, "..", "..", "vendor")
   : path.join(process.resourcesPath, "vendor");
+
 const ytDlpPath = path.join(resourcesPath, "yt-dlp.exe");
 const ffmpegPath = path.join(resourcesPath, "ffmpeg.exe");
 
+const userHomePath = app.getPath("home");
+const viveStreamPath = path.join(userHomePath, "ViveStream");
 const videoPath = path.join(viveStreamPath, "videos");
 const coverPath = path.join(viveStreamPath, "covers");
 const subtitlePath = path.join(viveStreamPath, "subtitles");
@@ -28,9 +40,7 @@ const mediaPaths = [videoPath, coverPath, subtitlePath];
 mediaPaths.forEach((dir) => {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 });
-
 const defaultSettings = { concurrentDownloads: 3 };
-
 function getSettings() {
   if (fs.existsSync(settingsPath)) {
     try {
@@ -44,7 +54,6 @@ function getSettings() {
   }
   return defaultSettings;
 }
-
 function saveSettings(settings) {
   const settingsDir = path.dirname(settingsPath);
   if (!fs.existsSync(settingsDir)) {
@@ -55,9 +64,7 @@ function saveSettings(settings) {
     JSON.stringify({ ...getSettings(), ...settings }, null, 2)
   );
 }
-
 if (!fs.existsSync(settingsPath)) saveSettings(defaultSettings);
-
 class Downloader {
   constructor() {
     this.queue = [];
@@ -89,7 +96,6 @@ class Downloader {
       p.kill();
     }
   }
-
   shutdown() {
     this.queue = [];
     for (const process of this.activeDownloads.values()) {
@@ -97,7 +103,6 @@ class Downloader {
     }
     this.activeDownloads.clear();
   }
-
   startDownload(job) {
     const { videoInfo, quality } = job;
     const args = [
@@ -160,7 +165,6 @@ class Downloader {
       this.processQueue();
     });
   }
-
   async postProcess(videoInfo, job) {
     try {
       const infoJsonPath = path.join(videoPath, `${videoInfo.id}.info.json`);
@@ -169,21 +173,18 @@ class Downloader {
       }
       const fullInfo = JSON.parse(fs.readFileSync(infoJsonPath, "utf-8"));
       fs.unlinkSync(infoJsonPath);
-
       let finalCoverPath = null;
       const tempCoverPath = path.join(videoPath, `${fullInfo.id}.jpg`);
       if (fs.existsSync(tempCoverPath)) {
         finalCoverPath = path.join(coverPath, `${fullInfo.id}.jpg`);
         fs.renameSync(tempCoverPath, finalCoverPath);
       }
-
       const tempSubPath = path.join(videoPath, `${fullInfo.id}.en.vtt`);
       const finalSubPath = path.join(subtitlePath, `${fullInfo.id}.vtt`);
       const subFileUri = fs.existsSync(tempSubPath)
         ? (fs.renameSync(tempSubPath, finalSubPath),
           `file://${finalSubPath}`.replace(/\\/g, "/"))
         : null;
-
       const videoData = {
         id: fullInfo.id,
         title: fullInfo.title,
@@ -233,9 +234,11 @@ function createWindow() {
       nodeIntegration: false,
     },
     frame: false,
-    icon: path.join(__dirname, "..", "..", "assets", "icon.ico"),
+    icon: path.join(assetsPath, "icon.ico"),
   });
-  win.loadFile("src/index.html");
+
+  win.loadFile(path.join(__dirname, "..", "index.html"));
+
   win.on("maximize", () => win.webContents.send("window-maximized", true));
   win.on("unmaximize", () => win.webContents.send("window-maximized", false));
   win.on("closed", () => (win = null));
@@ -244,8 +247,9 @@ function createWindow() {
     win.webContents.openDevTools({ mode: "detach" });
   }
 }
+
 function createTray() {
-  tray = new Tray(path.join(__dirname, "..", "..", "assets", "icon.ico"));
+  tray = new Tray(path.join(assetsPath, "icon.ico"));
   tray.setToolTip("ViveStream");
   tray.setContextMenu(
     Menu.buildFromTemplate([
@@ -269,9 +273,26 @@ app.on("before-quit", async () => {
 
 app
   .whenReady()
-  .then(() => db.initialize(app))
-  .then(createWindow)
-  .then(createTray);
+  .then(() => {
+    try {
+      db.initialize(app).then(createWindow).then(createTray);
+    } catch (error) {
+      console.error("Failed during app startup:", error);
+      dialog.showErrorBox(
+        "Fatal Error",
+        `A critical error occurred during startup: ${error.message}`
+      );
+      app.quit();
+    }
+  })
+  .catch((err) => {
+    console.error("Failed in app.whenReady promise chain:", err);
+    dialog.showErrorBox(
+      "Fatal Error",
+      `A critical error occurred in the promise chain: ${err.message}`
+    );
+    app.quit();
+  });
 
 app.on("window-all-closed", () => process.platform !== "darwin" && app.quit());
 app.on(
@@ -373,8 +394,6 @@ ipcMain.on("download-video", (e, o) => {
 
 ipcMain.on("cancel-download", (e, id) => downloader.cancelDownload(id));
 ipcMain.on("retry-download", (e, job) => downloader.retryDownload(job));
-
-// Playlist IPC Handlers
 ipcMain.handle("playlist:create", (e, name) => db.createPlaylist(name));
 ipcMain.handle("playlist:get-all", () => db.getAllPlaylistsWithStats());
 ipcMain.handle("playlist:get-details", (e, id) => db.getPlaylistDetails(id));
