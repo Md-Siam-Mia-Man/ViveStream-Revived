@@ -13,7 +13,7 @@
 #endif
 
 #ifndef SourceAppPath
-#define SourceAppPath "release\vivestream-win32-ia32"
+#define SourceAppPath "release\vivestream-win32-x64"
 #endif
 
 #ifndef AppIcon

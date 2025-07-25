@@ -7,12 +7,14 @@
   "license": "MIT",
   "scripts": {
     "start": "electron .",
-    "build": "node build-installer.js"
+    "rebuild": "electron-rebuild -f -w sqlite3",
+    "build": "npm run rebuild && node build-installer.js"
   },
   "keywords": [],
   "devDependencies": {
     "@electron/packager": "^18.3.6",
-    "electron": "^37.2.4",
+    "electron": "^28.2.3",
+    "electron-rebuild": "^3.2.9",
     "innosetup-compiler": "^6.3.1"
   },
   "dependencies": {

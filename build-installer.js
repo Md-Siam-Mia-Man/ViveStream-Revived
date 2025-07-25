@@ -10,7 +10,7 @@ const appAuthor = packageJson.author;
 const appExeName = `${appName}.exe`;
 const iconPath = path.join(__dirname, "assets", "icon.ico");
 const outputDir = path.join(__dirname, "release");
-const packagedAppDirName = `${appName}-win32-ia32`;
+const packagedAppDirName = `${appName}-win32-x64`;
 const packagedAppPath = path.join(outputDir, packagedAppDirName);
 const innoSetupOutput = path.join(__dirname, "InnoSetupOutput");
 
@@ -32,7 +32,7 @@ async function build() {
       out: outputDir,
       name: appName,
       platform: "win32",
-      arch: "ia32",
+      arch: "x64",
       overwrite: true,
       asar: true,
       icon: iconPath,
