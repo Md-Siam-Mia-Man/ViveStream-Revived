@@ -128,7 +128,6 @@
      position: absolute;
      left: 0;
      right: 0;
-     bottom: calc(100% + 5px);
      background-color: var(--yt-dark-grey);
      border: 1px solid var(--yt-border);
      border-radius: 6px;
