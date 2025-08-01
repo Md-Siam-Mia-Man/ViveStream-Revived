@@ -1,14 +1,26 @@
-// playlists.js
+// src/js/playlists.js
 let currentPlaylistId = null;
 let videoIdToAddToPlaylist = null;
 let sortableInstance = null;
+// --- NEW: Array to hold all playlists for dynamic search ---
+let allPlaylists = [];
 
-async function renderPlaylistsPage() {
+/**
+ * Renders the main playlists page, fetching data if necessary.
+ * @param {Array} [playlistsToRender] - Optional array for rendering filtered search results.
+ */
+async function renderPlaylistsPage(playlistsToRender) {
   const playlistsPage = document.getElementById("playlists-page");
   playlistsPage.innerHTML = ""; // Clear previous content
-  const playlists = await window.electronAPI.playlistGetAll();
 
-  if (playlists.length === 0) {
+  // If no specific list is provided for rendering, fetch the full list.
+  if (!playlistsToRender) {
+    allPlaylists = await window.electronAPI.playlistGetAll();
+    playlistsToRender = allPlaylists;
+  }
+
+  // Handle case where no playlists exist at all.
+  if (allPlaylists.length === 0) {
     playlistsPage.innerHTML = `
             <div class="page-header">
                 <h1 class="page-header-title">Playlists</h1>
@@ -25,6 +37,7 @@ async function renderPlaylistsPage() {
             </div>
         `;
   } else {
+    // Render the page with the (potentially filtered) list of playlists.
     playlistsPage.innerHTML = `
             <div class="page-header">
                 <h1 class="page-header-title">Playlists</h1>
@@ -36,7 +49,11 @@ async function renderPlaylistsPage() {
             </div>
             <div class="page-content">
                 <div class="playlist-grid" id="playlist-grid-main">
-                    ${playlists.map(renderPlaylistCard).join("")}
+                    ${
+                      playlistsToRender.length > 0
+                        ? playlistsToRender.map(renderPlaylistCard).join("")
+                        : '<p class="empty-message">No playlists match your search.</p>'
+                    }
                 </div>
             </div>
         `;
@@ -237,7 +254,9 @@ document
         showNotification(`Playlist "${name}" created.`, "success");
         inputField.value = "";
 
+        // Re-open the modal to refresh the list with the new playlist
         await openAddToPlaylistModal(videoIdToAddToPlaylist);
+        // Find the newly created playlist's checkbox and check it
         const newCheckbox = document.querySelector(
           `#add-to-playlist-modal input[data-id="${result.id}"]`
         );
