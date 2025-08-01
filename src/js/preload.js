@@ -1,7 +1,8 @@
-// preload.js
+// src/js/preload.js
 const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("electronAPI", {
+  // Downloader API
   downloadVideo: (options) => ipcRenderer.send("download-video", options),
   cancelDownload: (videoId) => ipcRenderer.send("cancel-download", videoId),
   retryDownload: (job) => ipcRenderer.send("retry-download", job),
@@ -15,12 +16,15 @@ contextBridge.exposeInMainWorld("electronAPI", {
   onDownloadInfoError: (cb) =>
     ipcRenderer.on("download-info-error", (e, v) => cb(v)),
 
+  // Library API
   getLibrary: () => ipcRenderer.invoke("get-library"),
   deleteVideo: (id) => ipcRenderer.invoke("delete-video", id),
   toggleFavorite: (id) => ipcRenderer.invoke("toggle-favorite", id),
-  openPath: (path) => ipcRenderer.send("open-path", path),
+
+  // External Links
   openExternal: (url) => ipcRenderer.send("open-external", url),
 
+  // Settings & App Info API
   getSettings: () => ipcRenderer.invoke("get-settings"),
   getAppVersion: () => ipcRenderer.invoke("get-app-version"),
   saveSettings: (s) => ipcRenderer.send("save-settings", s),
@@ -28,6 +32,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   clearAllMedia: () => ipcRenderer.invoke("clear-all-media"),
   onClearLocalStorage: (cb) => ipcRenderer.on("clear-local-storage", cb),
 
+  // Window Controls API
   minimizeWindow: () => ipcRenderer.send("minimize-window"),
   maximizeWindow: () => ipcRenderer.send("maximize-window"),
   closeWindow: () => ipcRenderer.send("close-window"),
@@ -50,4 +55,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.invoke("playlist:update-order", playlistId, videoIds),
   playlistGetForVideo: (videoId) =>
     ipcRenderer.invoke("playlist:get-for-video", videoId),
+
+  // --- NEW Artist API ---
+  artistGetAll: () => ipcRenderer.invoke("artist:get-all"),
+  artistGetDetails: (id) => ipcRenderer.invoke("artist:get-details", id),
 });
