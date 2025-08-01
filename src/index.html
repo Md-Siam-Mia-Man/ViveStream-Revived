@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="./css/settings.css">
     <link rel="stylesheet" href="./css/notifications.css">
     <link rel="stylesheet" href="./css/playlists.css">
+    <link rel="stylesheet" href="./css/artists.css">
 </head>
 
 <body>
@@ -60,6 +61,10 @@
                 <li class="nav-item active" data-page="home"><i class="fa-solid fa-house"></i><span>Home</span></li>
                 <li class="nav-item" data-page="favorites"><i class="fa-solid fa-heart"></i><span>Favorites</span></li>
                 <li class="nav-item" data-page="playlists"><i class="fa-solid fa-layer-group"></i><span>Playlists</span>
+                </li>
+                <!-- New Artists nav item -->
+                <li class="nav-item" data-page="artists"><i
+                        class="fa-solid fa-microphone-lines"></i><span>Artists</span>
                 </li>
                 <li class="nav-item" data-page="downloads"><i class="fa-solid fa-download"></i><span>Downloads</span>
                 </li>
@@ -204,6 +209,9 @@
             </div>
             <div id="playlists-page" class="page hidden"></div>
             <div id="playlist-detail-page" class="page hidden"></div>
+            <!-- New Artist Page containers -->
+            <div id="artists-page" class="page hidden"></div>
+            <div id="artist-detail-page" class="page hidden"></div>
             <div id="favorites-page" class="page hidden">
                 <div class="placeholder-page">
                     <i class="fa-solid fa-heart-crack placeholder-icon"></i>
@@ -356,6 +364,7 @@
     <script src="./js/miniplayer.js"></script>
     <script src="./js/settings.js"></script>
     <script src="./js/playlists.js"></script>
+    <script src="./js/artists.js"></script>
 </body>
 
 </html>
