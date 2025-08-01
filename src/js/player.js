@@ -1,4 +1,4 @@
-// player.js
+// src/js/player.js
 let playbackQueue = [];
 
 function playLibraryItem(index, sourceLibrary = currentLibrary, options = {}) {
@@ -53,7 +53,8 @@ function updateVideoDetails(item) {
   }
 
   videoInfoTitle.textContent = item.title;
-  videoInfoUploader.textContent = item.uploader;
+  // --- UPDATED: Prefer 'creator' for artist name, fallback to 'uploader' ---
+  videoInfoUploader.textContent = item.creator || item.uploader;
 
   if (item.coverPath) {
     channelThumb.src = decodeURIComponent(item.coverPath);
@@ -86,13 +87,15 @@ function renderUpNextList() {
     const li = document.createElement("li");
     li.className = "up-next-item";
     li.dataset.id = video.id;
+    // --- UPDATED: Use 'creator' for artist name in up next list ---
+    const uploaderText = video.creator || video.uploader || "Unknown";
     li.innerHTML = `<img src="${
       video.coverPath
         ? decodeURIComponent(video.coverPath)
         : "../assets/logo.png"
     }" class="thumbnail" alt="thumbnail" onerror="this.onerror=null;this.src='../assets/logo.png';"><div class="item-info"><p class="item-title">${
       video.title
-    }</p><p class="item-uploader">${video.uploader || "Unknown"}</p></div>`;
+    }</p><p class="item-uploader">${uploaderText}</p></div>`;
     upNextList.appendChild(li);
   });
 }
