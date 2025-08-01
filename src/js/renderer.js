@@ -1,4 +1,4 @@
-// renderer.js
+// src/js/renderer.js
 const sidebar = document.querySelector(".sidebar");
 const sidebarToggle = document.getElementById("sidebar-toggle");
 const logoHomeButton = document.getElementById("logo-home-button");
@@ -79,10 +79,16 @@ const playlistContextMenu = document.getElementById(
 let currentLibrary = [];
 let currentlyPlayingIndex = -1;
 
+/**
+ * Shows a specific page, handles miniplayer logic, and updates UI elements like search placeholder.
+ * @param {string} pageId - The ID of the page to show (e.g., 'home', 'artists', 'artist-detail-page').
+ * @param {boolean} [isSubPage=false] - True if the page is a detail view, not a main sidebar item.
+ */
 function showPage(pageId, isSubPage = false) {
   const isPlayerPageVisible = !playerPage.classList.contains("hidden");
   const targetPageId = isSubPage ? pageId : `${pageId}-page`;
 
+  // Activate miniplayer if navigating away from the main player while a video is playing
   const shouldActivateMiniplayer =
     isPlayerPageVisible &&
     targetPageId !== "player-page" &&
@@ -93,20 +99,49 @@ function showPage(pageId, isSubPage = false) {
     activateMiniplayer();
   }
 
+  // Show the target page and hide all others
   pages.forEach((page) =>
     page.classList.toggle("hidden", page.id !== targetPageId)
   );
 
+  // Update search bar placeholder and nav item highlight
+  let placeholderText = "Search...";
   if (!isSubPage) {
     document.querySelectorAll(".nav-item").forEach((item) => {
       item.classList.toggle("active", item.dataset.page === pageId);
     });
+    // Set placeholder based on the main page ID
+    switch (pageId) {
+      case "home":
+      case "favorites":
+        placeholderText = "Search videos...";
+        break;
+      case "playlists":
+        placeholderText = "Search playlists...";
+        break;
+      case "artists":
+        placeholderText = "Search artists...";
+        break;
+      case "downloads":
+      case "settings":
+        placeholderText = "Search is disabled here";
+        break;
+    }
+  }
+  homeSearchInput.placeholder = placeholderText;
+  // If the search bar had text, clear it when changing pages
+  if (homeSearchInput.value) {
+    homeSearchInput.value = "";
+    // Trigger an input event to reset the view
+    homeSearchInput.dispatchEvent(new Event("input", { bubbles: true }));
   }
 
+  // Deactivate miniplayer if navigating to the main player page
   if (targetPageId === "player-page") {
     deactivateMiniplayer();
   }
 
+  // Pause video if navigating away from the player without activating miniplayer
   if (
     isPlayerPageVisible &&
     !shouldActivateMiniplayer &&
@@ -118,21 +153,34 @@ function showPage(pageId, isSubPage = false) {
   }
 }
 
+/**
+ * Handles clicks on the sidebar navigation items.
+ * @param {Event} e - The click event.
+ */
 function handleNav(e) {
   const navItem = e.target.closest(".nav-item");
   if (navItem) {
     const pageId = navItem.dataset.page;
-    showPage(pageId);
-    if (pageId === "home") {
-      renderHomePageGrid();
-    } else if (pageId === "favorites") {
-      renderFavoritesPage();
-    } else if (pageId === "playlists") {
-      renderPlaylistsPage();
+    showPage(pageId); // Centralized page switching
+    // Call the appropriate render function for the selected page
+    switch (pageId) {
+      case "home":
+        renderHomePageGrid();
+        break;
+      case "favorites":
+        renderFavoritesPage();
+        break;
+      case "playlists":
+        renderPlaylistsPage();
+        break;
+      case "artists":
+        renderArtistsPage();
+        break;
     }
   }
 }
 
+// --- App Initialization ---
 document.addEventListener("DOMContentLoaded", () => {
   loadLibrary().then(() => {
     renderHomePageGrid();
@@ -169,14 +217,17 @@ function initializeWindowControls() {
 }
 
 function initializeContextMenu() {
+  // Hide context menus when clicking anywhere else
   document.addEventListener("click", () => {
     videoContextMenu.classList.remove("visible");
     playlistContextMenu.classList.remove("visible");
   });
 
+  // Prevent context menus from closing when clicked on
   videoContextMenu.addEventListener("click", (e) => e.stopPropagation());
   playlistContextMenu.addEventListener("click", (e) => e.stopPropagation());
 
+  // Handle "Delete" action
   contextDeleteBtn.addEventListener("click", async () => {
     const videoId = videoContextMenu.dataset.videoId;
     if (videoId) {
@@ -186,9 +237,10 @@ function initializeContextMenu() {
         async () => {
           const result = await window.electronAPI.deleteVideo(videoId);
           if (result.success) {
+            // If the deleted video was playing, stop playback
             if (
               currentlyPlayingIndex > -1 &&
-              currentLibrary[currentlyPlayingIndex]?.id === videoId
+              playbackQueue[currentlyPlayingIndex]?.id === videoId
             ) {
               closeMiniplayer();
               videoPlayer.src = "";
@@ -197,15 +249,7 @@ function initializeContextMenu() {
               renderUpNextList();
             }
             showNotification("Video deleted successfully.", "success");
-            await loadLibrary();
-            const activePage =
-              document.querySelector(".nav-item.active")?.dataset.page ||
-              "home";
-            if (activePage === "playlists") {
-              await renderPlaylistDetailPage(currentPlaylistId);
-            } else {
-              showPage(activePage);
-            }
+            await loadLibrary(); // Reloads all data and re-renders the current page
           } else {
             showNotification(`Error: ${result.error}`, "error");
           }
@@ -215,6 +259,7 @@ function initializeContextMenu() {
     videoContextMenu.classList.remove("visible");
   });
 
+  // Handle "Remove from Playlist" action
   contextRemoveFromPlaylistBtn.addEventListener("click", async () => {
     const videoId = videoContextMenu.dataset.videoId;
     const playlistId = videoContextMenu.dataset.playlistId;
