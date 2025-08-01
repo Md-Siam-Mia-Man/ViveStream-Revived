@@ -1,4 +1,4 @@
-// main.js
+// src/js/main.js
 const {
   app,
   BrowserWindow,
@@ -14,21 +14,16 @@ const fse = require("fs-extra");
 const { spawn } = require("child_process");
 const db = require("./database");
 
+// --- Constants and Paths ---
 const isDev = !app.isPackaged;
-let tray = null;
-let win = null;
-
 const assetsPath = isDev
   ? path.join(__dirname, "..", "..", "assets")
   : path.join(process.resourcesPath, "assets");
-
 const resourcesPath = isDev
   ? path.join(__dirname, "..", "..", "vendor")
   : path.join(process.resourcesPath, "vendor");
-
 const ytDlpPath = path.join(resourcesPath, "yt-dlp.exe");
 const ffmpegPath = path.join(resourcesPath, "ffmpeg.exe");
-
 const userHomePath = app.getPath("home");
 const viveStreamPath = path.join(userHomePath, "ViveStream");
 const videoPath = path.join(viveStreamPath, "videos");
@@ -37,9 +32,15 @@ const subtitlePath = path.join(viveStreamPath, "subtitles");
 const settingsPath = path.join(app.getPath("userData"), "settings.json");
 const mediaPaths = [videoPath, coverPath, subtitlePath];
 
+let tray = null;
+let win = null;
+
+// Ensure media directories exist
 mediaPaths.forEach((dir) => {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 });
+
+// --- Settings Management ---
 const defaultSettings = { concurrentDownloads: 3 };
 function getSettings() {
   if (fs.existsSync(settingsPath)) {
@@ -49,6 +50,7 @@ function getSettings() {
         ...JSON.parse(fs.readFileSync(settingsPath, "utf-8")),
       };
     } catch (e) {
+      console.error("Error reading settings.json, using defaults.", e);
       return defaultSettings;
     }
   }
@@ -64,7 +66,10 @@ function saveSettings(settings) {
     JSON.stringify({ ...getSettings(), ...settings }, null, 2)
   );
 }
+// Initialize settings file if it doesn't exist
 if (!fs.existsSync(settingsPath)) saveSettings(defaultSettings);
+
+// --- Downloader Class ---
 class Downloader {
   constructor() {
     this.queue = [];
@@ -87,8 +92,9 @@ class Downloader {
     while (
       this.activeDownloads.size < this.settings.concurrentDownloads &&
       this.queue.length > 0
-    )
+    ) {
       this.startDownload(this.queue.shift());
+    }
   }
   cancelDownload(videoId) {
     const p = this.activeDownloads.get(videoId);
@@ -148,7 +154,7 @@ class Downloader {
         });
     });
     proc.stderr.on("data", (data) =>
-      console.error(`E: ${videoInfo.id}: ${data}`)
+      console.error(`Download Error (${videoInfo.id}): ${data}`)
     );
     proc.on("close", async (code) => {
       this.activeDownloads.delete(videoInfo.id);
@@ -173,31 +179,55 @@ class Downloader {
       }
       const fullInfo = JSON.parse(fs.readFileSync(infoJsonPath, "utf-8"));
       fs.unlinkSync(infoJsonPath);
+
       let finalCoverPath = null;
       const tempCoverPath = path.join(videoPath, `${fullInfo.id}.jpg`);
       if (fs.existsSync(tempCoverPath)) {
         finalCoverPath = path.join(coverPath, `${fullInfo.id}.jpg`);
         fs.renameSync(tempCoverPath, finalCoverPath);
       }
+      const finalCoverUri = finalCoverPath
+        ? `file://${finalCoverPath.replace(/\\/g, "/")}`
+        : null;
+
       const tempSubPath = path.join(videoPath, `${fullInfo.id}.en.vtt`);
       const finalSubPath = path.join(subtitlePath, `${fullInfo.id}.vtt`);
       const subFileUri = fs.existsSync(tempSubPath)
         ? (fs.renameSync(tempSubPath, finalSubPath),
-          `file://${finalSubPath}`.replace(/\\/g, "/"))
+          `file://${finalSubPath.replace(/\\/g, "/")}`)
         : null;
+
+      // --- CORRECTED LOGIC: Use 'artist', 'creator', or 'uploader' as the source for the artist name ---
+      const artistString =
+        fullInfo.artist || fullInfo.creator || fullInfo.uploader;
+      const artistNames = artistString
+        ? artistString.split(/[,;&]/).map((name) => name.trim())
+        : [];
+
+      // Find/create artists and link them to the video
+      if (artistNames.length > 0) {
+        for (const name of artistNames) {
+          if (!name) continue;
+          // Use the video cover as the artist thumbnail if it's the first time
+          const artist = await db.findOrCreateArtist(name, finalCoverUri);
+          if (artist) {
+            await db.linkVideoToArtist(fullInfo.id, artist.id);
+          }
+        }
+      }
+
       const videoData = {
         id: fullInfo.id,
         title: fullInfo.title,
         uploader: fullInfo.uploader,
+        creator: artistString || null, // Store the primary artist/creator string
         duration: fullInfo.duration,
         upload_date: fullInfo.upload_date,
         originalUrl: fullInfo.webpage_url,
         filePath: `file://${path
           .join(videoPath, `${fullInfo.id}.mp4`)
           .replace(/\\/g, "/")}`,
-        coverPath: finalCoverPath
-          ? `file://${finalCoverPath.replace(/\\/g, "/")}`
-          : null,
+        coverPath: finalCoverUri,
         subtitlePath: subFileUri,
         type: "video",
         downloadedAt: new Date().toISOString(),
@@ -221,6 +251,7 @@ class Downloader {
 }
 const downloader = new Downloader();
 
+// --- Window Management ---
 function createWindow() {
   win = new BrowserWindow({
     width: 1280,
@@ -266,6 +297,7 @@ function createTray() {
   tray.on("click", () => win.show());
 }
 
+// --- App Lifecycle ---
 app.on("before-quit", async () => {
   downloader.shutdown();
   await db.shutdown();
@@ -300,6 +332,9 @@ app.on(
   () => BrowserWindow.getAllWindows().length === 0 && createWindow()
 );
 
+// --- IPC Handlers ---
+
+// Window controls
 ipcMain.on("minimize-window", () => win.minimize());
 ipcMain.on("maximize-window", () =>
   win.isMaximized() ? win.unmaximize() : win.maximize()
@@ -308,6 +343,7 @@ ipcMain.on("close-window", () => win.close());
 ipcMain.on("tray-window", () => win.hide());
 ipcMain.on("open-external", (e, url) => shell.openExternal(url));
 
+// Settings
 ipcMain.handle("get-settings", getSettings);
 ipcMain.handle("get-app-version", () => app.getVersion());
 ipcMain.on("save-settings", (e, s) => {
@@ -325,19 +361,18 @@ ipcMain.handle("reset-app", () => {
   return getSettings();
 });
 
+// Library management
 ipcMain.handle("get-library", () => db.getLibrary());
 ipcMain.handle("toggle-favorite", (e, id) => db.toggleFavorite(id));
-
 ipcMain.handle("clear-all-media", async () => {
   try {
     for (const dir of mediaPaths) await fse.emptyDir(dir);
-    await db.clearAllMedia();
-    return { success: true };
+    const result = await db.clearAllMedia();
+    return result;
   } catch (e) {
     return { success: false, error: e.message };
   }
 });
-
 ipcMain.handle("delete-video", async (e, id) => {
   const video = await db.getVideoById(id);
   if (!video) return { success: false, message: "Video not found in DB." };
@@ -358,6 +393,7 @@ ipcMain.handle("delete-video", async (e, id) => {
   return await db.deleteVideo(id);
 });
 
+// Downloader
 ipcMain.on("download-video", (e, o) => {
   const proc = spawn(ytDlpPath, [
     o.url,
@@ -371,29 +407,33 @@ ipcMain.on("download-video", (e, o) => {
   proc.stderr.on("data", (d) => (errorOutput += d));
   proc.on("close", (c) => {
     if (c === 0 && j.trim()) {
-      const infos = j
-        .trim()
-        .split("\n")
-        .map((l) => JSON.parse(l));
-      if (win) win.webContents.send("download-queue-start", infos);
-      downloader.addToQueue(
-        infos.map((i) => ({ videoInfo: i, quality: o.quality }))
-      );
+      try {
+        const infos = j
+          .trim()
+          .split("\n")
+          .map((l) => JSON.parse(l));
+        if (win) win.webContents.send("download-queue-start", infos);
+        downloader.addToQueue(
+          infos.map((i) => ({ videoInfo: i, quality: o.quality }))
+        );
+      } catch (parseError) {
+        console.error(
+          `Failed to parse JSON for ${o.url}. Stderr: ${errorOutput}, Output: ${j}`
+        );
+        if (win) win.webContents.send("download-info-error", { url: o.url });
+      }
     } else {
       console.error(
         `Failed to get video info for ${o.url}. Stderr: ${errorOutput}`
       );
-      if (win)
-        win.webContents.send("download-info-error", {
-          url: o.url,
-          error: errorOutput,
-        });
+      if (win) win.webContents.send("download-info-error", { url: o.url });
     }
   });
 });
-
 ipcMain.on("cancel-download", (e, id) => downloader.cancelDownload(id));
 ipcMain.on("retry-download", (e, job) => downloader.retryDownload(job));
+
+// Playlists
 ipcMain.handle("playlist:create", (e, name) => db.createPlaylist(name));
 ipcMain.handle("playlist:get-all", () => db.getAllPlaylistsWithStats());
 ipcMain.handle("playlist:get-details", (e, id) => db.getPlaylistDetails(id));
@@ -413,3 +453,7 @@ ipcMain.handle("playlist:update-order", (e, playlistId, videoIds) =>
 ipcMain.handle("playlist:get-for-video", (e, videoId) =>
   db.getPlaylistsForVideo(videoId)
 );
+
+// Artist IPC Handlers
+ipcMain.handle("artist:get-all", () => db.getAllArtistsWithStats());
+ipcMain.handle("artist:get-details", (e, id) => db.getArtistDetails(id));
