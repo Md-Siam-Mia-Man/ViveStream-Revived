@@ -1,4 +1,4 @@
-// ui.js
+// src/js/ui.js
 sidebarToggle.addEventListener("click", () => {
   sidebar.classList.toggle("collapsed");
   localStorage.setItem(
@@ -10,6 +10,7 @@ sidebarToggle.addEventListener("click", () => {
 logoHomeButton.addEventListener("click", (e) => {
   e.preventDefault();
   showPage("home");
+  renderHomePageGrid();
 });
 
 function renderGridItem(item, isPlaylistItem = false) {
@@ -30,7 +31,9 @@ function renderGridItem(item, isPlaylistItem = false) {
             <div class="grid-item-details">
                 <div class="grid-item-info">
                     <p class="grid-item-title">${item.title}</p>
-                    <p class="grid-item-meta">${item.uploader || "Unknown"}</p>
+                    <p class="grid-item-meta">${
+                      item.creator || item.uploader || "Unknown"
+                    }</p>
                 </div>
                 <div class="grid-item-actions">
                     <button class="grid-item-action-btn favorite-btn ${
@@ -71,7 +74,7 @@ function ensureGridExists(pageElement, gridId) {
 
 function renderHomePageGrid(library = currentLibrary) {
   const homePage = document.getElementById("home-page");
-  if (library.length === 0) {
+  if (currentLibrary.length === 0) {
     homePage.innerHTML = `<div class="placeholder-page"><i class="fa-solid fa-house-chimney-crack placeholder-icon"></i><h2 class="placeholder-title">Your Library is Empty</h2><p class="placeholder-text">Go to the <span class="link-style" id="go-to-downloads-link">Downloads</span> page to get started.</p></div>`;
     document
       .getElementById("go-to-downloads-link")
@@ -79,12 +82,19 @@ function renderHomePageGrid(library = currentLibrary) {
     return;
   }
   const grid = ensureGridExists(homePage, "video-grid");
-  renderGrid(grid, library);
+  if (library.length === 0 && homeSearchInput.value) {
+    grid.innerHTML =
+      '<p class="empty-message">No videos match your search.</p>';
+  } else {
+    renderGrid(grid, library);
+  }
 }
 
-function renderFavoritesPage() {
+function renderFavoritesPage(library) {
   const favoritesPage = document.getElementById("favorites-page");
   const favoritesLibrary = currentLibrary.filter((video) => video.isFavorite);
+  const libraryToRender = library || favoritesLibrary;
+
   const placeholder = favoritesPage.querySelector(".placeholder-page");
   const grid = ensureGridExists(favoritesPage, "video-grid-favorites");
 
@@ -93,15 +103,12 @@ function renderFavoritesPage() {
     if (grid) grid.innerHTML = "";
   } else {
     if (placeholder) placeholder.style.display = "none";
-    const searchTerm = homeSearchInput.value.toLowerCase();
-    const filtered = searchTerm
-      ? favoritesLibrary.filter(
-          (v) =>
-            v.title.toLowerCase().includes(searchTerm) ||
-            (v.uploader && v.uploader.toLowerCase().includes(searchTerm))
-        )
-      : favoritesLibrary;
-    renderGrid(grid, filtered);
+    if (libraryToRender.length === 0 && homeSearchInput.value) {
+      grid.innerHTML =
+        '<p class="empty-message">No favorite videos match your search.</p>';
+    } else {
+      renderGrid(grid, libraryToRender);
+    }
   }
 }
 
@@ -155,6 +162,9 @@ document
 document
   .getElementById("playlist-detail-page")
   .addEventListener("click", handleGridClick);
+document
+  .getElementById("artist-detail-page")
+  .addEventListener("click", handleGridClick);
 
 async function toggleFavoriteStatus(videoId) {
   const result = await window.electronAPI.toggleFavorite(videoId);
@@ -198,25 +208,50 @@ function updateFavoriteStatusInUI(videoId, isFavorite) {
   });
 }
 
+// --- Dynamic Search Event Listener ---
 homeSearchInput.addEventListener("input", (e) => {
-  const searchTerm = e.target.value.toLowerCase();
-  const activePage = document.querySelector(".nav-item.active")?.dataset.page;
-  const libraryToFilter =
-    activePage === "favorites"
-      ? currentLibrary.filter((v) => v.isFavorite)
-      : currentLibrary;
+  const searchTerm = e.target.value.toLowerCase().trim();
+  const activeNavItem = document.querySelector(".nav-item.active");
+  if (!activeNavItem) return;
 
-  const filtered = libraryToFilter.filter(
-    (v) =>
-      v.title.toLowerCase().includes(searchTerm) ||
-      (v.uploader && v.uploader.toLowerCase().includes(searchTerm))
-  );
+  const activePage = activeNavItem.dataset.page;
 
-  if (activePage === "home") {
-    renderHomePageGrid(filtered);
-  } else if (activePage === "favorites") {
-    const grid = document.getElementById("video-grid-favorites");
-    renderGrid(grid, filtered);
+  switch (activePage) {
+    case "home": {
+      const filtered = currentLibrary.filter(
+        (v) =>
+          v.title.toLowerCase().includes(searchTerm) ||
+          (v.creator && v.creator.toLowerCase().includes(searchTerm)) ||
+          (v.uploader && v.uploader.toLowerCase().includes(searchTerm))
+      );
+      renderHomePageGrid(filtered);
+      break;
+    }
+    case "favorites": {
+      const favoritesLibrary = currentLibrary.filter((v) => v.isFavorite);
+      const filtered = favoritesLibrary.filter(
+        (v) =>
+          v.title.toLowerCase().includes(searchTerm) ||
+          (v.creator && v.creator.toLowerCase().includes(searchTerm)) ||
+          (v.uploader && v.uploader.toLowerCase().includes(searchTerm))
+      );
+      renderFavoritesPage(filtered);
+      break;
+    }
+    case "playlists": {
+      const filtered = allPlaylists.filter((p) =>
+        p.name.toLowerCase().includes(searchTerm)
+      );
+      renderPlaylistsPage(filtered);
+      break;
+    }
+    case "artists": {
+      const filtered = allArtists.filter((a) =>
+        a.name.toLowerCase().includes(searchTerm)
+      );
+      renderArtistsPage(filtered);
+      break;
+    }
   }
 });
 
@@ -225,6 +260,7 @@ async function loadLibrary() {
   const activePage =
     document.querySelector(".nav-item.active")?.dataset.page || "home";
 
+  // Re-render the currently active page to reflect any new data
   switch (activePage) {
     case "home":
       renderHomePageGrid();
@@ -235,9 +271,15 @@ async function loadLibrary() {
     case "playlists":
       renderPlaylistsPage();
       break;
+    case "artists":
+      renderArtistsPage();
+      break;
   }
 
-  if (currentlyPlayingIndex > -1) renderUpNextList();
+  // If a video is playing, refresh the 'up next' list
+  if (currentlyPlayingIndex > -1) {
+    renderUpNextList();
+  }
 }
 
 function loadSettings() {
