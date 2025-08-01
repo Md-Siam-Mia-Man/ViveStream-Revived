@@ -52,14 +52,15 @@ CloseApplications=yes
 RestartApplications=no
 UninstallLogMode=append
 
-; --- NEW: Set a clean window title without the version number ---
-SetupWindowTitle=ViveStream Setup
+; REMOVED: SetupWindowTitle=ViveStream Setup (Not compatible with older Inno Setup versions)
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
-; --- NEW: Override default setup text to remove the version number from the welcome screen ---
+; --- CORRECTED: Override default setup text to remove the version number from all titles and screens ---
 [Messages]
+english.SetupAppTitle=ViveStream Setup
+english.SetupHeader=ViveStream Setup
 english.WelcomeLabel2=This will install {#MyAppName} on your computer. To continue, click Next.
 
 [Tasks]
