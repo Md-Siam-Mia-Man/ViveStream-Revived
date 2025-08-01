@@ -7,9 +7,13 @@
 #define MyAppURL "https://github.com/Md-Siam-Mia-Code/ViveStream-Revived"
 #define MyAppExeName "vivestream.exe"
 
-; These are passed in by build-installer.js
+; --- IMPORTANT ---
+; The values for MyAppVersion, SourceAppPath, and AppIcon are passed in automatically
+; by the `build-installer.js` script from your project's package.json.
+; The values defined here are only fallbacks for manual compilation.
+
 #ifndef MyAppVersion
-#define MyAppVersion "2.0.0"
+#define MyAppVersion "0.0.0-dev"
 #endif
 
 #ifndef SourceAppPath
