@@ -1,11 +1,16 @@
-// database.js
+// src/js/database.js
 const path = require("path");
 const fs = require("fs");
 const knex = require("knex");
 
 let db;
 
+/**
+ * Initializes the database, creates tables if they don't exist, and runs migrations.
+ * @param {Electron.App} app - The Electron app instance.
+ */
 function initialize(app) {
+  // Define paths for the database and potential legacy data
   const dbPath = path.join(app.getPath("userData"), "ViveStream.db");
   const viveStreamPath = path.join(app.getPath("home"), "ViveStream");
   const oldLibraryPath = path.join(viveStreamPath, "library.json");
@@ -14,6 +19,7 @@ function initialize(app) {
     "library.json.migrated"
   );
 
+  // Configure the knex instance for SQLite
   db = knex({
     client: "sqlite3",
     connection: {
@@ -24,11 +30,13 @@ function initialize(app) {
 
   return (async () => {
     try {
+      // Create 'videos' table if it doesn't exist
       if (!(await db.schema.hasTable("videos"))) {
         await db.schema.createTable("videos", (table) => {
           table.string("id").primary();
           table.string("title").notNullable();
           table.string("uploader");
+          table.string("creator"); // Added field for artist/creator name from metadata
           table.integer("duration");
           table.string("upload_date");
           table.string("originalUrl");
@@ -40,6 +48,7 @@ function initialize(app) {
           table.boolean("isFavorite").defaultTo(false);
         });
 
+        // Migrate data from old library.json if it exists
         if (
           fs.existsSync(oldLibraryPath) &&
           !fs.existsSync(migratedLibraryPath)
@@ -59,6 +68,7 @@ function initialize(app) {
         }
       }
 
+      // Create 'playlists' table if it doesn't exist
       if (!(await db.schema.hasTable("playlists"))) {
         await db.schema.createTable("playlists", (table) => {
           table.increments("id").primary();
@@ -67,6 +77,7 @@ function initialize(app) {
         });
       }
 
+      // Create 'playlist_videos' linking table if it doesn't exist
       if (!(await db.schema.hasTable("playlist_videos"))) {
         await db.schema.createTable("playlist_videos", (table) => {
           table
@@ -84,11 +95,50 @@ function initialize(app) {
           table.primary(["playlistId", "videoId"]);
         });
       }
+
+      // --- NEW ARTIST TABLES ---
+
+      // Create 'artists' table if it doesn't exist
+      if (!(await db.schema.hasTable("artists"))) {
+        await db.schema.createTable("artists", (table) => {
+          table.increments("id").primary();
+          table.string("name").notNullable().unique();
+          table.string("thumbnailPath");
+          table.timestamp("createdAt").defaultTo(db.fn.now());
+        });
+      }
+
+      // Create 'video_artists' linking table if it doesn't exist
+      if (!(await db.schema.hasTable("video_artists"))) {
+        await db.schema.createTable("video_artists", (table) => {
+          table
+            .string("videoId")
+            .references("id")
+            .inTable("videos")
+            .onDelete("CASCADE");
+          table
+            .integer("artistId")
+            .unsigned()
+            .references("id")
+            .inTable("artists")
+            .onDelete("CASCADE");
+          table.primary(["videoId", "artistId"]);
+        });
+      }
+
+      // Add 'creator' column to 'videos' table if it doesn't exist (for older installations)
+      if (!(await db.schema.hasColumn("videos", "creator"))) {
+        await db.schema.alterTable("videos", (table) => {
+          table.string("creator");
+        });
+      }
     } catch (error) {
       console.error("Database initialization failed:", error);
     }
   })();
 }
+
+// --- Video Functions ---
 
 async function getLibrary() {
   try {
@@ -101,7 +151,9 @@ async function getLibrary() {
 
 async function addOrUpdateVideo(videoData) {
   try {
-    await db("videos").insert(videoData).onConflict("id").merge();
+    // Separate artist-related data
+    const { artist, ...videoInfo } = videoData;
+    await db("videos").insert(videoInfo).onConflict("id").merge();
   } catch (error) {
     console.error("Error saving video to DB:", error);
   }
@@ -118,7 +170,7 @@ async function getVideoById(id) {
 
 async function deleteVideo(id) {
   try {
-    await db("videos").where({ id }).del();
+    await db("videos").where({ id }).del(); // Related entries in video_artists will be deleted by CASCADE
     return { success: true };
   } catch (error) {
     console.error(`Error deleting video ${id} from DB:`, error);
@@ -143,13 +195,20 @@ async function toggleFavorite(id) {
 
 async function clearAllMedia() {
   try {
-    await db("videos").del();
+    // Clear all linking tables and artist table first
+    await db("video_artists").del();
+    await db("artists").del();
+    await db("playlist_videos").del();
+    await db("playlists").del();
+    await db("videos").del(); // Then clear the main videos table
     return { success: true };
   } catch (error) {
     console.error("Error clearing all media from DB:", error);
     return { success: false, error: error.message };
   }
 }
+
+// --- Playlist Functions ---
 
 async function createPlaylist(name) {
   try {
@@ -216,7 +275,7 @@ async function renamePlaylist(playlistId, newName) {
 
 async function deletePlaylist(playlistId) {
   try {
-    await db("playlists").where({ id: playlistId }).del();
+    await db("playlists").where({ id: playlistId }).del(); // Related entries in playlist_videos will be deleted by CASCADE
     return { success: true };
   } catch (error) {
     console.error(`Error deleting playlist ${playlistId}:`, error);
@@ -285,6 +344,80 @@ async function getPlaylistsForVideo(videoId) {
   }
 }
 
+// --- NEW Artist Functions ---
+
+async function findOrCreateArtist(name, thumbnailPath) {
+  try {
+    let artist = await db("artists").where({ name }).first();
+    if (artist) {
+      return artist;
+    }
+    const [id] = await db("artists").insert({ name, thumbnailPath });
+    return { id, name, thumbnailPath };
+  } catch (error) {
+    console.error(`Error finding or creating artist "${name}":`, error);
+    return null;
+  }
+}
+
+async function linkVideoToArtist(videoId, artistId) {
+  try {
+    await db("video_artists").insert({ videoId, artistId });
+    return { success: true };
+  } catch (error) {
+    // Gracefully handle if the link already exists
+    if (error.message.includes("UNIQUE constraint failed")) {
+      return { success: true, message: "Link already exists." };
+    }
+    console.error(
+      `Error linking video ${videoId} to artist ${artistId}:`,
+      error
+    );
+    return { success: false, error: error.message };
+  }
+}
+
+async function getAllArtistsWithStats() {
+  try {
+    const artists = await db("artists")
+      .leftJoin("video_artists", "artists.id", "video_artists.artistId")
+      .select(
+        "artists.id",
+        "artists.name",
+        "artists.thumbnailPath",
+        "artists.createdAt"
+      )
+      .count("video_artists.videoId as videoCount")
+      .groupBy("artists.id")
+      .orderBy("artists.name", "asc");
+
+    return artists;
+  } catch (error) {
+    console.error("Error getting all artists with stats:", error);
+    return [];
+  }
+}
+
+async function getArtistDetails(artistId) {
+  try {
+    const artist = await db("artists").where({ id: artistId }).first();
+    if (!artist) return null;
+
+    artist.videos = await db("video_artists")
+      .join("videos", "videos.id", "=", "video_artists.videoId")
+      .where("video_artists.artistId", artistId)
+      .select("videos.*")
+      .orderBy("videos.downloadedAt", "desc");
+
+    return artist;
+  } catch (error) {
+    console.error(`Error getting details for artist ${artistId}:`, error);
+    return null;
+  }
+}
+
+// --- System Functions ---
+
 async function shutdown() {
   if (db) {
     await db.destroy();
@@ -292,13 +425,17 @@ async function shutdown() {
 }
 
 module.exports = {
+  // System
   initialize,
+  shutdown,
+  // Videos
   getLibrary,
   addOrUpdateVideo,
   getVideoById,
   deleteVideo,
   toggleFavorite,
   clearAllMedia,
+  // Playlists
   createPlaylist,
   getAllPlaylistsWithStats,
   getPlaylistDetails,
@@ -308,5 +445,9 @@ module.exports = {
   removeVideoFromPlaylist,
   updateVideoOrderInPlaylist,
   getPlaylistsForVideo,
-  shutdown,
+  // Artists
+  findOrCreateArtist,
+  linkVideoToArtist,
+  getAllArtistsWithStats,
+  getArtistDetails,
 };
