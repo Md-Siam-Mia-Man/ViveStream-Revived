@@ -1,5 +1,13 @@
 // src/js/player.js
 let playbackQueue = [];
+const audioArtworkContainer = document.querySelector(
+  ".audio-artwork-container"
+);
+const audioArtworkImg = document.getElementById("audio-artwork-img");
+// NEW: Add selectors for description box elements
+const videoDescriptionBox = document.getElementById("video-description-box");
+const descriptionContent = document.getElementById("description-content");
+const showMoreDescBtn = document.getElementById("show-more-desc-btn");
 
 function playLibraryItem(index, sourceLibrary = currentLibrary, options = {}) {
   if (!sourceLibrary || index < 0 || index >= sourceLibrary.length) return;
@@ -8,28 +16,55 @@ function playLibraryItem(index, sourceLibrary = currentLibrary, options = {}) {
   const item = playbackQueue[index];
   currentlyPlayingIndex = index;
 
-  if (item.type === "video" || item.type === "audio") {
-    const videoSrc = decodeURIComponent(item.filePath);
-    videoPlayer.src = videoSrc;
-    const subtitlesEnabled =
-      localStorage.getItem("subtitlesEnabled") === "true";
-    if (item.subtitlePath) {
-      subtitleTrack.src = decodeURIComponent(item.subtitlePath);
-      subtitleTrack.track.mode = subtitlesEnabled ? "showing" : "hidden";
-    } else {
-      subtitleTrack.src = "";
-      subtitleTrack.track.mode = "disabled";
-    }
-    const playPromise = videoPlayer.play();
-    if (playPromise !== undefined) {
-      playPromise.catch((error) => {
-        if (error.name !== "AbortError") {
-          console.error("Playback error:", error);
-          showNotification("Error playing video", "error", error.message);
-        }
-      });
-    }
+  subtitleTrack.src = "";
+
+  if (item.type === "audio") {
+    playerSection.classList.add("audio-mode");
+    audioArtworkImg.src = item.coverPath
+      ? decodeURIComponent(item.coverPath)
+      : "../assets/logo.png";
+    theaterBtn.disabled = true;
+    fullscreenBtn.disabled = true;
+  } else {
+    playerSection.classList.remove("audio-mode");
+    audioArtworkImg.src = "";
+    theaterBtn.disabled = false;
+    fullscreenBtn.disabled = false;
   }
+
+  const videoSrc = decodeURIComponent(item.filePath);
+  videoPlayer.src = videoSrc;
+
+  videoPlayer.addEventListener(
+    "loadedmetadata",
+    () => {
+      const subtitlesEnabled =
+        localStorage.getItem("subtitlesEnabled") === "true";
+      if (item.hasEmbeddedSubs && videoPlayer.textTracks.length > 0) {
+        const track = videoPlayer.textTracks[0];
+        if (track) track.mode = subtitlesEnabled ? "showing" : "hidden";
+      } else if (item.subtitlePath) {
+        subtitleTrack.src = decodeURIComponent(item.subtitlePath);
+        subtitleTrack.track.mode = subtitlesEnabled ? "showing" : "hidden";
+      } else {
+        if (subtitleTrack.track) {
+          subtitleTrack.track.mode = "disabled";
+        }
+      }
+    },
+    { once: true }
+  );
+
+  const playPromise = videoPlayer.play();
+  if (playPromise !== undefined) {
+    playPromise.catch((error) => {
+      if (error.name !== "AbortError") {
+        console.error("Playback error:", error);
+        showNotification("Error playing media", "error", error.message);
+      }
+    });
+  }
+
   updateVideoDetails(item);
   renderUpNextList();
 
@@ -43,17 +78,19 @@ function playLibraryItem(index, sourceLibrary = currentLibrary, options = {}) {
 }
 
 function updateVideoDetails(item) {
+  // Clear details if no item is provided
   if (!item) {
-    videoInfoTitle.textContent = "No video selected";
+    videoInfoTitle.textContent = "No media selected";
     videoInfoUploader.textContent = "";
     videoInfoDate.textContent = "";
     channelThumb.src = "";
+    videoDescriptionBox.style.display = "none"; // Hide description box
+    descriptionContent.textContent = "";
     updateFavoriteStatusInUI(null, false);
     return;
   }
 
   videoInfoTitle.textContent = item.title;
-  // --- UPDATED: Prefer 'creator' for artist name, fallback to 'uploader' ---
   videoInfoUploader.textContent = item.creator || item.uploader;
 
   if (item.coverPath) {
@@ -71,7 +108,30 @@ function updateVideoDetails(item) {
       ).toLocaleDateString()}`
     : "";
   updateFavoriteStatusInUI(item.id, !!item.isFavorite);
+
+  // --- NEW: Handle description box visibility and content ---
+  if (item.description && item.description.trim()) {
+    videoDescriptionBox.style.display = "block";
+    descriptionContent.textContent = item.description;
+    // Check if the content is long enough to need a "Show more" button
+    const isOverflowing =
+      descriptionContent.scrollHeight > descriptionContent.clientHeight;
+    showMoreDescBtn.style.display = isOverflowing ? "block" : "none";
+    // Reset state to collapsed
+    videoDescriptionBox.classList.remove("expanded");
+    showMoreDescBtn.textContent = "Show more";
+  } else {
+    videoDescriptionBox.style.display = "none";
+    descriptionContent.textContent = "";
+  }
 }
+
+// --- NEW: Event listener for expanding/collapsing the description box ---
+videoDescriptionBox.addEventListener("click", () => {
+  videoDescriptionBox.classList.toggle("expanded");
+  const isExpanded = videoDescriptionBox.classList.contains("expanded");
+  showMoreDescBtn.textContent = isExpanded ? "Show less" : "Show more";
+});
 
 function renderUpNextList() {
   upNextList.innerHTML = "";
@@ -87,7 +147,6 @@ function renderUpNextList() {
     const li = document.createElement("li");
     li.className = "up-next-item";
     li.dataset.id = video.id;
-    // --- UPDATED: Use 'creator' for artist name in up next list ---
     const uploaderText = video.creator || video.uploader || "Unknown";
     li.innerHTML = `<img src="${
       video.coverPath
@@ -169,7 +228,13 @@ function updateVolumeUI(
 }
 
 playerSection.addEventListener("click", (e) => {
-  if (e.target === playerSection || e.target === videoPlayer) togglePlay();
+  if (
+    e.target === playerSection ||
+    e.target === videoPlayer ||
+    e.target === audioArtworkContainer ||
+    e.target === audioArtworkImg
+  )
+    togglePlay();
 });
 videoPlayer.addEventListener("play", () => {
   playerSection.classList.remove("paused");
@@ -259,8 +324,15 @@ let sleepTimerId = null;
 
 function buildSettingsMenu() {
   const hasSubtitles =
-    subtitleTrack.track.src && subtitleTrack.track.src.startsWith("file");
-  const isSubtitlesOn = hasSubtitles && subtitleTrack.track.mode === "showing";
+    videoPlayer.textTracks.length > 0 ||
+    (subtitleTrack.track.src && subtitleTrack.track.src.startsWith("file"));
+  let isSubtitlesOn = false;
+  if (hasSubtitles) {
+    isSubtitlesOn =
+      (videoPlayer.textTracks.length > 0 &&
+        videoPlayer.textTracks[0].mode === "showing") ||
+      subtitleTrack.track.mode === "showing";
+  }
 
   settingsMenu.innerHTML = `
         <div class="settings-item ${
@@ -297,9 +369,21 @@ function buildSettingsMenu() {
     subtitlesItem.addEventListener("click", (e) => {
       e.stopPropagation();
       if (hasSubtitles) {
-        const newMode =
-          subtitleTrack.track.mode === "showing" ? "hidden" : "showing";
-        subtitleTrack.track.mode = newMode;
+        const isCurrentlyOn =
+          (videoPlayer.textTracks.length > 0 &&
+            videoPlayer.textTracks[0].mode === "showing") ||
+          subtitleTrack.track.mode === "showing";
+        const newMode = isCurrentlyOn ? "hidden" : "showing";
+
+        if (videoPlayer.textTracks.length > 0) {
+          for (const track of videoPlayer.textTracks) {
+            track.mode = newMode;
+          }
+        }
+        if (subtitleTrack.track.src) {
+          subtitleTrack.track.mode = newMode;
+        }
+
         document.getElementById("subtitles-value").textContent =
           newMode === "showing" ? "On" : "Off";
         localStorage.setItem("subtitlesEnabled", newMode === "showing");
@@ -475,12 +559,18 @@ document.addEventListener("keydown", (e) => {
       videoPlayer.muted = !videoPlayer.muted;
       break;
     case "f":
-      if (miniplayer.classList.contains("hidden")) {
+      if (
+        miniplayer.classList.contains("hidden") &&
+        !playerSection.classList.contains("audio-mode")
+      ) {
         fullscreenBtn.click();
       }
       break;
     case "t":
-      if (miniplayer.classList.contains("hidden")) {
+      if (
+        miniplayer.classList.contains("hidden") &&
+        !playerSection.classList.contains("audio-mode")
+      ) {
         theaterBtn.click();
       }
       break;
