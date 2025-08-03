@@ -1,4 +1,4 @@
-/* settings.css */
+/* src/css/settings.css */
 #settings-page {
      padding: 32px;
      justify-content: flex-start;
@@ -107,6 +107,75 @@
      color: var(--yt-red);
 }
 
+/* --- NEW: Style for generic text inputs in settings --- */
+.text-input-control {
+     background: var(--yt-black);
+     border: 1px solid var(--yt-border);
+     color: var(--yt-white);
+     padding: 8px 12px;
+     border-radius: 6px;
+     font-size: 0.9rem;
+     font-family: 'Poppins';
+     width: 300px;
+     transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.text-input-control:focus {
+     outline: none;
+     border-color: var(--yt-red);
+     box-shadow: 0 0 0 3px rgba(255, 11, 85, 0.3);
+}
+
+.setting-btn {
+     background-color: var(--yt-dark-grey);
+     color: var(--yt-white);
+     border: 1px solid var(--yt-border);
+     padding: 8px 16px;
+     border-radius: 6px;
+     font-family: 'Poppins';
+     font-weight: 500;
+     font-size: 0.9rem;
+     cursor: pointer;
+     transition: background-color 0.2s, border-color 0.2s, opacity 0.2s;
+     flex-shrink: 0;
+     display: flex;
+     align-items: center;
+     gap: 8px;
+}
+
+.setting-btn:disabled {
+     opacity: 0.5;
+     cursor: not-allowed;
+}
+
+.setting-btn:hover:not(:disabled) {
+     background-color: var(--yt-border);
+}
+
+#updater-console-container {
+     margin-top: -16px;
+     padding-bottom: 16px;
+     border-bottom: 1px solid var(--yt-border);
+}
+
+#updater-console-container.hidden {
+     display: none;
+}
+
+#updater-console {
+     background-color: var(--yt-black);
+     border: 1px solid var(--yt-border);
+     border-radius: 8px;
+     padding: 12px;
+     font-family: monospace;
+     font-size: 0.8rem;
+     color: var(--yt-light-grey);
+     max-height: 200px;
+     overflow-y: auto;
+     white-space: pre-wrap;
+     word-wrap: break-word;
+}
+
 .danger-zone {
      border: 2px solid var(--yt-red-dark);
      border-radius: 12px;
@@ -186,16 +255,16 @@
 }
 
 .about-btn {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    text-decoration: none;
-    padding: 8px 16px;
-    border-radius: 6px;
-    font-weight: 500;
-    transition: all 0.2s ease;
-    border: 1px solid var(--yt-border);
-    cursor: pointer;
+     display: flex;
+     align-items: center;
+     gap: 8px;
+     text-decoration: none;
+     padding: 8px 16px;
+     border-radius: 6px;
+     font-weight: 500;
+     transition: all 0.2s ease;
+     border: 1px solid var(--yt-border);
+     cursor: pointer;
 }
 
 .github-view-btn {
