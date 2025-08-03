@@ -13,61 +13,80 @@ logoHomeButton.addEventListener("click", (e) => {
   renderHomePageGrid();
 });
 
-function renderGridItem(item, isPlaylistItem = false) {
-  // --- NEW: Add an icon overlay for audio files ---
+/**
+ * Creates the HTML for a single video grid item.
+ * @param {object} item - The video data object.
+ * @returns {string} The inner HTML string for the grid item element.
+ */
+function createGridItemHTML(item) {
   const audioIconOverlay =
     item.type === "audio"
       ? '<div class="thumbnail-overlay-icon"><i class="fa-solid fa-music"></i></div>'
       : "";
 
   return `
-        <div class="video-grid-item" data-id="${item.id}" ${
-    isPlaylistItem ? `data-playlist-item="true"` : ""
-  }>
-            <div class="grid-thumbnail-container">
-                <img src="${
-                  item.coverPath
-                    ? decodeURIComponent(item.coverPath)
-                    : "../assets/logo.png"
-                }" class="grid-thumbnail" alt="thumbnail" onerror="this.onerror=null;this.src='../assets/logo.png';">
-                ${audioIconOverlay}
-                <span class="thumbnail-duration">${formatTime(
-                  item.duration || 0
-                )}</span>
-            </div>
-            <div class="grid-item-details">
-                <div class="grid-item-info">
-                    <p class="grid-item-title">${item.title}</p>
-                    <p class="grid-item-meta">${
-                      item.creator || item.uploader || "Unknown"
-                    }</p>
-                </div>
-                <div class="grid-item-actions">
-                    <button class="grid-item-action-btn favorite-btn ${
-                      item.isFavorite ? "is-favorite" : ""
-                    }" title="${item.isFavorite ? "Unfavorite" : "Favorite"}">
-                        <i class="fa-${
-                          item.isFavorite ? "solid" : "regular"
-                        } fa-heart"></i>
-                    </button>
-                    <button class="grid-item-action-btn save-to-playlist-grid-btn" title="Save to Playlist"><i class="fa-solid fa-plus"></i></button>
-                    <button class="grid-item-action-btn menu-btn" title="More">
-                        <i class="fa-solid fa-ellipsis-vertical"></i>
-                    </button>
-                </div>
-            </div>
-        </div>`;
+    <div class="grid-thumbnail-container">
+        <img src="${
+          item.coverPath
+            ? decodeURIComponent(item.coverPath)
+            : "../assets/logo.png"
+        }" class="grid-thumbnail" alt="thumbnail" onerror="this.onerror=null;this.src='../assets/logo.png';">
+        ${audioIconOverlay}
+        <span class="thumbnail-duration">${formatTime(
+          item.duration || 0
+        )}</span>
+    </div>
+    <div class="grid-item-details">
+        <div class="grid-item-info">
+            <p class="grid-item-title">${item.title}</p>
+            <p class="grid-item-meta">${
+              item.creator || item.uploader || "Unknown"
+            }</p>
+        </div>
+        <div class="grid-item-actions">
+            <button class="grid-item-action-btn favorite-btn ${
+              item.isFavorite ? "is-favorite" : ""
+            }" title="${item.isFavorite ? "Unfavorite" : "Favorite"}">
+                <i class="fa-${
+                  item.isFavorite ? "solid" : "regular"
+                } fa-heart"></i>
+            </button>
+            <button class="grid-item-action-btn save-to-playlist-grid-btn" title="Save to Playlist"><i class="fa-solid fa-plus"></i></button>
+            <button class="grid-item-action-btn menu-btn" title="More">
+                <i class="fa-solid fa-ellipsis-vertical"></i>
+            </button>
+        </div>
+    </div>`;
 }
 
+/**
+ * Renders a grid of items efficiently using a DocumentFragment.
+ * @param {HTMLElement} container - The DOM element to render the grid into.
+ * @param {Array} library - The array of items to render.
+ * @param {boolean} [isPlaylistItem=false] - Flag to add playlist-specific attributes.
+ */
 function renderGrid(container, library, isPlaylistItem = false) {
   if (!container) return;
-  if (!library || library.length === 0) {
-    container.innerHTML = "";
-    return;
+
+  // Use a DocumentFragment to build the grid off-screen for performance
+  const fragment = document.createDocumentFragment();
+
+  if (library && library.length > 0) {
+    library.forEach((item) => {
+      const gridItem = document.createElement("div");
+      gridItem.className = "video-grid-item";
+      gridItem.dataset.id = item.id;
+      if (isPlaylistItem) {
+        gridItem.dataset.playlistItem = "true";
+      }
+      gridItem.innerHTML = createGridItemHTML(item);
+      fragment.appendChild(gridItem);
+    });
   }
-  container.innerHTML = library
-    .map((item) => renderGridItem(item, isPlaylistItem))
-    .join("");
+
+  // Clear the container once and append the entire fragment in a single operation
+  container.innerHTML = "";
+  container.appendChild(fragment);
 }
 
 function ensureGridExists(pageElement, gridId) {
