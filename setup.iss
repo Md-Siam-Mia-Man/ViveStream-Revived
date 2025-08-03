@@ -8,10 +8,12 @@
 #define MyAppExeName "vivestream.exe"
 
 ; --- IMPORTANT ---
-; The values for MyAppVersion, SourceAppPath, and AppIcon are passed in automatically
-; by the `build-installer.js` script from your project's package.json.
-; The values defined here are only fallbacks for manual compilation.
+; The value for MyAppVersion is passed in automatically
+; by the `build-installer.js` script.
+; The value defined here is only a fallback for manual compilation.
 
+; Step 4: Inno Setup checks if 'MyAppVersion' was defined by the compiler command.
+; If it was, this block is skipped. If not, it uses the fallback.
 #ifndef MyAppVersion
 #define MyAppVersion "0.0.0-dev"
 #endif
@@ -34,7 +36,7 @@
 AppId={{FC44F321-AE31-46B5-B6B2-BA2671A4C86C}}
 
 AppName={#MyAppName}
-; This controls the version shown in Control Panel (Add/Remove Programs)
+; Step 5: The AppVersion directive uses the value of the 'MyAppVersion' variable.
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
 AppPublisherURL={#MyAppURL}
@@ -53,12 +55,9 @@ CloseApplications=yes
 RestartApplications=no
 UninstallLogMode=append
 
-; REMOVED: SetupWindowTitle=ViveStream Setup (Not compatible with older Inno Setup versions)
-
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
-; --- CORRECTED: Override default setup text to remove the version number from all titles and screens ---
 [Messages]
 english.SetupAppTitle=ViveStream Setup
 english.SetupHeader=ViveStream Setup
@@ -69,7 +68,6 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 
 [Files]
 Source: "{#SourceAppPath}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
-; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
