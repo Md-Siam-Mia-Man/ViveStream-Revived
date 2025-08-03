@@ -29,20 +29,25 @@ const viveStreamPath = path.join(userHomePath, "ViveStream");
 const videoPath = path.join(viveStreamPath, "videos");
 const coverPath = path.join(viveStreamPath, "covers");
 const subtitlePath = path.join(viveStreamPath, "subtitles");
-const artistAvatarPath = path.join(viveStreamPath, "artists"); // New directory for artist images
 const settingsPath = path.join(app.getPath("userData"), "settings.json");
-const mediaPaths = [videoPath, coverPath, subtitlePath, artistAvatarPath]; // Added new path
+const mediaPaths = [videoPath, coverPath, subtitlePath];
 
 let tray = null;
 let win = null;
 
-// Ensure media directories exist
 mediaPaths.forEach((dir) => {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 });
 
 // --- Settings Management ---
-const defaultSettings = { concurrentDownloads: 3 };
+const defaultSettings = {
+  concurrentDownloads: 3,
+  cookieBrowser: "none",
+  downloadAutoSubs: false,
+  removeSponsors: false,
+  concurrentFragments: 1,
+  outputTemplate: "", // Note: The old working code didn't use this. We'll add it back carefully.
+};
 function getSettings() {
   if (fs.existsSync(settingsPath)) {
     try {
@@ -75,67 +80,6 @@ class Downloader {
     this.queue = [];
     this.activeDownloads = new Map();
     this.settings = getSettings();
-  }
-
-  // --- NEW: Helper function to fetch and save a channel's avatar ---
-  async _fetchAndSaveAvatar(channelUrl, channelId) {
-    if (!channelUrl || !channelId) return null;
-
-    try {
-      // 1. Get channel metadata using yt-dlp's --dump-single-json
-      const channelMetaJson = await new Promise((resolve, reject) => {
-        const proc = spawn(ytDlpPath, [
-          channelUrl,
-          "--dump-single-json",
-          "--no-warnings",
-        ]);
-        let jsonOutput = "";
-        proc.stdout.on("data", (data) => (jsonOutput += data));
-        proc.stderr.on(
-          "data",
-          (data) => `Avatar fetch stderr for ${channelId}: ${data}`
-        );
-        proc.on("close", (code) => {
-          if (code === 0 && jsonOutput) {
-            try {
-              resolve(JSON.parse(jsonOutput));
-            } catch (e) {
-              reject(new Error("Failed to parse channel JSON"));
-            }
-          } else {
-            reject(
-              new Error(`yt-dlp exited with code ${code} for ${channelUrl}`)
-            );
-          }
-        });
-      });
-
-      if (!channelMetaJson || !channelMetaJson.thumbnails) return null;
-
-      // 2. Find the best quality thumbnail from the channel's metadata
-      const bestThumbnail = channelMetaJson.thumbnails.sort(
-        (a, b) => (b.width || 0) - (a.width || 0)
-      )[0];
-      if (!bestThumbnail || !bestThumbnail.url) return null;
-
-      // 3. Download the image using built-in fetch
-      const response = await fetch(bestThumbnail.url);
-      if (!response.ok) {
-        throw new Error(`Failed to download avatar: ${response.statusText}`);
-      }
-      const imageBuffer = await response.arrayBuffer();
-
-      // 4. Save the image to the 'artists' directory
-      const avatarFileName = `${channelId}.jpg`;
-      const finalAvatarPath = path.join(artistAvatarPath, avatarFileName);
-      await fs.promises.writeFile(finalAvatarPath, Buffer.from(imageBuffer));
-
-      // 5. Return the file URI for database storage
-      return `file://${finalAvatarPath.replace(/\\/g, "/")}`;
-    } catch (error) {
-      console.error(`_fetchAndSaveAvatar failed for ${channelUrl}:`, error);
-      return null;
-    }
   }
 
   updateSettings(s) {
@@ -171,33 +115,108 @@ class Downloader {
     }
     this.activeDownloads.clear();
   }
+
+  /**
+   * Spawns yt-dlp to download a video with the specified options.
+   * This version merges the new features with the old, reliable file handling.
+   * @param {object} job - The download job object.
+   */
   startDownload(job) {
-    const { videoInfo, quality } = job;
-    const args = [
+    const { videoInfo, type, quality, startTime, endTime, splitChapters } = job;
+    const url =
       videoInfo.webpage_url ||
-        `https://www.youtube.com/watch?v=${videoInfo.id}`,
+      `https://www.youtube.com/watch?v=${videoInfo.id}`;
+
+    // Base arguments, always present
+    let args = [
+      url,
       "--ffmpeg-location",
       ffmpegPath,
       "--progress",
       "--no-warnings",
       "--retries",
       "5",
-      "-f",
-      `bestvideo${
-        quality === "best" ? "" : `[height<=${quality}]`
-      }+bestaudio/best`,
-      "--merge-output-format",
-      "mp4",
-      "--output",
-      path.join(videoPath, "%(id)s.%(ext)s"),
+      "--impersonate",
+      "chrome",
+      // Metadata writing flags
       "--write-info-json",
       "--write-thumbnail",
       "--convert-thumbnails",
       "jpg",
-      "--write-subs",
-      "--sub-langs",
-      "en.*,-live_chat",
+      "--write-description",
+      // Metadata embedding flags
+      "--embed-metadata",
+      "--embed-thumbnail",
+      "--embed-chapters",
     ];
+
+    // Output path logic: Use user template if provided, otherwise default to predictable name.
+    if (splitChapters) {
+      // Chapter splitting requires its own output logic
+      const chapterOutputTemplate = this.settings.outputTemplate
+        ? path.join(videoPath, this.settings.outputTemplate)
+        : path.join(
+            videoPath,
+            "%(playlist_title,title)s/%(chapter_number)s - %(chapter)s.%(ext)s"
+          );
+      args.push("-o", chapterOutputTemplate);
+      args.push("--split-chapters");
+    } else {
+      // Use the predictable path from the old working code as the default.
+      const mediaOutputTemplate = this.settings.outputTemplate
+        ? path.join(videoPath, this.settings.outputTemplate)
+        : path.join(videoPath, "%(id)s.%(ext)s"); // <-- Reliable default
+      args.push("-o", mediaOutputTemplate);
+    }
+
+    // Format-specific arguments
+    if (type === "audio") {
+      const [format, audioQuality] = quality.split("-");
+      args.push("-x", "--audio-format", format, "-f", "bestaudio/best");
+      if (audioQuality) {
+        args.push("--audio-quality", audioQuality);
+      }
+    } else {
+      // Video
+      args.push(
+        "-f",
+        `bestvideo${
+          quality === "best" ? "" : `[height<=${quality}]`
+        }+bestaudio/best`,
+        "--merge-output-format",
+        "mp4",
+        "--write-subs",
+        "--sub-langs",
+        "en.*,-live_chat",
+        "--embed-subs"
+      );
+      if (this.settings.downloadAutoSubs) {
+        args.push("--write-auto-subs");
+      }
+    }
+
+    // Add optional feature arguments
+    if (this.settings.removeSponsors) {
+      args.push("--sponsorblock-remove", "all");
+    }
+    if (!splitChapters && (startTime || endTime)) {
+      const timeRange = `${startTime || "0:00"}-${endTime || "inf"}`;
+      args.push(
+        "--download-sections",
+        `*${timeRange}`,
+        "--force-keyframes-at-cuts"
+      );
+    }
+    if (this.settings.concurrentFragments > 1) {
+      args.push(
+        "--concurrent-fragments",
+        this.settings.concurrentFragments.toString()
+      );
+    }
+    if (this.settings.cookieBrowser && this.settings.cookieBrowser !== "none") {
+      args.push("--cookies-from-browser", this.settings.cookieBrowser);
+    }
+
     const proc = spawn(ytDlpPath, args);
     this.activeDownloads.set(videoInfo.id, proc);
     proc.stdout.on("data", (data) => {
@@ -233,7 +252,27 @@ class Downloader {
       this.processQueue();
     });
   }
+
+  /**
+   * Processes downloaded files using the reliable path reconstruction method.
+   * @param {object} videoInfo - Initial video info.
+   * @param {object} job - The original download job.
+   */
   async postProcess(videoInfo, job) {
+    // If the job was a chapter split, we don't process it here.
+    if (job.splitChapters) {
+      if (win) {
+        win.webContents.send("download-complete", {
+          id: videoInfo.id,
+          videoData: {
+            title: `${videoInfo.title} (Chapters)`,
+            isChapterSplit: true,
+          },
+        });
+      }
+      return;
+    }
+
     try {
       const infoJsonPath = path.join(videoPath, `${videoInfo.id}.info.json`);
       if (!fs.existsSync(infoJsonPath)) {
@@ -241,6 +280,28 @@ class Downloader {
       }
       const fullInfo = JSON.parse(fs.readFileSync(infoJsonPath, "utf-8"));
       fs.unlinkSync(infoJsonPath);
+
+      // --- THE KEY FIX: Reconstruct the file path based on our predictable output ---
+      // This avoids any issues with the `_filename` key.
+      const mediaFileExtension =
+        job.type === "audio" ? job.quality.split("-")[0] : "mp4";
+      const mediaFilePath = path.join(
+        videoPath,
+        `${fullInfo.id}.${mediaFileExtension}`
+      );
+
+      if (!fs.existsSync(mediaFilePath)) {
+        // Fallback check if the main file is in a custom template path
+        if (fullInfo._filename && fs.existsSync(fullInfo._filename)) {
+          console.warn(
+            "Media file not in default path, found via info.json _filename."
+          );
+        } else {
+          throw new Error(
+            `Media file could not be found at expected path: ${mediaFilePath}`
+          );
+        }
+      }
 
       let finalCoverPath = null;
       const tempCoverPath = path.join(videoPath, `${fullInfo.id}.jpg`);
@@ -264,37 +325,11 @@ class Downloader {
       const artistNames = artistString
         ? artistString.split(/[,;&]/).map((name) => name.trim())
         : [];
-      const channelId = fullInfo.channel_id;
-      const channelUrl = fullInfo.channel_url;
 
       if (artistNames.length > 0) {
         for (const name of artistNames) {
           if (!name) continue;
-
-          // Check if artist exists to decide if we need to fetch a real avatar
-          const existingArtist = await db.getArtistByName(name);
-          let avatarToUse = existingArtist
-            ? existingArtist.thumbnailPath
-            : null;
-          const hasRealAvatar =
-            avatarToUse && avatarToUse.includes("/artists/");
-
-          if (!hasRealAvatar && channelUrl && channelId) {
-            const fetchedAvatarUri = await this._fetchAndSaveAvatar(
-              channelUrl,
-              channelId
-            );
-            if (fetchedAvatarUri) {
-              avatarToUse = fetchedAvatarUri;
-            }
-          }
-
-          // Fallback to video thumbnail if no other avatar is found
-          if (!avatarToUse) {
-            avatarToUse = finalCoverUri;
-          }
-
-          const artist = await db.findOrCreateArtist(name, avatarToUse);
+          const artist = await db.findOrCreateArtist(name, finalCoverUri);
           if (artist) {
             await db.linkVideoToArtist(fullInfo.id, artist.id);
           }
@@ -306,15 +341,18 @@ class Downloader {
         title: fullInfo.title,
         uploader: fullInfo.uploader,
         creator: artistString || null,
+        description: fullInfo.description,
         duration: fullInfo.duration,
         upload_date: fullInfo.upload_date,
         originalUrl: fullInfo.webpage_url,
-        filePath: `file://${path
-          .join(videoPath, `${fullInfo.id}.mp4`)
-          .replace(/\\/g, "/")}`,
+        filePath: `file://${(fullInfo._filename || mediaFilePath).replace(
+          /\\/g,
+          "/"
+        )}`,
         coverPath: finalCoverUri,
         subtitlePath: subFileUri,
-        type: "video",
+        hasEmbeddedSubs: job.type === "video" && !!subFileUri,
+        type: job.type,
         downloadedAt: new Date().toISOString(),
         isFavorite: false,
       };
@@ -336,7 +374,7 @@ class Downloader {
 }
 const downloader = new Downloader();
 
-// --- Window Management & App Lifecycle (No changes below this line) ---
+// --- Window Management ---
 function createWindow() {
   win = new BrowserWindow({
     width: 1280,
@@ -382,6 +420,7 @@ function createTray() {
   tray.on("click", () => win.show());
 }
 
+// --- App Lifecycle ---
 app.on("before-quit", async () => {
   downloader.shutdown();
   await db.shutdown();
@@ -416,6 +455,8 @@ app.on(
   () => BrowserWindow.getAllWindows().length === 0 && createWindow()
 );
 
+// --- IPC Handlers ---
+
 ipcMain.on("minimize-window", () => win.minimize());
 ipcMain.on("maximize-window", () =>
   win.isMaximized() ? win.unmaximize() : win.maximize()
@@ -423,6 +464,7 @@ ipcMain.on("maximize-window", () =>
 ipcMain.on("close-window", () => win.close());
 ipcMain.on("tray-window", () => win.hide());
 ipcMain.on("open-external", (e, url) => shell.openExternal(url));
+
 ipcMain.handle("get-settings", getSettings);
 ipcMain.handle("get-app-version", () => app.getVersion());
 ipcMain.on("save-settings", (e, s) => {
@@ -439,6 +481,7 @@ ipcMain.handle("reset-app", () => {
   });
   return getSettings();
 });
+
 ipcMain.handle("get-library", () => db.getLibrary());
 ipcMain.handle("toggle-favorite", (e, id) => db.toggleFavorite(id));
 ipcMain.handle("clear-all-media", async () => {
@@ -453,6 +496,7 @@ ipcMain.handle("clear-all-media", async () => {
 ipcMain.handle("delete-video", async (e, id) => {
   const video = await db.getVideoById(id);
   if (!video) return { success: false, message: "Video not found in DB." };
+
   [video.filePath, video.coverPath, video.subtitlePath]
     .filter(Boolean)
     .forEach((uri) => {
@@ -465,15 +509,24 @@ ipcMain.handle("delete-video", async (e, id) => {
         console.error(`Failed to delete file ${uri}:`, err);
       }
     });
+
   return await db.deleteVideo(id);
 });
+
 ipcMain.on("download-video", (e, o) => {
-  const proc = spawn(ytDlpPath, [
+  const args = [
     o.url,
     "--dump-json",
     "--no-warnings",
     "--flat-playlist",
-  ]);
+    "--impersonate",
+    "chrome",
+  ];
+  const settings = getSettings();
+  if (settings.cookieBrowser && settings.cookieBrowser !== "none") {
+    args.push("--cookies-from-browser", settings.cookieBrowser);
+  }
+  const proc = spawn(ytDlpPath, args);
   let j = "";
   let errorOutput = "";
   proc.stdout.on("data", (d) => (j += d));
@@ -486,9 +539,7 @@ ipcMain.on("download-video", (e, o) => {
           .split("\n")
           .map((l) => JSON.parse(l));
         if (win) win.webContents.send("download-queue-start", infos);
-        downloader.addToQueue(
-          infos.map((i) => ({ videoInfo: i, quality: o.quality }))
-        );
+        downloader.addToQueue(infos.map((i) => ({ ...o, videoInfo: i })));
       } catch (parseError) {
         console.error(
           `Failed to parse JSON for ${o.url}. Stderr: ${errorOutput}, Output: ${j}`
@@ -503,8 +554,27 @@ ipcMain.on("download-video", (e, o) => {
     }
   });
 });
+
 ipcMain.on("cancel-download", (e, id) => downloader.cancelDownload(id));
 ipcMain.on("retry-download", (e, job) => downloader.retryDownload(job));
+ipcMain.handle("updater:check-yt-dlp", () => {
+  return new Promise((resolve) => {
+    const proc = spawn(ytDlpPath, ["-U"]);
+    proc.stdout.on("data", (data) => {
+      win.webContents.send("updater:yt-dlp-progress", data.toString());
+    });
+    proc.stderr.on("data", (data) => {
+      win.webContents.send(
+        "updater:yt-dlp-progress",
+        `ERROR: ${data.toString()}`
+      );
+    });
+    proc.on("close", (code) => {
+      resolve({ success: code === 0 });
+    });
+  });
+});
+
 ipcMain.handle("playlist:create", (e, name) => db.createPlaylist(name));
 ipcMain.handle("playlist:get-all", () => db.getAllPlaylistsWithStats());
 ipcMain.handle("playlist:get-details", (e, id) => db.getPlaylistDetails(id));
