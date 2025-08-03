@@ -46,7 +46,7 @@ const defaultSettings = {
   downloadAutoSubs: false,
   removeSponsors: false,
   concurrentFragments: 1,
-  outputTemplate: "", // Note: The old working code didn't use this. We'll add it back carefully.
+  outputTemplate: "",
 };
 function getSettings() {
   if (fs.existsSync(settingsPath)) {
@@ -116,18 +116,12 @@ class Downloader {
     this.activeDownloads.clear();
   }
 
-  /**
-   * Spawns yt-dlp to download a video with the specified options.
-   * This version merges the new features with the old, reliable file handling.
-   * @param {object} job - The download job object.
-   */
   startDownload(job) {
     const { videoInfo, type, quality, startTime, endTime, splitChapters } = job;
     const url =
       videoInfo.webpage_url ||
       `https://www.youtube.com/watch?v=${videoInfo.id}`;
 
-    // Base arguments, always present
     let args = [
       url,
       "--ffmpeg-location",
@@ -138,21 +132,17 @@ class Downloader {
       "5",
       "--impersonate",
       "chrome",
-      // Metadata writing flags
       "--write-info-json",
       "--write-thumbnail",
       "--convert-thumbnails",
       "jpg",
       "--write-description",
-      // Metadata embedding flags
       "--embed-metadata",
       "--embed-thumbnail",
       "--embed-chapters",
     ];
 
-    // Output path logic: Use user template if provided, otherwise default to predictable name.
     if (splitChapters) {
-      // Chapter splitting requires its own output logic
       const chapterOutputTemplate = this.settings.outputTemplate
         ? path.join(videoPath, this.settings.outputTemplate)
         : path.join(
@@ -162,14 +152,12 @@ class Downloader {
       args.push("-o", chapterOutputTemplate);
       args.push("--split-chapters");
     } else {
-      // Use the predictable path from the old working code as the default.
       const mediaOutputTemplate = this.settings.outputTemplate
         ? path.join(videoPath, this.settings.outputTemplate)
-        : path.join(videoPath, "%(id)s.%(ext)s"); // <-- Reliable default
+        : path.join(videoPath, "%(id)s.%(ext)s");
       args.push("-o", mediaOutputTemplate);
     }
 
-    // Format-specific arguments
     if (type === "audio") {
       const [format, audioQuality] = quality.split("-");
       args.push("-x", "--audio-format", format, "-f", "bestaudio/best");
@@ -177,7 +165,6 @@ class Downloader {
         args.push("--audio-quality", audioQuality);
       }
     } else {
-      // Video
       args.push(
         "-f",
         `bestvideo${
@@ -187,7 +174,7 @@ class Downloader {
         "mp4",
         "--write-subs",
         "--sub-langs",
-        "en.*,-live_chat",
+        "en.*,-live_chat", // Prioritize English, but get any available subtitle
         "--embed-subs"
       );
       if (this.settings.downloadAutoSubs) {
@@ -195,7 +182,6 @@ class Downloader {
       }
     }
 
-    // Add optional feature arguments
     if (this.settings.removeSponsors) {
       args.push("--sponsorblock-remove", "all");
     }
@@ -253,13 +239,7 @@ class Downloader {
     });
   }
 
-  /**
-   * Processes downloaded files using the reliable path reconstruction method.
-   * @param {object} videoInfo - Initial video info.
-   * @param {object} job - The original download job.
-   */
   async postProcess(videoInfo, job) {
-    // If the job was a chapter split, we don't process it here.
     if (job.splitChapters) {
       if (win) {
         win.webContents.send("download-complete", {
@@ -281,26 +261,11 @@ class Downloader {
       const fullInfo = JSON.parse(fs.readFileSync(infoJsonPath, "utf-8"));
       fs.unlinkSync(infoJsonPath);
 
-      // --- THE KEY FIX: Reconstruct the file path based on our predictable output ---
-      // This avoids any issues with the `_filename` key.
-      const mediaFileExtension =
-        job.type === "audio" ? job.quality.split("-")[0] : "mp4";
-      const mediaFilePath = path.join(
-        videoPath,
-        `${fullInfo.id}.${mediaFileExtension}`
-      );
-
-      if (!fs.existsSync(mediaFilePath)) {
-        // Fallback check if the main file is in a custom template path
-        if (fullInfo._filename && fs.existsSync(fullInfo._filename)) {
-          console.warn(
-            "Media file not in default path, found via info.json _filename."
-          );
-        } else {
-          throw new Error(
-            `Media file could not be found at expected path: ${mediaFilePath}`
-          );
-        }
+      const mediaFilePath = fullInfo._filename;
+      if (!mediaFilePath || !fs.existsSync(mediaFilePath)) {
+        throw new Error(
+          `Media file from info.json could not be found at path: ${mediaFilePath}`
+        );
       }
 
       let finalCoverPath = null;
@@ -313,12 +278,29 @@ class Downloader {
         ? `file://${finalCoverPath.replace(/\\/g, "/")}`
         : null;
 
-      const tempSubPath = path.join(videoPath, `${fullInfo.id}.en.vtt`);
-      const finalSubPath = path.join(subtitlePath, `${fullInfo.id}.vtt`);
-      const subFileUri = fs.existsSync(tempSubPath)
+      // Find the first available subtitle file for this video ID, regardless of language
+      const allFiles = fs.readdirSync(videoPath);
+      const tempSubFilename = allFiles.find(
+        (file) => file.startsWith(fullInfo.id) && file.endsWith(".vtt")
+      );
+      const tempSubPath = tempSubFilename
+        ? path.join(videoPath, tempSubFilename)
+        : null;
+      const finalSubPath = tempSubPath
+        ? path.join(subtitlePath, `${fullInfo.id}.vtt`)
+        : null;
+      const subFileUri = tempSubPath
         ? (fs.renameSync(tempSubPath, finalSubPath),
           `file://${finalSubPath.replace(/\\/g, "/")}`)
         : null;
+
+      const descriptionPath = path.join(
+        videoPath,
+        `${fullInfo.id}.description`
+      );
+      if (fs.existsSync(descriptionPath)) {
+        fs.unlinkSync(descriptionPath); // We use description from JSON now
+      }
 
       const artistString =
         fullInfo.artist || fullInfo.creator || fullInfo.uploader;
@@ -345,10 +327,7 @@ class Downloader {
         duration: fullInfo.duration,
         upload_date: fullInfo.upload_date,
         originalUrl: fullInfo.webpage_url,
-        filePath: `file://${(fullInfo._filename || mediaFilePath).replace(
-          /\\/g,
-          "/"
-        )}`,
+        filePath: `file://${mediaFilePath.replace(/\\/g, "/")}`,
         coverPath: finalCoverUri,
         subtitlePath: subFileUri,
         hasEmbeddedSubs: job.type === "video" && !!subFileUri,
@@ -374,7 +353,7 @@ class Downloader {
 }
 const downloader = new Downloader();
 
-// --- Window Management ---
+// --- Window Management & App Lifecycle ---
 function createWindow() {
   win = new BrowserWindow({
     width: 1280,
@@ -390,18 +369,14 @@ function createWindow() {
     frame: false,
     icon: path.join(assetsPath, "icon.ico"),
   });
-
   win.loadFile(path.join(__dirname, "..", "index.html"));
-
   win.on("maximize", () => win.webContents.send("window-maximized", true));
   win.on("unmaximize", () => win.webContents.send("window-maximized", false));
   win.on("closed", () => (win = null));
-
   if (isDev) {
     win.webContents.openDevTools({ mode: "detach" });
   }
 }
-
 function createTray() {
   tray = new Tray(path.join(assetsPath, "icon.ico"));
   tray.setToolTip("ViveStream");
@@ -419,13 +394,10 @@ function createTray() {
   );
   tray.on("click", () => win.show());
 }
-
-// --- App Lifecycle ---
 app.on("before-quit", async () => {
   downloader.shutdown();
   await db.shutdown();
 });
-
 app
   .whenReady()
   .then(() => {
@@ -448,7 +420,6 @@ app
     );
     app.quit();
   });
-
 app.on("window-all-closed", () => process.platform !== "darwin" && app.quit());
 app.on(
   "activate",
@@ -456,7 +427,6 @@ app.on(
 );
 
 // --- IPC Handlers ---
-
 ipcMain.on("minimize-window", () => win.minimize());
 ipcMain.on("maximize-window", () =>
   win.isMaximized() ? win.unmaximize() : win.maximize()
@@ -464,7 +434,6 @@ ipcMain.on("maximize-window", () =>
 ipcMain.on("close-window", () => win.close());
 ipcMain.on("tray-window", () => win.hide());
 ipcMain.on("open-external", (e, url) => shell.openExternal(url));
-
 ipcMain.handle("get-settings", getSettings);
 ipcMain.handle("get-app-version", () => app.getVersion());
 ipcMain.on("save-settings", (e, s) => {
@@ -481,7 +450,6 @@ ipcMain.handle("reset-app", () => {
   });
   return getSettings();
 });
-
 ipcMain.handle("get-library", () => db.getLibrary());
 ipcMain.handle("toggle-favorite", (e, id) => db.toggleFavorite(id));
 ipcMain.handle("clear-all-media", async () => {
@@ -496,7 +464,6 @@ ipcMain.handle("clear-all-media", async () => {
 ipcMain.handle("delete-video", async (e, id) => {
   const video = await db.getVideoById(id);
   if (!video) return { success: false, message: "Video not found in DB." };
-
   [video.filePath, video.coverPath, video.subtitlePath]
     .filter(Boolean)
     .forEach((uri) => {
@@ -509,10 +476,8 @@ ipcMain.handle("delete-video", async (e, id) => {
         console.error(`Failed to delete file ${uri}:`, err);
       }
     });
-
   return await db.deleteVideo(id);
 });
-
 ipcMain.on("download-video", (e, o) => {
   const args = [
     o.url,
@@ -554,7 +519,6 @@ ipcMain.on("download-video", (e, o) => {
     }
   });
 });
-
 ipcMain.on("cancel-download", (e, id) => downloader.cancelDownload(id));
 ipcMain.on("retry-download", (e, job) => downloader.retryDownload(job));
 ipcMain.handle("updater:check-yt-dlp", () => {
@@ -574,7 +538,6 @@ ipcMain.handle("updater:check-yt-dlp", () => {
     });
   });
 });
-
 ipcMain.handle("playlist:create", (e, name) => db.createPlaylist(name));
 ipcMain.handle("playlist:get-all", () => db.getAllPlaylistsWithStats());
 ipcMain.handle("playlist:get-details", (e, id) => db.getPlaylistDetails(id));
