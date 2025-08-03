@@ -1,21 +1,37 @@
-// miniplayer.js
+// src/js/miniplayer.js
+const miniplayerArtworkImg = document.getElementById("miniplayer-artwork-img");
+
 function activateMiniplayer() {
   if (!videoPlayer.src) return;
 
   const wasHidden = miniplayer.classList.contains("hidden");
+  const currentItem = playbackQueue[currentlyPlayingIndex];
 
-  if (videoPlayer.parentElement !== miniplayerVideoContainer) {
-    miniplayerVideoContainer.appendChild(videoPlayer);
+  // --- UPDATED: Handle audio vs video mode in miniplayer ---
+  if (currentItem && currentItem.type === "audio") {
+    // Audio mode: show artwork, hide video
+    miniplayerArtworkImg.src = currentItem.coverPath
+      ? decodeURIComponent(currentItem.coverPath)
+      : "../assets/logo.png";
+    miniplayerArtworkImg.classList.remove("hidden");
+    miniplayerVideoContainer.style.display = "none";
+  } else {
+    // Video mode: hide artwork, show video
+    miniplayerArtworkImg.classList.add("hidden");
+    miniplayerVideoContainer.style.display = "block";
+    if (videoPlayer.parentElement !== miniplayerVideoContainer) {
+      miniplayerVideoContainer.appendChild(videoPlayer);
+    }
   }
 
   if (wasHidden) {
     miniplayer.classList.remove("hidden");
   }
 
-  const currentItem = currentLibrary[currentlyPlayingIndex];
   if (currentItem) {
     miniplayerTitle.textContent = currentItem.title;
-    miniplayerUploader.textContent = currentItem.uploader;
+    miniplayerUploader.textContent =
+      currentItem.creator || currentItem.uploader;
   }
 
   videoPlayer.play();
@@ -24,6 +40,11 @@ function activateMiniplayer() {
 function deactivateMiniplayer() {
   if (miniplayer.classList.contains("hidden")) return;
 
+  // Reset miniplayer UI for the next use
+  miniplayerArtworkImg.classList.add("hidden");
+  miniplayerVideoContainer.style.display = "block";
+
+  // Move video player back to the main player view
   playerSection.insertBefore(videoPlayer, playerSection.firstChild);
   miniplayer.classList.add("hidden");
 }
