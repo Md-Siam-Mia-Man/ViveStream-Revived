@@ -1,5 +1,27 @@
-// downloader.js
+// src/js/downloader.js
 const downloadJobs = new Map();
+const videoQualitySelectContainer = document.getElementById(
+  "video-quality-select-container"
+);
+const audioQualitySelectContainer = document.getElementById(
+  "audio-quality-select-container"
+);
+const videoOptionsContainer = document.getElementById(
+  "video-options-container"
+);
+const audioOptionsContainer = document.getElementById(
+  "audio-options-container"
+);
+const downloadTypeRadios = document.querySelectorAll(
+  'input[name="download-type"]'
+);
+const advancedOptionsToggle = document.getElementById(
+  "advanced-options-toggle"
+);
+const advancedOptionsPanel = document.getElementById("advanced-options-panel");
+const startTimeInput = document.getElementById("start-time-input");
+const endTimeInput = document.getElementById("end-time-input");
+const splitChaptersToggle = document.getElementById("split-chapters-toggle");
 
 function updateQueuePlaceholder() {
   const placeholder = document.getElementById("empty-queue-placeholder");
@@ -9,25 +31,101 @@ function updateQueuePlaceholder() {
 
 downloadForm.addEventListener("submit", (e) => {
   e.preventDefault();
-  const selectedQuality =
-    qualitySelectContainer.querySelector(".selected-option").dataset.value;
+
+  const downloadType = document.querySelector(
+    'input[name="download-type"]:checked'
+  ).value;
+  let quality;
+
+  if (downloadType === "video") {
+    quality =
+      videoQualitySelectContainer.querySelector(".selected-option").dataset
+        .value;
+  } else {
+    quality =
+      audioQualitySelectContainer.querySelector(".selected-option").dataset
+        .value;
+  }
+
   if (urlInput.value) {
     window.electronAPI.downloadVideo({
       url: urlInput.value,
-      quality: selectedQuality,
+      type: downloadType,
+      quality: quality,
+      startTime: startTimeInput.value.trim(),
+      endTime: endTimeInput.value.trim(),
+      splitChapters: splitChaptersToggle.checked,
     });
     urlInput.value = "";
+    startTimeInput.value = "";
+    endTimeInput.value = "";
+    splitChaptersToggle.checked = false;
+    handleAdvancedOptionsInteraction(); // Reset disabled states
+    advancedOptionsPanel.classList.add("hidden");
   }
 });
+
+downloadTypeRadios.forEach((radio) => {
+  radio.addEventListener("change", (e) => {
+    const isVideo = e.target.value === "video";
+    videoOptionsContainer.classList.toggle("hidden", !isVideo);
+    audioOptionsContainer.classList.toggle("hidden", isVideo);
+  });
+});
+
+advancedOptionsToggle.addEventListener("click", () => {
+  advancedOptionsPanel.classList.toggle("hidden");
+});
+
+function handleAdvancedOptionsInteraction() {
+  const hasTimeInput = startTimeInput.value.trim() || endTimeInput.value.trim();
+  if (hasTimeInput) {
+    splitChaptersToggle.disabled = true;
+  } else {
+    splitChaptersToggle.disabled = false;
+  }
+
+  if (splitChaptersToggle.checked) {
+    startTimeInput.disabled = true;
+    endTimeInput.disabled = true;
+  } else {
+    startTimeInput.disabled = false;
+    endTimeInput.disabled = false;
+  }
+}
+startTimeInput.addEventListener("input", handleAdvancedOptionsInteraction);
+endTimeInput.addEventListener("input", handleAdvancedOptionsInteraction);
+splitChaptersToggle.addEventListener(
+  "change",
+  handleAdvancedOptionsInteraction
+);
 
 window.electronAPI.onDownloadQueueStart((videos) => {
   videos.forEach((video) => {
     if (downloadJobs.has(video.id)) return;
+    const downloadType = document.querySelector(
+      'input[name="download-type"]:checked'
+    ).value;
+    const quality =
+      downloadType === "video"
+        ? videoQualitySelectContainer.querySelector(".selected-option").dataset
+            .value
+        : audioQualitySelectContainer.querySelector(".selected-option").dataset
+            .value;
+    const startTime = startTimeInput.value.trim();
+    const endTime = endTimeInput.value.trim();
+    const splitChapters = splitChaptersToggle.checked;
+
     const job = {
       videoInfo: video,
-      quality: downloadForm.querySelector(".selected-option").dataset.value,
+      type: downloadType,
+      quality: quality,
+      startTime: startTime,
+      endTime: endTime,
+      splitChapters: splitChapters,
     };
     downloadJobs.set(video.id, job);
+
     const thumb = video.thumbnail || "../assets/logo.png";
     const itemHTML = `
         <div class="download-item" data-id="${video.id}" data-status="queued">
@@ -94,13 +192,25 @@ window.electronAPI.onDownloadComplete((data) => {
     }
     item.querySelector(".download-item-speed").textContent = "";
     item.querySelector(".download-item-eta").textContent = "";
-    showNotification(
-      `'${data.videoData.title}' downloaded successfully.`,
-      "success"
-    );
+
+    // --- NEW: Show a special notification for chapter splits ---
+    if (data.videoData.isChapterSplit) {
+      showNotification(
+        `'${data.videoData.title}' downloaded successfully.`,
+        "info",
+        "Chapter files are saved directly to your library folder."
+      );
+    } else {
+      showNotification(
+        `'${data.videoData.title}' downloaded successfully.`,
+        "success"
+      );
+      // Only reload the library for items that are actually added to it.
+      loadLibrary();
+    }
+
     updateItemActions(data.id, "completed");
   }
-  loadLibrary();
 });
 
 window.electronAPI.onDownloadError((data) => {
@@ -190,25 +300,34 @@ document.getElementById("clear-all-btn").addEventListener("click", () => {
   updateQueuePlaceholder();
 });
 
-const selectedOption = qualitySelectContainer.querySelector(".selected-option");
-const optionsList = qualitySelectContainer.querySelector(".options-list");
-selectedOption.addEventListener("click", () =>
-  qualitySelectContainer.classList.toggle("open")
-);
-optionsList.addEventListener("click", (e) => {
-  if (e.target.classList.contains("option-item")) {
-    selectedOption.querySelector("span").textContent = e.target.textContent;
-    selectedOption.dataset.value = e.target.dataset.value;
-    optionsList
-      .querySelectorAll(".option-item")
-      .forEach((i) => i.classList.remove("selected"));
-    e.target.classList.add("selected");
-    qualitySelectContainer.classList.remove("open");
-  }
-});
-document.addEventListener("click", (e) => {
-  if (!qualitySelectContainer.contains(e.target)) {
-    qualitySelectContainer.classList.remove("open");
-  }
-});
+function initializeCustomSelect(container) {
+  const selectedOption = container.querySelector(".selected-option");
+  const optionsList = container.querySelector(".options-list");
+
+  selectedOption.addEventListener("click", () =>
+    container.classList.toggle("open")
+  );
+
+  optionsList.addEventListener("click", (e) => {
+    if (e.target.classList.contains("option-item")) {
+      selectedOption.querySelector("span").textContent = e.target.textContent;
+      selectedOption.dataset.value = e.target.dataset.value;
+      optionsList
+        .querySelectorAll(".option-item")
+        .forEach((i) => i.classList.remove("selected"));
+      e.target.classList.add("selected");
+      container.classList.remove("open");
+    }
+  });
+
+  document.addEventListener("click", (e) => {
+    if (!container.contains(e.target)) {
+      container.classList.remove("open");
+    }
+  });
+}
+
+initializeCustomSelect(videoQualitySelectContainer);
+initializeCustomSelect(audioQualitySelectContainer);
+
 updateQueuePlaceholder();
