@@ -5,10 +5,6 @@ const knex = require("knex");
 
 let db;
 
-/**
- * Initializes the database, creates tables if they don't exist, and runs migrations.
- * @param {Electron.App} app - The Electron app instance.
- */
 function initialize(app) {
   const dbPath = path.join(app.getPath("userData"), "ViveStream.db");
   const viveStreamPath = path.join(app.getPath("home"), "ViveStream");
@@ -34,12 +30,14 @@ function initialize(app) {
           table.string("title").notNullable();
           table.string("uploader");
           table.string("creator");
+          table.text("description");
           table.integer("duration");
           table.string("upload_date");
           table.string("originalUrl");
           table.string("filePath").unique();
           table.string("coverPath");
           table.string("subtitlePath");
+          table.boolean("hasEmbeddedSubs").defaultTo(false);
           table.string("type").defaultTo("video");
           table.timestamp("downloadedAt").defaultTo(db.fn.now());
           table.boolean("isFavorite").defaultTo(false);
@@ -119,6 +117,18 @@ function initialize(app) {
       if (!(await db.schema.hasColumn("videos", "creator"))) {
         await db.schema.alterTable("videos", (table) => {
           table.string("creator");
+        });
+      }
+
+      if (!(await db.schema.hasColumn("videos", "hasEmbeddedSubs"))) {
+        await db.schema.alterTable("videos", (table) => {
+          table.boolean("hasEmbeddedSubs").defaultTo(false);
+        });
+      }
+
+      if (!(await db.schema.hasColumn("videos", "description"))) {
+        await db.schema.alterTable("videos", (table) => {
+          table.text("description");
         });
       }
     } catch (error) {
@@ -333,35 +343,20 @@ async function getPlaylistsForVideo(videoId) {
 
 // --- Artist Functions ---
 
-/**
- * Finds an artist by name. If found, updates their thumbnail if a better one is provided.
- * If not found, creates a new artist entry.
- * @param {string} name - The artist's name.
- * @param {string|null} thumbnailPath - The potential path for the artist's avatar.
- * @returns {Promise<object|null>} The artist object or null on error.
- */
 async function findOrCreateArtist(name, thumbnailPath) {
   try {
     let artist = await db("artists").where({ name }).first();
-
     if (artist) {
-      // Artist exists. Check if we should update their thumbnail.
-      const hasRealAvatar =
-        artist.thumbnailPath && artist.thumbnailPath.includes("/artists/");
-      const isNewPathRealAvatar =
-        thumbnailPath && thumbnailPath.includes("/artists/");
-
-      // If the artist doesn't have a real avatar, but we just found one, update the record.
-      if (!hasRealAvatar && isNewPathRealAvatar) {
+      // If the artist exists but doesn't have a thumbnail, update it.
+      if (!artist.thumbnailPath && thumbnailPath) {
         await db("artists").where({ id: artist.id }).update({ thumbnailPath });
-        artist.thumbnailPath = thumbnailPath; // Update the object we're returning
+        artist.thumbnailPath = thumbnailPath;
       }
       return artist;
-    } else {
-      // Artist does not exist, create a new one.
-      const [id] = await db("artists").insert({ name, thumbnailPath });
-      return { id, name, thumbnailPath, createdAt: new Date().toISOString() };
     }
+    // Artist doesn't exist, create them.
+    const [id] = await db("artists").insert({ name, thumbnailPath });
+    return { id, name, thumbnailPath };
   } catch (error) {
     // Gracefully handle potential race condition on create
     if (error.message.includes("UNIQUE constraint failed")) {
@@ -427,20 +422,6 @@ async function getArtistDetails(artistId) {
   }
 }
 
-/**
- * Gets a single artist by their name.
- * @param {string} name - The artist's name.
- * @returns {Promise<object|null>} The artist object or null if not found.
- */
-async function getArtistByName(name) {
-  try {
-    return await db("artists").where({ name }).first();
-  } catch (error) {
-    console.error(`Error getting artist by name ${name}:`, error);
-    return null;
-  }
-}
-
 // --- System Functions ---
 
 async function shutdown() {
@@ -475,5 +456,4 @@ module.exports = {
   linkVideoToArtist,
   getAllArtistsWithStats,
   getArtistDetails,
-  getArtistByName,
 };
