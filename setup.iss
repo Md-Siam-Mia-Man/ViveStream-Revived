@@ -34,7 +34,8 @@
 AppId={{FC44F321-AE31-46B5-B6B2-BA2671A4C86C}}
 
 AppName={#MyAppName}
-AppVersion={#MyAppVersion} ; This controls the version shown in Control Panel (Add/Remove Programs)
+; This controls the version shown in Control Panel (Add/Remove Programs)
+AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
 AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
