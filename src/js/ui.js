@@ -14,6 +14,12 @@ logoHomeButton.addEventListener("click", (e) => {
 });
 
 function renderGridItem(item, isPlaylistItem = false) {
+  // --- NEW: Add an icon overlay for audio files ---
+  const audioIconOverlay =
+    item.type === "audio"
+      ? '<div class="thumbnail-overlay-icon"><i class="fa-solid fa-music"></i></div>'
+      : "";
+
   return `
         <div class="video-grid-item" data-id="${item.id}" ${
     isPlaylistItem ? `data-playlist-item="true"` : ""
@@ -24,6 +30,7 @@ function renderGridItem(item, isPlaylistItem = false) {
                     ? decodeURIComponent(item.coverPath)
                     : "../assets/logo.png"
                 }" class="grid-thumbnail" alt="thumbnail" onerror="this.onerror=null;this.src='../assets/logo.png';">
+                ${audioIconOverlay}
                 <span class="thumbnail-duration">${formatTime(
                   item.duration || 0
                 )}</span>
@@ -83,8 +90,7 @@ function renderHomePageGrid(library = currentLibrary) {
   }
   const grid = ensureGridExists(homePage, "video-grid");
   if (library.length === 0 && homeSearchInput.value) {
-    grid.innerHTML =
-      '<p class="empty-message">No videos match your search.</p>';
+    grid.innerHTML = '<p class="empty-message">No items match your search.</p>';
   } else {
     renderGrid(grid, library);
   }
@@ -105,7 +111,7 @@ function renderFavoritesPage(library) {
     if (placeholder) placeholder.style.display = "none";
     if (libraryToRender.length === 0 && homeSearchInput.value) {
       grid.innerHTML =
-        '<p class="empty-message">No favorite videos match your search.</p>';
+        '<p class="empty-message">No favorite items match your search.</p>';
     } else {
       renderGrid(grid, libraryToRender);
     }
@@ -208,7 +214,6 @@ function updateFavoriteStatusInUI(videoId, isFavorite) {
   });
 }
 
-// --- Dynamic Search Event Listener ---
 homeSearchInput.addEventListener("input", (e) => {
   const searchTerm = e.target.value.toLowerCase().trim();
   const activeNavItem = document.querySelector(".nav-item.active");
@@ -260,7 +265,6 @@ async function loadLibrary() {
   const activePage =
     document.querySelector(".nav-item.active")?.dataset.page || "home";
 
-  // Re-render the currently active page to reflect any new data
   switch (activePage) {
     case "home":
       renderHomePageGrid();
@@ -276,7 +280,6 @@ async function loadLibrary() {
       break;
   }
 
-  // If a video is playing, refresh the 'up next' list
   if (currentlyPlayingIndex > -1) {
     renderUpNextList();
   }
