@@ -217,24 +217,21 @@ async function createPlaylist(name) {
   }
 }
 
+/**
+ * Gets all playlists with their video count and first thumbnail, using an efficient single query.
+ * @returns {Promise<Array>} A promise that resolves to an array of playlist objects.
+ */
 async function getAllPlaylistsWithStats() {
   try {
-    const playlists = await db("playlists").orderBy("createdAt", "desc");
-    for (const playlist of playlists) {
-      const stats = await db("playlist_videos")
-        .where({ playlistId: playlist.id })
-        .count("videoId as videoCount")
-        .first();
-
-      const firstVideo = await db("playlist_videos")
-        .join("videos", "videos.id", "=", "playlist_videos.videoId")
-        .where("playlist_videos.playlistId", playlist.id)
-        .orderBy("playlist_videos.sortOrder", "asc")
-        .first("videos.coverPath");
-
-      playlist.videoCount = stats.videoCount || 0;
-      playlist.thumbnail = firstVideo ? firstVideo.coverPath : null;
-    }
+    // This single raw query is much more performant than a loop (N+1 problem).
+    const playlists = await db.raw(`
+      SELECT 
+        p.*,
+        (SELECT COUNT(*) FROM playlist_videos pv WHERE pv.playlistId = p.id) as videoCount,
+        (SELECT v.coverPath FROM playlist_videos pv JOIN videos v ON v.id = pv.videoId WHERE pv.playlistId = p.id ORDER BY pv.sortOrder ASC LIMIT 1) as thumbnail
+      FROM playlists p
+      ORDER BY p.createdAt DESC
+    `);
     return playlists;
   } catch (error) {
     console.error("Error getting all playlists:", error);
@@ -347,18 +344,15 @@ async function findOrCreateArtist(name, thumbnailPath) {
   try {
     let artist = await db("artists").where({ name }).first();
     if (artist) {
-      // If the artist exists but doesn't have a thumbnail, update it.
       if (!artist.thumbnailPath && thumbnailPath) {
         await db("artists").where({ id: artist.id }).update({ thumbnailPath });
         artist.thumbnailPath = thumbnailPath;
       }
       return artist;
     }
-    // Artist doesn't exist, create them.
     const [id] = await db("artists").insert({ name, thumbnailPath });
     return { id, name, thumbnailPath };
   } catch (error) {
-    // Gracefully handle potential race condition on create
     if (error.message.includes("UNIQUE constraint failed")) {
       return db("artists").where({ name }).first();
     }
