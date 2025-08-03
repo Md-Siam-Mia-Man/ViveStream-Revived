@@ -1,4 +1,4 @@
-/* player.css */
+/* src/css/player.css */
 #player-page .main-content {
      display: flex;
      padding: 24px;
@@ -96,6 +96,39 @@
      overflow: hidden;
      aspect-ratio: 16 / 9;
      cursor: pointer;
+}
+
+.player-section.audio-mode {
+     background: linear-gradient(135deg, #222, #111);
+}
+
+.player-section.audio-mode #video-player {
+     display: none;
+}
+
+.audio-artwork-container {
+     display: none;
+     width: 100%;
+     height: 100%;
+     justify-content: center;
+     align-items: center;
+     position: absolute;
+     top: 0;
+     left: 0;
+     z-index: 15;
+}
+
+.player-section.audio-mode .audio-artwork-container {
+     display: flex;
+}
+
+#audio-artwork-img {
+     max-width: 60%;
+     max-height: 80%;
+     height: auto;
+     border-radius: 12px;
+     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+     object-fit: contain;
 }
 
 .video-info-section {
@@ -207,6 +240,55 @@
      width: 40px;
      justify-content: center;
 }
+
+/* --- NEW Styles for Description Box --- */
+.video-description-box {
+     background-color: var(--yt-dark-grey);
+     border-radius: 12px;
+     padding: 16px;
+     margin-top: 24px;
+     font-size: 0.9rem;
+     line-height: 1.6;
+     cursor: pointer;
+     transition: background-color 0.2s;
+}
+
+.video-description-box:hover {
+     background-color: #3f3f3f;
+}
+
+.description-content {
+     overflow: hidden;
+     max-height: 5em;
+     /* Approximately 3 lines of text */
+     transition: max-height 0.3s ease-out;
+     white-space: pre-wrap;
+     /* Preserve line breaks from description */
+}
+
+.video-description-box.expanded .description-content {
+     max-height: 1000px;
+     /* A large value to allow full expansion */
+     transition: max-height 0.4s ease-in;
+}
+
+.show-more-btn {
+     background: none;
+     border: none;
+     color: var(--yt-white);
+     font-weight: 600;
+     cursor: pointer;
+     margin-top: 8px;
+     padding: 0;
+     display: none;
+     /* Hidden by default, shown via JS */
+}
+
+.video-description-box.expanded .show-more-btn {
+     margin-top: 16px;
+}
+
+/* --- End New Styles --- */
 
 .playlist-area {
      display: flex;
@@ -326,6 +408,12 @@
 
 .control-button:hover {
      transform: scale(1.1);
+}
+
+.control-button:disabled {
+     opacity: 0.4;
+     cursor: not-allowed;
+     transform: none;
 }
 
 .volume-container {
