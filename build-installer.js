@@ -3,9 +3,10 @@ const packager = require("@electron/packager");
 const compile = require("innosetup-compiler");
 const path = require("path");
 const fs = require("fs-extra");
-const packageJson = require("./package.json");
+const packageJson = require("./package.json"); // Step 1: Read the package.json file
+
 const appName = packageJson.name;
-const appVersion = packageJson.version;
+const appVersion = packageJson.version; // Step 2: Extract the version string from package.json
 const appAuthor = packageJson.author;
 const appExeName = `${appName}.exe`;
 const iconPath = path.join(__dirname, "assets", "icon.ico");
@@ -54,11 +55,13 @@ async function build() {
 
     console.log("3/4: ✍️ Creating Windows Installer with Inno Setup...");
     const issPath = path.join(__dirname, "setup.iss");
+    // Step 3: Pass the version (and other data) to the Inno Setup compiler
+    // The 'D' key corresponds to the /D command-line switch for defining a variable.
     await compile(issPath, {
       O: innoSetupOutput,
       D: {
         MyAppName: appName,
-        MyAppVersion: appVersion,
+        MyAppVersion: appVersion, // Here, the version from package.json is passed as 'MyAppVersion'
         MyAppPublisher: appAuthor,
         SourceAppPath: packagedAppPath,
         MyAppExeName: appExeName,
