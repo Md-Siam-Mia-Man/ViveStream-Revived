@@ -62,7 +62,6 @@
                 <li class="nav-item" data-page="favorites"><i class="fa-solid fa-heart"></i><span>Favorites</span></li>
                 <li class="nav-item" data-page="playlists"><i class="fa-solid fa-layer-group"></i><span>Playlists</span>
                 </li>
-                <!-- New Artists nav item -->
                 <li class="nav-item" data-page="artists"><i
                         class="fa-solid fa-microphone-lines"></i><span>Artists</span>
                 </li>
@@ -81,15 +80,24 @@
                         <h2>Download New Media</h2>
                         <p class="download-card-subtitle">Paste a YouTube video or playlist URL to begin.</p>
                         <form id="download-form">
-                            <label for="url-input">URL</label>
                             <div class="url-input-container">
                                 <i class="fa-solid fa-link url-icon"></i>
                                 <input type="text" id="url-input" placeholder="Enter YouTube URL..." required>
                             </div>
                             <div class="download-options">
-                                <div class="option-group select-group">
-                                    <label>Quality</label>
-                                    <div class="custom-select-container" id="quality-select-container">
+                                <div class="option-group">
+                                    <label>Type</label>
+                                    <div class="radio-group">
+                                        <label class="radio-label"><input type="radio" name="download-type"
+                                                id="download-type-video" value="video"
+                                                checked><span>Video</span></label>
+                                        <label class="radio-label"><input type="radio" name="download-type"
+                                                id="download-type-audio" value="audio"><span>Audio</span></label>
+                                    </div>
+                                </div>
+                                <div id="video-options-container" class="option-group select-group">
+                                    <label>Video Quality</label>
+                                    <div class="custom-select-container" id="video-quality-select-container">
                                         <div class="selected-option" data-value="1080">
                                             <span>1080p</span>
                                             <span class="chevron"><i class="fa-solid fa-chevron-down"></i></span>
@@ -104,8 +112,49 @@
                                         </div>
                                     </div>
                                 </div>
+                                <div id="audio-options-container" class="option-group select-group hidden">
+                                    <label>Audio Quality</label>
+                                    <div class="custom-select-container" id="audio-quality-select-container">
+                                        <div class="selected-option" data-value="mp3-0">
+                                            <span>MP3 (Best)</span>
+                                            <span class="chevron"><i class="fa-solid fa-chevron-down"></i></span>
+                                        </div>
+                                        <div class="options-list">
+                                            <div class="option-item selected" data-value="mp3-0">MP3 (Best Quality)
+                                            </div>
+                                            <div class="option-item" data-value="mp3-5">MP3 (Standard)</div>
+                                            <div class="option-item" data-value="flac">FLAC (Lossless)</div>
+                                            <div class="option-item" data-value="wav">WAV (Uncompressed)</div>
+                                            <div class="option-item" data-value="m4a">M4A (AAC)</div>
+                                            <div class="option-item" data-value="opus">Opus</div>
+                                        </div>
+                                    </div>
+                                </div>
                                 <button type="submit" class="download-button"><i
                                         class="fa-solid fa-download"></i><span>Download</span></button>
+                            </div>
+                            <div class="advanced-options-toggle" id="advanced-options-toggle">
+                                <i class="fa-solid fa-sliders"></i> Advanced Options
+                            </div>
+                            <div class="advanced-options-panel hidden" id="advanced-options-panel">
+                                <div class="option-group">
+                                    <label for="start-time-input">Start Time</label>
+                                    <input type="text" id="start-time-input" class="time-input"
+                                        placeholder="e.g., 1:23">
+                                </div>
+                                <div class="option-group">
+                                    <label for="end-time-input">End Time</label>
+                                    <input type="text" id="end-time-input" class="time-input" placeholder="e.g., 2:45">
+                                </div>
+                                <div class="option-group">
+                                    <label for="split-chapters-toggle">Split by Chapters</label>
+                                    <label class="switch">
+                                        <input type="checkbox" id="split-chapters-toggle">
+                                        <span class="slider round"></span>
+                                    </label>
+                                </div>
+                                <p class="advanced-options-note">Download a clip OR split by chapters. Cannot be used at
+                                    the same time.</p>
                             </div>
                         </form>
                     </div>
@@ -133,6 +182,9 @@
                             <video id="video-player">
                                 <track kind="subtitles" srclang="en" id="subtitle-track">
                             </video>
+                            <div class="audio-artwork-container">
+                                <img id="audio-artwork-img" src="" alt="Artwork">
+                            </div>
                             <div class="video-controls-container">
                                 <div class="timeline-container">
                                     <div class="timeline">
@@ -197,6 +249,10 @@
                                             class="fa-solid fa-ellipsis-vertical"></i></button>
                                 </div>
                             </div>
+                            <div class="video-description-box" id="video-description-box">
+                                <div class="description-content" id="description-content"></div>
+                                <button class="show-more-btn" id="show-more-desc-btn">Show more</button>
+                            </div>
                         </div>
                     </div>
                     <div class="secondary-column">
@@ -209,7 +265,6 @@
             </div>
             <div id="playlists-page" class="page hidden"></div>
             <div id="playlist-detail-page" class="page hidden"></div>
-            <!-- New Artist Page containers -->
             <div id="artists-page" class="page hidden"></div>
             <div id="artist-detail-page" class="page hidden"></div>
             <div id="favorites-page" class="page hidden">
@@ -234,6 +289,98 @@
                                 <input type="range" id="concurrent-downloads-slider" min="1" max="10" value="3">
                                 <span id="concurrent-downloads-value">3</span>
                             </div>
+                        </div>
+                        <!-- NEW: Concurrent Fragments Slider -->
+                        <div class="setting-item">
+                            <div class="setting-text">
+                                <label for="concurrent-fragments-slider">Concurrent Fragments</label>
+                                <p>Speeds up HLS/DASH downloads by fetching parts in parallel.</p>
+                            </div>
+                            <div class="setting-control">
+                                <input type="range" id="concurrent-fragments-slider" min="1" max="10" value="1">
+                                <span id="concurrent-fragments-value">1</span>
+                            </div>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-text">
+                                <label>Browser Cookies</label>
+                                <p>Use cookies from a browser to bypass login/age restrictions.</p>
+                            </div>
+                            <div class="setting-control">
+                                <div class="custom-select-container" id="cookie-browser-select-container">
+                                    <div class="selected-option" data-value="none">
+                                        <span>None</span>
+                                        <span class="chevron"><i class="fa-solid fa-chevron-down"></i></span>
+                                    </div>
+                                    <div class="options-list">
+                                        <div class="option-item selected" data-value="none">None</div>
+                                        <div class="option-item" data-value="brave">Brave</div>
+                                        <div class="option-item" data-value="chrome">Chrome</div>
+                                        <div class="option-item" data-value="chromium">Chromium</div>
+                                        <div class="option-item" data-value="edge">Edge</div>
+                                        <div class="option-item" data-value="firefox">Firefox</div>
+                                        <div class="option-item" data-value="opera">Opera</div>
+                                        <div class="option-item" data-value="safari">Safari</div>
+                                        <div class="option-item" data-value="vivaldi">Vivaldi</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-text">
+                                <label for="auto-subs-toggle">Download Automatic Subtitles</label>
+                                <p>If official subtitles aren't found, download auto-generated ones (when available).
+                                </p>
+                            </div>
+                            <div class="setting-control">
+                                <label class="switch">
+                                    <input type="checkbox" id="auto-subs-toggle">
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-text">
+                                <label for="sponsorblock-toggle">Remove Sponsored Segments</label>
+                                <p>Automatically cut sponsored sections, intros, outros, etc., from videos.</p>
+                            </div>
+                            <div class="setting-control">
+                                <label class="switch">
+                                    <input type="checkbox" id="sponsorblock-toggle">
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- NEW: File Naming Section -->
+                    <div class="settings-section">
+                        <h2 class="settings-section-title">File Naming</h2>
+                        <div class="setting-item">
+                            <div class="setting-text">
+                                <label for="output-template-input">Custom Output Template</label>
+                                <p>Define how your files are named. <a id="template-help-link" class="link-style">See
+                                        documentation for available fields.</a></p>
+                            </div>
+                            <div class="setting-control">
+                                <input type="text" id="output-template-input" class="text-input-control"
+                                    placeholder="Default: %(id)s.%(ext)s">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="settings-section">
+                        <h2 class="settings-section-title">Maintenance</h2>
+                        <div class="setting-item">
+                            <div class="setting-text">
+                                <label>Update Downloader</label>
+                                <p>Keep the internal downloader (yt-dlp) up-to-date to prevent download errors.</p>
+                            </div>
+                            <div class="setting-control">
+                                <button class="setting-btn" id="update-ytdlp-btn"><i
+                                        class="fa-solid fa-cloud-arrow-down"></i> Check for Updates</button>
+                            </div>
+                        </div>
+                        <div id="updater-console-container" class="hidden">
+                            <pre id="updater-console"></pre>
                         </div>
                     </div>
                     <div class="settings-section danger-zone">
@@ -298,6 +445,7 @@
     </div>
     <div id="miniplayer" class="hidden">
         <div id="miniplayer-video-container"></div>
+        <img id="miniplayer-artwork-img" class="miniplayer-artwork hidden" src="" alt="Artwork">
         <div class="miniplayer-info">
             <p class="miniplayer-title">Video Title</p>
             <p class="miniplayer-uploader">Uploader</p>
