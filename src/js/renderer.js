@@ -16,6 +16,9 @@ import {
   playLibraryItem,
   updateVideoDetails,
   renderUpNextList,
+  togglePlay,
+  playNext,
+  playPrevious,
 } from "./player.js";
 import {
   activateMiniplayer,
@@ -25,6 +28,7 @@ import {
 } from "./miniplayer.js";
 import { initializeSettingsPage, loadSettings } from "./settings.js";
 import { showConfirmationModal } from "./modals.js";
+import { showNotification } from "./notifications.js";
 
 // --- Element Selectors ---
 const sidebar = document.querySelector(".sidebar");
@@ -50,46 +54,37 @@ const playlistContextMenu = document.getElementById(
 );
 const loaderOverlay = document.getElementById("loader-overlay");
 
-// This is now the only global variable related to UI state
 let currentPlaylistId = null;
 
-// --- Loader Utility Functions ---
+// --- Loader & Page Management ---
 export function showLoader() {
   loaderOverlay.classList.remove("hidden");
 }
-
 export function hideLoader() {
   loaderOverlay.classList.add("hidden");
 }
 
-/**
- * Shows a specific page and handles related UI state changes.
- * @param {string} pageId - The ID of the page to show.
- * @param {boolean} [isSubPage=false] - True if the page is a detail view.
- */
 export function showPage(pageId, isSubPage = false) {
   const isPlayerPageVisible = !playerPage.classList.contains("hidden");
   const targetPageId = isSubPage ? pageId : `${pageId}-page`;
-
   const shouldActivateMiniplayer =
     isPlayerPageVisible &&
     targetPageId !== "player-page" &&
     videoPlayer.src &&
     !videoPlayer.ended;
 
-  if (shouldActivateMiniplayer) {
-    activateMiniplayer();
-  }
-
+  if (shouldActivateMiniplayer) activateMiniplayer();
   pages.forEach((page) =>
     page.classList.toggle("hidden", page.id !== targetPageId)
   );
 
   let placeholderText = "Search...";
   if (!isSubPage) {
-    document.querySelectorAll(".nav-item").forEach((item) => {
-      item.classList.toggle("active", item.dataset.page === pageId);
-    });
+    document
+      .querySelectorAll(".nav-item")
+      .forEach((item) =>
+        item.classList.toggle("active", item.dataset.page === pageId)
+      );
     switch (pageId) {
       case "home":
       case "favorites":
@@ -113,38 +108,23 @@ export function showPage(pageId, isSubPage = false) {
     homeSearchInput.dispatchEvent(new Event("input", { bubbles: true }));
   }
 
-  if (targetPageId === "player-page") {
-    deactivateMiniplayer();
-  }
-
+  if (targetPageId === "player-page") deactivateMiniplayer();
   if (
     isPlayerPageVisible &&
     !shouldActivateMiniplayer &&
-    targetPageId !== "player-page"
+    targetPageId !== "player-page" &&
+    !videoPlayer.paused
   ) {
-    if (!videoPlayer.paused) {
-      videoPlayer.pause();
-    }
+    videoPlayer.pause();
   }
 }
 
-/**
- * Handles clicks on the sidebar navigation items.
- * @param {Event} e - The click event.
- */
 async function handleNav(e) {
   const navItem = e.target.closest(".nav-item");
   if (navItem) {
     const pageId = navItem.dataset.page;
-
-    // Show loader immediately for better user feedback
     showLoader();
-
-    // Show the page structure first
     showPage(pageId);
-
-    // Then render the content asynchronously
-    // The render functions themselves will hide the loader when done
     try {
       switch (pageId) {
         case "home":
@@ -160,7 +140,7 @@ async function handleNav(e) {
           await renderArtistsPage();
           break;
         default:
-          hideLoader(); // Hide loader for pages without async content
+          hideLoader();
           break;
       }
     } catch (error) {
@@ -170,23 +150,17 @@ async function handleNav(e) {
   }
 }
 
-/**
- * Fetches all necessary data from the main process and populates the state.
- */
 export async function loadLibrary() {
   const [library, playlists, artists] = await Promise.all([
     window.electronAPI.getLibrary(),
     window.electronAPI.playlistGetAll(),
     window.electronAPI.artistGetAll(),
   ]);
-
   setLibrary(library);
   setAllPlaylists(playlists);
   setAllArtists(artists);
-
   const activePage =
     document.querySelector(".nav-item.active")?.dataset.page || "home";
-
   switch (activePage) {
     case "home":
       renderHomePageGrid();
@@ -201,10 +175,7 @@ export async function loadLibrary() {
       renderArtistsPage();
       break;
   }
-
-  if (AppState.currentlyPlayingIndex > -1) {
-    renderUpNextList();
-  }
+  if (AppState.currentlyPlayingIndex > -1) renderUpNextList();
 }
 
 function initializeWindowControls() {
@@ -216,7 +187,6 @@ function initializeWindowControls() {
     window.electronAPI.maximizeWindow()
   );
   closeBtn.addEventListener("click", () => window.electronAPI.closeWindow());
-
   window.electronAPI.onWindowMaximized((isMaximized) => {
     const icon = maximizeBtn.querySelector("i");
     icon.className = `fa-regular ${
@@ -230,11 +200,10 @@ function initializeContextMenu() {
     videoContextMenu.classList.remove("visible");
     playlistContextMenu.classList.remove("visible");
   });
-
   videoContextMenu.addEventListener("click", (e) => e.stopPropagation());
   playlistContextMenu.addEventListener("click", (e) => e.stopPropagation());
 
-  contextDeleteBtn.addEventListener("click", async () => {
+  contextDeleteBtn.addEventListener("click", () => {
     const videoId = videoContextMenu.dataset.videoId;
     if (videoId) {
       showConfirmationModal(
@@ -285,6 +254,12 @@ function initializeContextMenu() {
   });
 }
 
+function initializeMediaKeyListeners() {
+  window.electronAPI.onMediaKeyPlayPause(() => togglePlay());
+  window.electronAPI.onMediaKeyNextTrack(() => playNext());
+  window.electronAPI.onMediaKeyPrevTrack(() => playPrevious());
+}
+
 // --- App Initialization ---
 document.addEventListener("DOMContentLoaded", async () => {
   showLoader();
@@ -299,12 +274,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   initializePlaylistContextMenus();
   initializeSettingsPage();
   loadSettings();
+  initializeMediaKeyListeners();
 
   sidebarNav.addEventListener("click", handleNav);
   sidebarNavBottom.addEventListener("click", handleNav);
 });
 
-// Expose currentPlaylistId setter for other modules
 export function setCurrentPlaylistId(id) {
   currentPlaylistId = id;
 }
