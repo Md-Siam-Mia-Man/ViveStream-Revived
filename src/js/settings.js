@@ -1,74 +1,104 @@
 // src/js/settings.js
+import { showConfirmationModal } from "./modals.js";
+import { showNotification } from "./notifications.js";
+import { loadLibrary, showPage } from "./renderer.js";
+import { resetPlaybackState } from "./state.js";
+import { closeMiniplayer } from "./miniplayer.js";
+
+// --- State ---
 let currentSettings = {};
 
-function initializeSettingsPage() {
-  const slider = document.getElementById("concurrent-downloads-slider");
-  const valueLabel = document.getElementById("concurrent-downloads-value");
-  const resetAppBtn = document.getElementById("reset-app-btn");
-  const clearMediaBtn = document.getElementById("clear-media-btn");
-  const appVersionEl = document.getElementById("app-version");
-  const autoSubsToggle = document.getElementById("auto-subs-toggle");
-  const cookieBrowserSelect = document.getElementById(
-    "cookie-browser-select-container"
-  );
-  const sponsorblockToggle = document.getElementById("sponsorblock-toggle");
-  const updateYtdlpBtn = document.getElementById("update-ytdlp-btn");
-  const updaterConsoleContainer = document.getElementById(
-    "updater-console-container"
-  );
-  const updaterConsole = document.getElementById("updater-console");
-  // --- NEW: Elements for new settings ---
-  const concurrentFragmentsSlider = document.getElementById(
-    "concurrent-fragments-slider"
-  );
-  const concurrentFragmentsValue = document.getElementById(
-    "concurrent-fragments-value"
-  );
-  const outputTemplateInput = document.getElementById("output-template-input");
-  const templateHelpLink = document.getElementById("template-help-link");
+// --- DOM Element Selectors ---
+const appVersionEl = document.getElementById("app-version");
+const concurrentDownloadsSlider = document.getElementById(
+  "concurrent-downloads-slider"
+);
+const concurrentDownloadsValue = document.getElementById(
+  "concurrent-downloads-value"
+);
+const concurrentFragmentsSlider = document.getElementById(
+  "concurrent-fragments-slider"
+);
+const concurrentFragmentsValue = document.getElementById(
+  "concurrent-fragments-value"
+);
+const outputTemplateInput = document.getElementById("output-template-input");
+const templateHelpLink = document.getElementById("template-help-link");
+const cookieBrowserSelect = document.getElementById(
+  "cookie-browser-select-container"
+);
+const autoSubsToggle = document.getElementById("auto-subs-toggle");
+const sponsorblockToggle = document.getElementById("sponsorblock-toggle");
+const updateYtdlpBtn = document.getElementById("update-ytdlp-btn");
+const updaterConsoleContainer = document.getElementById(
+  "updater-console-container"
+);
+const updaterConsole = document.getElementById("updater-console");
+const resetAppBtn = document.getElementById("reset-app-btn");
+const clearMediaBtn = document.getElementById("clear-media-btn");
+const videoPlayer = document.getElementById("video-player");
 
-  const updateSettingsUI = (settings) => {
-    currentSettings = settings;
-    slider.value = settings.concurrentDownloads;
-    valueLabel.textContent = settings.concurrentDownloads;
-    autoSubsToggle.checked = !!settings.downloadAutoSubs;
-    sponsorblockToggle.checked = !!settings.removeSponsors;
-    // --- NEW: Update new UI elements ---
-    concurrentFragmentsSlider.value = settings.concurrentFragments;
-    concurrentFragmentsValue.textContent = settings.concurrentFragments;
-    outputTemplateInput.value = settings.outputTemplate || "";
+/**
+ * Updates the entire settings UI based on a settings object.
+ * @param {object} settings - The settings object.
+ */
+function updateSettingsUI(settings) {
+  currentSettings = settings;
+  concurrentDownloadsSlider.value = settings.concurrentDownloads;
+  concurrentDownloadsValue.textContent = settings.concurrentDownloads;
+  autoSubsToggle.checked = !!settings.downloadAutoSubs;
+  sponsorblockToggle.checked = !!settings.removeSponsors;
+  concurrentFragmentsSlider.value = settings.concurrentFragments;
+  concurrentFragmentsValue.textContent = settings.concurrentFragments;
+  outputTemplateInput.value = settings.outputTemplate || "";
 
-    const selectedBrowser = settings.cookieBrowser || "none";
-    const selectedOptionEl =
-      cookieBrowserSelect.querySelector(".selected-option");
-    const options = cookieBrowserSelect.querySelectorAll(".option-item");
-    options.forEach((opt) => {
-      opt.classList.remove("selected");
-      if (opt.dataset.value === selectedBrowser) {
-        opt.classList.add("selected");
-        selectedOptionEl.querySelector("span").textContent = opt.textContent;
-        selectedOptionEl.dataset.value = opt.dataset.value;
-      }
-    });
-  };
+  const selectedBrowser = settings.cookieBrowser || "none";
+  const selectedOptionEl =
+    cookieBrowserSelect.querySelector(".selected-option");
+  const options = cookieBrowserSelect.querySelectorAll(".option-item");
+  options.forEach((opt) => {
+    const isSelected = opt.dataset.value === selectedBrowser;
+    opt.classList.toggle("selected", isSelected);
+    if (isSelected) {
+      selectedOptionEl.querySelector("span").textContent = opt.textContent;
+      selectedOptionEl.dataset.value = opt.dataset.value;
+    }
+  });
+}
 
-  window.electronAPI.getSettings().then(updateSettingsUI);
+/**
+ * Loads settings from the main process and populates the UI.
+ */
+export async function loadSettings() {
+  const settings = await window.electronAPI.getSettings();
+  updateSettingsUI(settings);
+}
+
+/**
+ * Initializes all event listeners for the settings page.
+ */
+export function initializeSettingsPage() {
   window.electronAPI.getAppVersion().then((v) => {
     if (appVersionEl) appVersionEl.textContent = `Version ${v}`;
   });
 
-  // --- NEW: Event listeners for new settings ---
-  concurrentFragmentsSlider.addEventListener("input", (e) => {
-    concurrentFragmentsValue.textContent = e.target.value;
-  });
-  concurrentFragmentsSlider.addEventListener("change", (e) => {
-    const newSettings = {
-      ...currentSettings,
-      concurrentFragments: parseInt(e.target.value, 10),
-    };
+  // --- Event Listeners for Individual Settings ---
+  concurrentDownloadsSlider.addEventListener("change", (e) => {
+    const value = parseInt(e.target.value, 10);
+    concurrentDownloadsValue.textContent = value;
+    const newSettings = { ...currentSettings, concurrentDownloads: value };
     window.electronAPI.saveSettings(newSettings);
     currentSettings = newSettings;
   });
+
+  concurrentFragmentsSlider.addEventListener("change", (e) => {
+    const value = parseInt(e.target.value, 10);
+    concurrentFragmentsValue.textContent = value;
+    const newSettings = { ...currentSettings, concurrentFragments: value };
+    window.electronAPI.saveSettings(newSettings);
+    currentSettings = newSettings;
+  });
+
   outputTemplateInput.addEventListener("change", (e) => {
     const newSettings = {
       ...currentSettings,
@@ -76,53 +106,6 @@ function initializeSettingsPage() {
     };
     window.electronAPI.saveSettings(newSettings);
     currentSettings = newSettings;
-  });
-  templateHelpLink.addEventListener("click", () => {
-    window.electronAPI.openExternal(
-      "https://github.com/yt-dlp/yt-dlp#output-template"
-    );
-  });
-
-  slider.addEventListener("input", (e) => {
-    valueLabel.textContent = e.target.value;
-  });
-  slider.addEventListener("change", (e) => {
-    const newSettings = {
-      ...currentSettings,
-      concurrentDownloads: parseInt(e.target.value, 10),
-    };
-    window.electronAPI.saveSettings(newSettings);
-    currentSettings = newSettings;
-  });
-
-  const selectedOption = cookieBrowserSelect.querySelector(".selected-option");
-  const optionsList = cookieBrowserSelect.querySelector(".options-list");
-  selectedOption.addEventListener("click", () =>
-    cookieBrowserSelect.classList.toggle("open")
-  );
-  optionsList.addEventListener("click", (e) => {
-    if (e.target.classList.contains("option-item")) {
-      const selectedValue = e.target.dataset.value;
-      selectedOption.querySelector("span").textContent = e.target.textContent;
-      selectedOption.dataset.value = selectedValue;
-      optionsList
-        .querySelectorAll(".option-item")
-        .forEach((i) => i.classList.remove("selected"));
-      e.target.classList.add("selected");
-      cookieBrowserSelect.classList.remove("open");
-      const newSettings = { ...currentSettings, cookieBrowser: selectedValue };
-      window.electronAPI.saveSettings(newSettings);
-      currentSettings = newSettings;
-      showNotification(
-        `Cookie setting saved to: ${e.target.textContent}`,
-        "success"
-      );
-    }
-  });
-  document.addEventListener("click", (e) => {
-    if (!cookieBrowserSelect.contains(e.target)) {
-      cookieBrowserSelect.classList.remove("open");
-    }
   });
 
   autoSubsToggle.addEventListener("change", (e) => {
@@ -143,6 +126,39 @@ function initializeSettingsPage() {
     currentSettings = newSettings;
   });
 
+  // Custom Select Dropdown Logic
+  cookieBrowserSelect.addEventListener("click", (e) => {
+    const selectedOption =
+      cookieBrowserSelect.querySelector(".selected-option");
+    const optionsList = cookieBrowserSelect.querySelector(".options-list");
+    if (e.target.closest(".selected-option")) {
+      cookieBrowserSelect.classList.toggle("open");
+    } else if (e.target.classList.contains("option-item")) {
+      const selectedValue = e.target.dataset.value;
+      selectedOption.querySelector("span").textContent = e.target.textContent;
+      selectedOption.dataset.value = selectedValue;
+      optionsList
+        .querySelectorAll(".option-item")
+        .forEach((i) => i.classList.remove("selected"));
+      e.target.classList.add("selected");
+      cookieBrowserSelect.classList.remove("open");
+      const newSettings = { ...currentSettings, cookieBrowser: selectedValue };
+      window.electronAPI.saveSettings(newSettings);
+      currentSettings = newSettings;
+      showNotification(
+        `Cookie setting saved to: ${e.target.textContent}`,
+        "success"
+      );
+    }
+  });
+
+  document.addEventListener("click", (e) => {
+    if (!cookieBrowserSelect.contains(e.target)) {
+      cookieBrowserSelect.classList.remove("open");
+    }
+  });
+
+  // --- Maintenance and Danger Zone Buttons ---
   updateYtdlpBtn.addEventListener("click", async () => {
     updateYtdlpBtn.disabled = true;
     updateYtdlpBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Updating...`;
@@ -166,11 +182,6 @@ function initializeSettingsPage() {
     }
   });
 
-  window.electronAPI.onYtDlpUpdateProgress((message) => {
-    updaterConsole.textContent += message;
-    updaterConsole.scrollTop = updaterConsole.scrollHeight;
-  });
-
   resetAppBtn.addEventListener("click", () => {
     showConfirmationModal(
       "Reset ViveStream?",
@@ -178,7 +189,7 @@ function initializeSettingsPage() {
       async () => {
         const newSettings = await window.electronAPI.resetApp();
         updateSettingsUI(newSettings);
-        loadSettings();
+        loadSettings(); // Reloads player settings from localStorage
         showNotification(
           "ViveStream has been reset to default settings.",
           "info"
@@ -195,7 +206,7 @@ function initializeSettingsPage() {
         const result = await window.electronAPI.clearAllMedia();
         if (result.success) {
           showNotification("All local media has been deleted.", "success");
-          currentlyPlayingIndex = -1;
+          resetPlaybackState();
           videoPlayer.src = "";
           closeMiniplayer();
           await loadLibrary();
@@ -207,6 +218,12 @@ function initializeSettingsPage() {
     );
   });
 
+  // --- About Section Links ---
+  templateHelpLink.addEventListener("click", () =>
+    window.electronAPI.openExternal(
+      "https://github.com/yt-dlp/yt-dlp#output-template"
+    )
+  );
   document
     .getElementById("github-view-link")
     ?.addEventListener("click", () =>
@@ -223,9 +240,12 @@ function initializeSettingsPage() {
     );
 }
 
+// --- IPC Listeners ---
+window.electronAPI.onYtDlpUpdateProgress((message) => {
+  updaterConsole.textContent += message;
+  updaterConsole.scrollTop = updaterConsole.scrollHeight;
+});
+
 window.electronAPI.onClearLocalStorage(() => {
   localStorage.clear();
-  console.log(
-    "Cleared all localStorage as requested by main process for app reset."
-  );
 });

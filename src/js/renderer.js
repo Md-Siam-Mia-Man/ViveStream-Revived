@@ -1,72 +1,45 @@
 // src/js/renderer.js
+import {
+  AppState,
+  setLibrary,
+  setAllPlaylists,
+  setAllArtists,
+  resetPlaybackState,
+} from "./state.js";
+import { renderHomePageGrid, renderFavoritesPage } from "./ui.js";
+import {
+  renderPlaylistsPage,
+  initializePlaylistContextMenus,
+} from "./playlists.js";
+import { renderArtistsPage } from "./artists.js";
+import {
+  playLibraryItem,
+  updateVideoDetails,
+  renderUpNextList,
+} from "./player.js";
+import {
+  activateMiniplayer,
+  deactivateMiniplayer,
+  closeMiniplayer,
+  initializeMiniplayer,
+} from "./miniplayer.js";
+import { initializeSettingsPage, loadSettings } from "./settings.js";
+import { showConfirmationModal } from "./modals.js";
+
+// --- Element Selectors ---
 const sidebar = document.querySelector(".sidebar");
 const sidebarToggle = document.getElementById("sidebar-toggle");
 const logoHomeButton = document.getElementById("logo-home-button");
 const sidebarNav = document.querySelector(".sidebar-nav");
 const sidebarNavBottom = document.querySelector(".sidebar-nav-bottom");
 const pages = document.querySelectorAll(".page");
-const downloadForm = document.getElementById("download-form");
-const urlInput = document.getElementById("url-input");
 const homeSearchInput = document.getElementById("home-search-input");
-const upNextList = document.getElementById("up-next-list");
-const qualitySelectContainer = document.getElementById(
-  "quality-select-container"
-);
-const downloadQueueArea = document.getElementById("download-queue-area");
 const playerPage = document.getElementById("player-page");
-const playerSection = document.getElementById("player-section");
 const videoPlayer = document.getElementById("video-player");
-const subtitleTrack = document.getElementById("subtitle-track");
-const playPauseBtn = document.querySelector(".play-pause-btn");
-const prevBtn = document.querySelector(".prev-btn");
-const nextBtn = document.querySelector(".next-btn");
-const muteBtn = document.querySelector(".mute-btn");
-const volumeSlider = document.querySelector(".volume-slider");
-const currentTimeEl = document.querySelector(".current-time");
-const totalTimeEl = document.querySelector(".total-time");
-const timelineContainer = document.querySelector(".timeline-container");
-const timelineProgress = document.querySelector(".timeline-progress");
-const theaterBtn = document.getElementById("theater-btn");
-const fullscreenBtn = document.getElementById("fullscreen-btn");
-const miniplayerBtn = document.getElementById("miniplayer-btn");
-const autoplayToggle = document.getElementById("autoplay-toggle");
-const settingsBtn = document.getElementById("settings-btn");
-const settingsMenu = document.getElementById("settings-menu");
-const speedSubmenu = document.getElementById("speed-submenu");
-const sleepSubmenu = document.getElementById("sleep-submenu");
-const controlsContainer = document.querySelector(".video-controls-container");
-const videoInfoTitle = document.getElementById("video-info-title");
-const uploaderInfo = document.querySelector(".uploader-info");
-const channelThumbContainer = document.querySelector(
-  ".channel-thumb-container"
-);
-const channelThumb = document.getElementById("channel-thumb");
-const videoInfoUploader = document.getElementById("video-info-uploader");
-const videoInfoDate = document.getElementById("video-info-date");
-const videoMenuBtn = document.getElementById("video-menu-btn");
-const favoriteBtn = document.getElementById("favorite-btn");
-const saveToPlaylistBtn = document.getElementById("save-to-playlist-btn");
-const miniplayer = document.getElementById("miniplayer");
-const miniplayerVideoContainer = document.getElementById(
-  "miniplayer-video-container"
-);
-const miniplayerTitle = document.querySelector(".miniplayer-title");
-const miniplayerUploader = document.querySelector(".miniplayer-uploader");
-const miniplayerPlayPauseBtn = document.getElementById(
-  "miniplayer-play-pause-btn"
-);
-const miniplayerNextBtn = document.getElementById("miniplayer-next-btn");
-const miniplayerPrevBtn = document.getElementById("miniplayer-prev-btn");
-const miniplayerCloseBtn = document.getElementById("miniplayer-close-btn");
-const miniplayerExpandBtn = document.getElementById("miniplayer-expand-btn");
-const miniplayerProgressBar = document.querySelector(
-  ".miniplayer-progress-bar"
-);
 const trayBtn = document.getElementById("tray-btn");
 const minimizeBtn = document.getElementById("minimize-btn");
 const maximizeBtn = document.getElementById("maximize-btn");
 const closeBtn = document.getElementById("close-btn");
-
 const videoContextMenu = document.getElementById("video-item-context-menu");
 const contextDeleteBtn = document.getElementById("context-delete-btn");
 const contextRemoveFromPlaylistBtn = document.getElementById(
@@ -75,20 +48,29 @@ const contextRemoveFromPlaylistBtn = document.getElementById(
 const playlistContextMenu = document.getElementById(
   "playlist-item-context-menu"
 );
+const loaderOverlay = document.getElementById("loader-overlay");
 
-let currentLibrary = [];
-let currentlyPlayingIndex = -1;
+// This is now the only global variable related to UI state
+let currentPlaylistId = null;
+
+// --- Loader Utility Functions ---
+export function showLoader() {
+  loaderOverlay.classList.remove("hidden");
+}
+
+export function hideLoader() {
+  loaderOverlay.classList.add("hidden");
+}
 
 /**
- * Shows a specific page, handles miniplayer logic, and updates UI elements like search placeholder.
- * @param {string} pageId - The ID of the page to show (e.g., 'home', 'artists', 'artist-detail-page').
- * @param {boolean} [isSubPage=false] - True if the page is a detail view, not a main sidebar item.
+ * Shows a specific page and handles related UI state changes.
+ * @param {string} pageId - The ID of the page to show.
+ * @param {boolean} [isSubPage=false] - True if the page is a detail view.
  */
-function showPage(pageId, isSubPage = false) {
+export function showPage(pageId, isSubPage = false) {
   const isPlayerPageVisible = !playerPage.classList.contains("hidden");
   const targetPageId = isSubPage ? pageId : `${pageId}-page`;
 
-  // Activate miniplayer if navigating away from the main player while a video is playing
   const shouldActivateMiniplayer =
     isPlayerPageVisible &&
     targetPageId !== "player-page" &&
@@ -99,18 +81,15 @@ function showPage(pageId, isSubPage = false) {
     activateMiniplayer();
   }
 
-  // Show the target page and hide all others
   pages.forEach((page) =>
     page.classList.toggle("hidden", page.id !== targetPageId)
   );
 
-  // Update search bar placeholder and nav item highlight
   let placeholderText = "Search...";
   if (!isSubPage) {
     document.querySelectorAll(".nav-item").forEach((item) => {
       item.classList.toggle("active", item.dataset.page === pageId);
     });
-    // Set placeholder based on the main page ID
     switch (pageId) {
       case "home":
       case "favorites":
@@ -129,19 +108,15 @@ function showPage(pageId, isSubPage = false) {
     }
   }
   homeSearchInput.placeholder = placeholderText;
-  // If the search bar had text, clear it when changing pages
   if (homeSearchInput.value) {
     homeSearchInput.value = "";
-    // Trigger an input event to reset the view
     homeSearchInput.dispatchEvent(new Event("input", { bubbles: true }));
   }
 
-  // Deactivate miniplayer if navigating to the main player page
   if (targetPageId === "player-page") {
     deactivateMiniplayer();
   }
 
-  // Pause video if navigating away from the player without activating miniplayer
   if (
     isPlayerPageVisible &&
     !shouldActivateMiniplayer &&
@@ -157,46 +132,80 @@ function showPage(pageId, isSubPage = false) {
  * Handles clicks on the sidebar navigation items.
  * @param {Event} e - The click event.
  */
-function handleNav(e) {
+async function handleNav(e) {
   const navItem = e.target.closest(".nav-item");
   if (navItem) {
     const pageId = navItem.dataset.page;
-    showPage(pageId); // Centralized page switching
-    // Call the appropriate render function for the selected page
-    switch (pageId) {
-      case "home":
-        renderHomePageGrid();
-        break;
-      case "favorites":
-        renderFavoritesPage();
-        break;
-      case "playlists":
-        renderPlaylistsPage();
-        break;
-      case "artists":
-        renderArtistsPage();
-        break;
+
+    // Show loader immediately for better user feedback
+    showLoader();
+
+    // Show the page structure first
+    showPage(pageId);
+
+    // Then render the content asynchronously
+    // The render functions themselves will hide the loader when done
+    try {
+      switch (pageId) {
+        case "home":
+          await renderHomePageGrid();
+          break;
+        case "favorites":
+          await renderFavoritesPage();
+          break;
+        case "playlists":
+          await renderPlaylistsPage();
+          break;
+        case "artists":
+          await renderArtistsPage();
+          break;
+        default:
+          hideLoader(); // Hide loader for pages without async content
+          break;
+      }
+    } catch (error) {
+      console.error(`Error rendering page ${pageId}:`, error);
+      hideLoader();
     }
   }
 }
 
-// --- App Initialization ---
-document.addEventListener("DOMContentLoaded", () => {
-  loadLibrary().then(() => {
-    renderHomePageGrid();
-    showPage("home");
-  });
+/**
+ * Fetches all necessary data from the main process and populates the state.
+ */
+export async function loadLibrary() {
+  const [library, playlists, artists] = await Promise.all([
+    window.electronAPI.getLibrary(),
+    window.electronAPI.playlistGetAll(),
+    window.electronAPI.artistGetAll(),
+  ]);
 
-  initializeMiniplayer();
-  initializeWindowControls();
-  initializeContextMenu();
-  initializePlaylistContextMenus();
-  initializeSettingsPage();
-  loadSettings();
+  setLibrary(library);
+  setAllPlaylists(playlists);
+  setAllArtists(artists);
 
-  sidebarNav.addEventListener("click", handleNav);
-  sidebarNavBottom.addEventListener("click", handleNav);
-});
+  const activePage =
+    document.querySelector(".nav-item.active")?.dataset.page || "home";
+
+  switch (activePage) {
+    case "home":
+      renderHomePageGrid();
+      break;
+    case "favorites":
+      renderFavoritesPage();
+      break;
+    case "playlists":
+      renderPlaylistsPage();
+      break;
+    case "artists":
+      renderArtistsPage();
+      break;
+  }
+
+  if (AppState.currentlyPlayingIndex > -1) {
+    renderUpNextList();
+  }
+}
 
 function initializeWindowControls() {
   trayBtn.addEventListener("click", () => window.electronAPI.trayWindow());
@@ -217,17 +226,14 @@ function initializeWindowControls() {
 }
 
 function initializeContextMenu() {
-  // Hide context menus when clicking anywhere else
   document.addEventListener("click", () => {
     videoContextMenu.classList.remove("visible");
     playlistContextMenu.classList.remove("visible");
   });
 
-  // Prevent context menus from closing when clicked on
   videoContextMenu.addEventListener("click", (e) => e.stopPropagation());
   playlistContextMenu.addEventListener("click", (e) => e.stopPropagation());
 
-  // Handle "Delete" action
   contextDeleteBtn.addEventListener("click", async () => {
     const videoId = videoContextMenu.dataset.videoId;
     if (videoId) {
@@ -237,19 +243,19 @@ function initializeContextMenu() {
         async () => {
           const result = await window.electronAPI.deleteVideo(videoId);
           if (result.success) {
-            // If the deleted video was playing, stop playback
             if (
-              currentlyPlayingIndex > -1 &&
-              playbackQueue[currentlyPlayingIndex]?.id === videoId
+              AppState.currentlyPlayingIndex > -1 &&
+              AppState.playbackQueue[AppState.currentlyPlayingIndex]?.id ===
+                videoId
             ) {
               closeMiniplayer();
               videoPlayer.src = "";
-              currentlyPlayingIndex = -1;
+              resetPlaybackState();
               updateVideoDetails(null);
               renderUpNextList();
             }
             showNotification("Video deleted successfully.", "success");
-            await loadLibrary(); // Reloads all data and re-renders the current page
+            await loadLibrary();
           } else {
             showNotification(`Error: ${result.error}`, "error");
           }
@@ -259,10 +265,9 @@ function initializeContextMenu() {
     videoContextMenu.classList.remove("visible");
   });
 
-  // Handle "Remove from Playlist" action
   contextRemoveFromPlaylistBtn.addEventListener("click", async () => {
     const videoId = videoContextMenu.dataset.videoId;
-    const playlistId = videoContextMenu.dataset.playlistId;
+    const playlistId = currentPlaylistId;
     if (videoId && playlistId) {
       const result = await window.electronAPI.playlistRemoveVideo(
         playlistId,
@@ -270,6 +275,7 @@ function initializeContextMenu() {
       );
       if (result.success) {
         showNotification("Removed video from playlist.", "success");
+        const { renderPlaylistDetailPage } = await import("./playlists.js");
         await renderPlaylistDetailPage(playlistId);
       } else {
         showNotification(`Error: ${result.error}`, "error");
@@ -277,4 +283,28 @@ function initializeContextMenu() {
     }
     videoContextMenu.classList.remove("visible");
   });
+}
+
+// --- App Initialization ---
+document.addEventListener("DOMContentLoaded", async () => {
+  showLoader();
+  await loadLibrary();
+  renderHomePageGrid();
+  showPage("home");
+  hideLoader();
+
+  initializeMiniplayer();
+  initializeWindowControls();
+  initializeContextMenu();
+  initializePlaylistContextMenus();
+  initializeSettingsPage();
+  loadSettings();
+
+  sidebarNav.addEventListener("click", handleNav);
+  sidebarNavBottom.addEventListener("click", handleNav);
+});
+
+// Expose currentPlaylistId setter for other modules
+export function setCurrentPlaylistId(id) {
+  currentPlaylistId = id;
 }

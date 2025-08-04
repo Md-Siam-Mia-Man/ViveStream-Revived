@@ -1,50 +1,55 @@
 // src/js/artists.js
+import { AppState, setAllArtists } from "./state.js";
+import { showPage, showLoader, hideLoader } from "./renderer.js";
+import { renderGridItem } from "./ui.js";
+import { playLibraryItem } from "./player.js";
+import { showNotification } from "./notifications.js";
 
-// This array will hold the full list of artists for client-side searching
-let allArtists = [];
+// --- DOM Element Selectors ---
+const artistsPage = document.getElementById("artists-page");
+const artistDetailPage = document.getElementById("artist-detail-page");
 
 /**
- * Fetches artists from the backend and renders the main artists grid page.
- * @param {Array} [artistsToRender] - Optional array of artists to render, used for search filtering.
+ * Renders the main artists grid page.
+ * @param {Array} [artistsToRender] - Optional array of artists for filtering/searching.
  */
-async function renderArtistsPage(artistsToRender) {
-  const artistsPage = document.getElementById("artists-page");
-  if (!artistsPage) return;
-
-  // If no specific list is provided, fetch the full list from the backend.
+export async function renderArtistsPage(artistsToRender) {
   if (!artistsToRender) {
-    allArtists = await window.electronAPI.artistGetAll();
-    artistsToRender = allArtists;
+    const allArtists = await window.electronAPI.artistGetAll();
+    setAllArtists(allArtists); // Update central state
+    artistsToRender = AppState.artists;
   }
 
-  // Handle the case where there are no artists in the library.
-  if (artistsToRender.length === 0) {
+  if (AppState.artists.length === 0) {
     artistsPage.innerHTML = `
       <div class="page-header">
         <h1 class="page-header-title">Artists</h1>
       </div>
       <div class="placeholder-page">
-        <i class="fa-solid fa-microphone-stand-slash placeholder-icon"></i>
+        <i class="fa-solid fa-microphone-slash placeholder-icon"></i>
         <h2 class="placeholder-title">No Artists Found</h2>
         <p class="placeholder-text">Artists you download will appear here automatically.</p>
       </div>`;
-    return;
+  } else {
+    artistsPage.innerHTML = `
+      <div class="page-header">
+        <h1 class="page-header-title">Artists</h1>
+      </div>
+      <div class="artist-grid">
+        ${
+          artistsToRender.length > 0
+            ? artistsToRender.map(renderArtistCard).join("")
+            : '<p class="empty-message">No artists match your search.</p>'
+        }
+      </div>`;
   }
-
-  // Render the page with the grid of artists.
-  artistsPage.innerHTML = `
-    <div class="page-header">
-      <h1 class="page-header-title">Artists</h1>
-    </div>
-    <div class="artist-grid">
-      ${artistsToRender.map(renderArtistCard).join("")}
-    </div>`;
+  hideLoader();
 }
 
 /**
- * Generates the HTML for a single artist card in the grid.
- * @param {object} artist - The artist object from the database.
- * @returns {string} HTML string for the artist card.
+ * Generates the HTML string for a single artist card.
+ * @param {object} artist - The artist data object.
+ * @returns {string} The HTML string.
  */
 function renderArtistCard(artist) {
   const videoCountText =
@@ -66,18 +71,17 @@ function renderArtistCard(artist) {
 }
 
 /**
- * Fetches details for a specific artist and renders their dedicated page.
+ * Renders the detailed view for a single artist.
  * @param {number} artistId - The ID of the artist to display.
  */
-async function renderArtistDetailPage(artistId) {
-  const detailPage = document.getElementById("artist-detail-page");
-  if (!detailPage) return;
-
+export async function renderArtistDetailPage(artistId) {
+  showLoader();
   const artist = await window.electronAPI.artistGetDetails(artistId);
 
   if (!artist) {
     showNotification(`Could not find artist with ID ${artistId}`, "error");
-    showPage("artists"); // Go back to the main artists page
+    showPage("artists");
+    hideLoader();
     return;
   }
 
@@ -87,7 +91,7 @@ async function renderArtistDetailPage(artistId) {
     ? decodeURIComponent(artist.thumbnailPath)
     : "../assets/logo.png";
 
-  detailPage.innerHTML = `
+  artistDetailPage.innerHTML = `
     <div class="artist-detail-header">
       <img src="${thumbnailSrc}" class="artist-detail-image" alt="${
     artist.name
@@ -104,40 +108,36 @@ async function renderArtistDetailPage(artistId) {
               .map((item) => renderGridItem(item))
               .join("")}</div>`
           : `<div class="placeholder-page" style="flex-grow: 1;">
-              <i class="fa-solid fa-video-slash placeholder-icon"></i>
-              <h2 class="placeholder-title">No Videos Found</h2>
-              <p class="placeholder-text">This artist currently has no videos in your library.</p>
-             </div>`
+            <i class="fa-solid fa-video-slash placeholder-icon"></i>
+            <h2 class="placeholder-title">No Videos Found</h2>
+            <p class="placeholder-text">This artist currently has no videos in your library.</p>
+        </div>`
       }
     </div>`;
 
-  // Add event listener to the newly created grid.
-  const grid = detailPage.querySelector("#video-grid-artist");
+  // Attach event listener to the newly created grid.
+  const grid = artistDetailPage.querySelector("#video-grid-artist");
   if (grid) {
     grid.addEventListener("click", (event) => {
-      // We're re-using the generic grid click handler, but need to provide the correct
-      // library source (the artist's videos) for playback.
       const itemEl = event.target.closest(".video-grid-item");
       if (!itemEl) return;
-
-      // Find the video index within this artist's specific video list.
       const videoIndex = artist.videos.findIndex(
         (v) => v.id === itemEl.dataset.id
       );
       if (videoIndex > -1) {
-        // We call playLibraryItem with the artist's video array as the source.
         playLibraryItem(videoIndex, artist.videos);
       }
     });
   }
+  hideLoader();
 }
 
-// Add a single event listener to the main artists page to handle clicks on any artist card.
-document.getElementById("artists-page").addEventListener("click", async (e) => {
+// --- Event Delegation ---
+artistsPage.addEventListener("click", async (e) => {
   const artistCard = e.target.closest(".artist-grid-item");
   if (artistCard) {
     const artistId = artistCard.dataset.id;
     await renderArtistDetailPage(artistId);
-    showPage("artist-detail-page", true); // `true` indicates it's a sub-page
+    showPage("artist-detail-page", true);
   }
 });
