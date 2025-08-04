@@ -185,6 +185,7 @@
                             <video id="video-player">
                                 <track kind="subtitles" srclang="en" id="subtitle-track">
                             </video>
+                            <video id="video-player-preload"></video>
                             <div class="audio-artwork-container">
                                 <img id="audio-artwork-img" src="" alt="Artwork">
                             </div>
@@ -301,6 +302,16 @@
                             <div class="setting-control">
                                 <input type="range" id="concurrent-fragments-slider" min="1" max="10" value="1">
                                 <span id="concurrent-fragments-value">1</span>
+                            </div>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-text">
+                                <label for="speed-limit-input">Download Speed Limit</label>
+                                <p>e.g., 500K, 2.5M. Leave blank for no limit.</p>
+                            </div>
+                            <div class="setting-control">
+                                <input type="text" id="speed-limit-input" class="text-input-control"
+                                    placeholder="No limit">
                             </div>
                         </div>
                         <div class="setting-item">
@@ -509,7 +520,7 @@
     <script src="./js/renderer.js" type="module"></script>
     <script src="./js/notifications.js" type="module"></script>
     <script src="./js/ui.js" type="module"></script>
-    <script src="./js/downloader.js" type="module"></script> <!-- FIXED -->
+    <script src="./js/downloader.js" type="module"></script>
     <script src="./js/player.js" type="module"></script>
     <script src="./js/miniplayer.js" type="module"></script>
     <script src="./js/settings.js" type="module"></script>
