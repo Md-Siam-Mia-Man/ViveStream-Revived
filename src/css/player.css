@@ -241,7 +241,6 @@
      justify-content: center;
 }
 
-/* --- NEW Styles for Description Box --- */
 .video-description-box {
      background-color: var(--yt-dark-grey);
      border-radius: 12px;
@@ -260,15 +259,12 @@
 .description-content {
      overflow: hidden;
      max-height: 5em;
-     /* Approximately 3 lines of text */
      transition: max-height 0.3s ease-out;
      white-space: pre-wrap;
-     /* Preserve line breaks from description */
 }
 
 .video-description-box.expanded .description-content {
      max-height: 1000px;
-     /* A large value to allow full expansion */
      transition: max-height 0.4s ease-in;
 }
 
@@ -281,14 +277,11 @@
      margin-top: 8px;
      padding: 0;
      display: none;
-     /* Hidden by default, shown via JS */
 }
 
 .video-description-box.expanded .show-more-btn {
      margin-top: 16px;
 }
-
-/* --- End New Styles --- */
 
 .playlist-area {
      display: flex;
@@ -357,6 +350,10 @@
      height: 100%;
      z-index: 10;
      object-fit: contain;
+}
+
+#video-player-preload {
+     display: none;
 }
 
 .video-controls-container,
