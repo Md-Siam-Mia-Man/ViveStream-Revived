@@ -28,7 +28,6 @@
      box-sizing: border-box;
      margin: 0;
      padding: 0;
-     user-select: none;
 }
 
 body {
@@ -314,7 +313,50 @@ input,
 .content-wrapper {
      flex-grow: 1;
      overflow-y: auto;
+     position: relative;
+     /* Needed for loader positioning */
 }
+
+/* NEW: Loader Styles */
+.loader-overlay {
+     position: absolute;
+     top: 0;
+     left: 0;
+     width: 100%;
+     height: 100%;
+     background-color: rgba(15, 15, 15, 0.6);
+     z-index: 5000;
+     display: flex;
+     justify-content: center;
+     align-items: center;
+     backdrop-filter: blur(2px);
+     transition: opacity 0.2s ease-in-out;
+}
+
+.loader-overlay.hidden {
+     opacity: 0;
+     pointer-events: none;
+}
+
+.loader-spinner {
+     border: 4px solid var(--yt-dark-grey);
+     border-top: 4px solid var(--yt-red);
+     border-radius: 50%;
+     width: 50px;
+     height: 50px;
+     animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+     0% {
+          transform: rotate(0deg);
+     }
+
+     100% {
+          transform: rotate(360deg);
+     }
+}
+
 
 .page {
      display: flex;
@@ -433,7 +475,6 @@ input,
 
 #context-remove-from-playlist-btn {
      display: none;
-     /* Hidden by default */
 }
 
 .context-menu-item i {

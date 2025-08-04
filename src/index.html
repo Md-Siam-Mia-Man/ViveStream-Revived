@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="Content-Security-Policy" content="font-src 'self' data:; script-src 'self';">
+    <meta http-equiv="Content-Security-Policy" content="font-src 'self' data:; script-src 'self' 'unsafe-inline';">
     <title>ViveStream</title>
     <link rel="stylesheet" href="../node_modules/@fortawesome/fontawesome-free/css/all.min.css">
     <link rel="stylesheet" href="./css/style.css">
@@ -73,6 +73,9 @@
             </ul>
         </nav>
         <div class="content-wrapper">
+            <div id="loader-overlay" class="loader-overlay hidden">
+                <div class="loader-spinner"></div>
+            </div>
             <div id="home-page" class="page"></div>
             <div id="downloads-page" class="page hidden">
                 <div class="downloads-container">
@@ -290,7 +293,6 @@
                                 <span id="concurrent-downloads-value">3</span>
                             </div>
                         </div>
-                        <!-- NEW: Concurrent Fragments Slider -->
                         <div class="setting-item">
                             <div class="setting-text">
                                 <label for="concurrent-fragments-slider">Concurrent Fragments</label>
@@ -352,7 +354,6 @@
                             </div>
                         </div>
                     </div>
-                    <!-- NEW: File Naming Section -->
                     <div class="settings-section">
                         <h2 class="settings-section-title">File Naming</h2>
                         <div class="setting-item">
@@ -503,16 +504,17 @@
     </div>
 
     <script src="../node_modules/sortablejs/Sortable.min.js"></script>
-    <script src="./js/modals.js"></script>
-    <script src="./js/renderer.js"></script>
-    <script src="./js/notifications.js"></script>
-    <script src="./js/ui.js"></script>
-    <script src="./js/downloader.js"></script>
-    <script src="./js/player.js"></script>
-    <script src="./js/miniplayer.js"></script>
-    <script src="./js/settings.js"></script>
-    <script src="./js/playlists.js"></script>
-    <script src="./js/artists.js"></script>
+    <script src="./js/state.js" type="module"></script>
+    <script src="./js/modals.js" type="module"></script>
+    <script src="./js/renderer.js" type="module"></script>
+    <script src="./js/notifications.js" type="module"></script>
+    <script src="./js/ui.js" type="module"></script>
+    <script src="./js/downloader.js" type="module"></script> <!-- FIXED -->
+    <script src="./js/player.js" type="module"></script>
+    <script src="./js/miniplayer.js" type="module"></script>
+    <script src="./js/settings.js" type="module"></script>
+    <script src="./js/playlists.js" type="module"></script>
+    <script src="./js/artists.js" type="module"></script>
 </body>
 
 </html>
