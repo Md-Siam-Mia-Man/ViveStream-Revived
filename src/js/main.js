@@ -7,6 +7,7 @@ const {
   Tray,
   Menu,
   dialog,
+  globalShortcut, // Import globalShortcut
 } = require("electron");
 const path = require("path");
 const fs = require("fs");
@@ -47,6 +48,7 @@ const defaultSettings = {
   removeSponsors: false,
   concurrentFragments: 1,
   outputTemplate: "",
+  speedLimit: "", // New setting for download speed limit
 };
 function getSettings() {
   if (fs.existsSync(settingsPath)) {
@@ -74,6 +76,26 @@ function saveSettings(settings) {
 }
 if (!fs.existsSync(settingsPath)) saveSettings(defaultSettings);
 
+/**
+ * Parses yt-dlp stderr for common user-facing errors.
+ * @param {string} stderr - The stderr output from the yt-dlp process.
+ * @returns {string} A user-friendly error message.
+ */
+function parseYtDlpError(stderr) {
+  if (stderr.includes("Private video"))
+    return "This video is private and cannot be downloaded.";
+  if (stderr.includes("Video unavailable")) return "This video is unavailable.";
+  if (stderr.includes("is not available in your country"))
+    return "This video is geo-restricted and not available in your country.";
+  if (stderr.includes("Premiere will begin in"))
+    return "This video is a premiere and has not been released yet.";
+  if (stderr.includes("Invalid URL"))
+    return "The URL provided is invalid. Please check and try again.";
+  if (stderr.includes("429"))
+    return "Too many requests. YouTube may be temporarily limiting your connection.";
+  return "An unknown download error occurred. Check the console for details.";
+}
+
 // --- Downloader Class ---
 class Downloader {
   constructor() {
@@ -81,7 +103,6 @@ class Downloader {
     this.activeDownloads = new Map();
     this.settings = getSettings();
   }
-
   updateSettings(s) {
     this.settings = s;
     this.processQueue();
@@ -104,9 +125,7 @@ class Downloader {
   }
   cancelDownload(videoId) {
     const p = this.activeDownloads.get(videoId);
-    if (p) {
-      p.kill();
-    }
+    if (p) p.kill();
   }
   shutdown() {
     this.queue = [];
@@ -149,8 +168,7 @@ class Downloader {
             videoPath,
             "%(playlist_title,title)s/%(chapter_number)s - %(chapter)s.%(ext)s"
           );
-      args.push("-o", chapterOutputTemplate);
-      args.push("--split-chapters");
+      args.push("-o", chapterOutputTemplate, "--split-chapters");
     } else {
       const mediaOutputTemplate = this.settings.outputTemplate
         ? path.join(videoPath, this.settings.outputTemplate)
@@ -161,9 +179,7 @@ class Downloader {
     if (type === "audio") {
       const [format, audioQuality] = quality.split("-");
       args.push("-x", "--audio-format", format, "-f", "bestaudio/best");
-      if (audioQuality) {
-        args.push("--audio-quality", audioQuality);
-      }
+      if (audioQuality) args.push("--audio-quality", audioQuality);
     } else {
       args.push(
         "-f",
@@ -174,17 +190,13 @@ class Downloader {
         "mp4",
         "--write-subs",
         "--sub-langs",
-        "en.*,-live_chat", // Prioritize English, but get any available subtitle
+        "en.*,-live_chat",
         "--embed-subs"
       );
-      if (this.settings.downloadAutoSubs) {
-        args.push("--write-auto-subs");
-      }
+      if (this.settings.downloadAutoSubs) args.push("--write-auto-subs");
     }
 
-    if (this.settings.removeSponsors) {
-      args.push("--sponsorblock-remove", "all");
-    }
+    if (this.settings.removeSponsors) args.push("--sponsorblock-remove", "all");
     if (!splitChapters && (startTime || endTime)) {
       const timeRange = `${startTime || "0:00"}-${endTime || "inf"}`;
       args.push(
@@ -193,19 +205,34 @@ class Downloader {
         "--force-keyframes-at-cuts"
       );
     }
-    if (this.settings.concurrentFragments > 1) {
+    if (this.settings.concurrentFragments > 1)
       args.push(
         "--concurrent-fragments",
         this.settings.concurrentFragments.toString()
       );
-    }
-    if (this.settings.cookieBrowser && this.settings.cookieBrowser !== "none") {
+    if (this.settings.cookieBrowser && this.settings.cookieBrowser !== "none")
       args.push("--cookies-from-browser", this.settings.cookieBrowser);
-    }
+    if (this.settings.speedLimit) args.push("-r", this.settings.speedLimit);
 
     const proc = spawn(ytDlpPath, args);
     this.activeDownloads.set(videoInfo.id, proc);
+
+    let stderrOutput = "";
+    let stallTimeout;
+
+    const resetStallTimer = () => {
+      clearTimeout(stallTimeout);
+      stallTimeout = setTimeout(() => {
+        stderrOutput =
+          "Download stalled for over 90 seconds and was cancelled.";
+        proc.kill(); // This will trigger the 'close' event
+      }, 90000); // 90 seconds
+    };
+
+    resetStallTimer(); // Start the timer initially
+
     proc.stdout.on("data", (data) => {
+      resetStallTimer(); // Reset timer on any progress
       const m = data
         .toString()
         .match(
@@ -220,10 +247,14 @@ class Downloader {
           eta: m[4],
         });
     });
-    proc.stderr.on("data", (data) =>
-      console.error(`Download Error (${videoInfo.id}): ${data}`)
-    );
+
+    proc.stderr.on("data", (data) => {
+      stderrOutput += data.toString();
+      console.error(`Download Stderr (${videoInfo.id}): ${data}`);
+    });
+
     proc.on("close", async (code) => {
+      clearTimeout(stallTimeout); // Crucial: clear timer when process ends
       this.activeDownloads.delete(videoInfo.id);
       if (code === 0) {
         await this.postProcess(videoInfo, job);
@@ -231,7 +262,7 @@ class Downloader {
         if (win)
           win.webContents.send("download-error", {
             id: videoInfo.id,
-            error: `Downloader exited with code: ${code}`,
+            error: parseYtDlpError(stderrOutput),
             job,
           });
       }
@@ -241,7 +272,7 @@ class Downloader {
 
   async postProcess(videoInfo, job) {
     if (job.splitChapters) {
-      if (win) {
+      if (win)
         win.webContents.send("download-complete", {
           id: videoInfo.id,
           videoData: {
@@ -249,24 +280,21 @@ class Downloader {
             isChapterSplit: true,
           },
         });
-      }
       return;
     }
-
     try {
       const infoJsonPath = path.join(videoPath, `${videoInfo.id}.info.json`);
-      if (!fs.existsSync(infoJsonPath)) {
+      if (!fs.existsSync(infoJsonPath))
         throw new Error(".info.json file not found after download.");
-      }
+
       const fullInfo = JSON.parse(fs.readFileSync(infoJsonPath, "utf-8"));
       fs.unlinkSync(infoJsonPath);
 
       const mediaFilePath = fullInfo._filename;
-      if (!mediaFilePath || !fs.existsSync(mediaFilePath)) {
+      if (!mediaFilePath || !fs.existsSync(mediaFilePath))
         throw new Error(
           `Media file from info.json could not be found at path: ${mediaFilePath}`
         );
-      }
 
       let finalCoverPath = null;
       const tempCoverPath = path.join(videoPath, `${fullInfo.id}.jpg`);
@@ -278,7 +306,6 @@ class Downloader {
         ? `file://${finalCoverPath.replace(/\\/g, "/")}`
         : null;
 
-      // Find the first available subtitle file for this video ID, regardless of language
       const allFiles = fs.readdirSync(videoPath);
       const tempSubFilename = allFiles.find(
         (file) => file.startsWith(fullInfo.id) && file.endsWith(".vtt")
@@ -298,9 +325,7 @@ class Downloader {
         videoPath,
         `${fullInfo.id}.description`
       );
-      if (fs.existsSync(descriptionPath)) {
-        fs.unlinkSync(descriptionPath); // We use description from JSON now
-      }
+      if (fs.existsSync(descriptionPath)) fs.unlinkSync(descriptionPath);
 
       const artistString =
         fullInfo.artist || fullInfo.creator || fullInfo.uploader;
@@ -312,9 +337,7 @@ class Downloader {
         for (const name of artistNames) {
           if (!name) continue;
           const artist = await db.findOrCreateArtist(name, finalCoverUri);
-          if (artist) {
-            await db.linkVideoToArtist(fullInfo.id, artist.id);
-          }
+          if (artist) await db.linkVideoToArtist(fullInfo.id, artist.id);
         }
       }
 
@@ -346,14 +369,14 @@ class Downloader {
         win.webContents.send("download-error", {
           id: videoInfo.id,
           error: e.message || "Post-processing failed.",
-          job: job,
+          job,
         });
     }
   }
 }
 const downloader = new Downloader();
 
-// --- Window Management & App Lifecycle ---
+// --- Window Management ---
 function createWindow() {
   win = new BrowserWindow({
     width: 1280,
@@ -365,6 +388,7 @@ function createWindow() {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
       nodeIntegration: false,
+      hardwareAcceleration: true, // Explicitly enable hardware acceleration
     },
     frame: false,
     icon: path.join(assetsPath, "icon.ico"),
@@ -373,10 +397,9 @@ function createWindow() {
   win.on("maximize", () => win.webContents.send("window-maximized", true));
   win.on("unmaximize", () => win.webContents.send("window-maximized", false));
   win.on("closed", () => (win = null));
-  if (isDev) {
-    win.webContents.openDevTools({ mode: "detach" });
-  }
+  if (isDev) win.webContents.openDevTools({ mode: "detach" });
 }
+
 function createTray() {
   tray = new Tray(path.join(assetsPath, "icon.ico"));
   tray.setToolTip("ViveStream");
@@ -394,15 +417,37 @@ function createTray() {
   );
   tray.on("click", () => win.show());
 }
+
+// --- App Lifecycle & Media Keys ---
 app.on("before-quit", async () => {
+  globalShortcut.unregisterAll();
   downloader.shutdown();
   await db.shutdown();
 });
+
+app.on("will-quit", () => {
+  globalShortcut.unregisterAll();
+});
+
 app
   .whenReady()
   .then(() => {
     try {
-      db.initialize(app).then(createWindow).then(createTray);
+      db.initialize(app)
+        .then(createWindow)
+        .then(createTray)
+        .then(() => {
+          // Register system media keys
+          globalShortcut.register("MediaPlayPause", () =>
+            win?.webContents.send("media-key-play-pause")
+          );
+          globalShortcut.register("MediaNextTrack", () =>
+            win?.webContents.send("media-key-next-track")
+          );
+          globalShortcut.register("MediaPreviousTrack", () =>
+            win?.webContents.send("media-key-prev-track")
+          );
+        });
     } catch (error) {
       console.error("Failed during app startup:", error);
       dialog.showErrorBox(
@@ -420,13 +465,14 @@ app
     );
     app.quit();
   });
+
 app.on("window-all-closed", () => process.platform !== "darwin" && app.quit());
 app.on(
   "activate",
   () => BrowserWindow.getAllWindows().length === 0 && createWindow()
 );
 
-// --- IPC Handlers ---
+// --- IPC Handlers (rest of the file is unchanged) ---
 ipcMain.on("minimize-window", () => win.minimize());
 ipcMain.on("maximize-window", () =>
   win.isMaximized() ? win.unmaximize() : win.maximize()
@@ -488,9 +534,8 @@ ipcMain.on("download-video", (e, o) => {
     "chrome",
   ];
   const settings = getSettings();
-  if (settings.cookieBrowser && settings.cookieBrowser !== "none") {
+  if (settings.cookieBrowser && settings.cookieBrowser !== "none")
     args.push("--cookies-from-browser", settings.cookieBrowser);
-  }
   const proc = spawn(ytDlpPath, args);
   let j = "";
   let errorOutput = "";
