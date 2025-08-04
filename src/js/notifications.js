@@ -1,7 +1,13 @@
-// notifications.js
+// src/js/notifications.js
 const notificationContainer = document.getElementById("notification-container");
 
-function showNotification(message, type = "success", details = "") {
+/**
+ * Displays a notification message on the screen.
+ * @param {string} message - The main message to display.
+ * @param {string} [type='success'] - The type of notification ('success', 'error', 'info').
+ * @param {string} [details=''] - Additional details to show below the main message.
+ */
+export function showNotification(message, type = "success", details = "") {
   if (!notificationContainer) return;
 
   const notification = document.createElement("div");
