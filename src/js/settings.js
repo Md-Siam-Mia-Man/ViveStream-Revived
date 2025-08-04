@@ -22,6 +22,7 @@ const concurrentFragmentsSlider = document.getElementById(
 const concurrentFragmentsValue = document.getElementById(
   "concurrent-fragments-value"
 );
+const speedLimitInput = document.getElementById("speed-limit-input"); // New element
 const outputTemplateInput = document.getElementById("output-template-input");
 const templateHelpLink = document.getElementById("template-help-link");
 const cookieBrowserSelect = document.getElementById(
@@ -38,10 +39,6 @@ const resetAppBtn = document.getElementById("reset-app-btn");
 const clearMediaBtn = document.getElementById("clear-media-btn");
 const videoPlayer = document.getElementById("video-player");
 
-/**
- * Updates the entire settings UI based on a settings object.
- * @param {object} settings - The settings object.
- */
 function updateSettingsUI(settings) {
   currentSettings = settings;
   concurrentDownloadsSlider.value = settings.concurrentDownloads;
@@ -51,6 +48,7 @@ function updateSettingsUI(settings) {
   concurrentFragmentsSlider.value = settings.concurrentFragments;
   concurrentFragmentsValue.textContent = settings.concurrentFragments;
   outputTemplateInput.value = settings.outputTemplate || "";
+  speedLimitInput.value = settings.speedLimit || ""; // Update speed limit input
 
   const selectedBrowser = settings.cookieBrowser || "none";
   const selectedOptionEl =
@@ -66,120 +64,84 @@ function updateSettingsUI(settings) {
   });
 }
 
-/**
- * Loads settings from the main process and populates the UI.
- */
 export async function loadSettings() {
   const settings = await window.electronAPI.getSettings();
   updateSettingsUI(settings);
 }
 
-/**
- * Initializes all event listeners for the settings page.
- */
 export function initializeSettingsPage() {
   window.electronAPI.getAppVersion().then((v) => {
     if (appVersionEl) appVersionEl.textContent = `Version ${v}`;
   });
 
-  // --- Event Listeners for Individual Settings ---
-  concurrentDownloadsSlider.addEventListener("change", (e) => {
-    const value = parseInt(e.target.value, 10);
-    concurrentDownloadsValue.textContent = value;
-    const newSettings = { ...currentSettings, concurrentDownloads: value };
+  const saveSetting = (key, value) => {
+    const newSettings = { ...currentSettings, [key]: value };
     window.electronAPI.saveSettings(newSettings);
     currentSettings = newSettings;
+  };
+
+  concurrentDownloadsSlider.addEventListener("change", (e) =>
+    saveSetting("concurrentDownloads", parseInt(e.target.value, 10))
+  );
+  concurrentDownloadsSlider.addEventListener("input", (e) => {
+    concurrentDownloadsValue.textContent = e.target.value;
   });
 
-  concurrentFragmentsSlider.addEventListener("change", (e) => {
-    const value = parseInt(e.target.value, 10);
-    concurrentFragmentsValue.textContent = value;
-    const newSettings = { ...currentSettings, concurrentFragments: value };
-    window.electronAPI.saveSettings(newSettings);
-    currentSettings = newSettings;
+  concurrentFragmentsSlider.addEventListener("change", (e) =>
+    saveSetting("concurrentFragments", parseInt(e.target.value, 10))
+  );
+  concurrentFragmentsSlider.addEventListener("input", (e) => {
+    concurrentFragmentsValue.textContent = e.target.value;
   });
 
-  outputTemplateInput.addEventListener("change", (e) => {
-    const newSettings = {
-      ...currentSettings,
-      outputTemplate: e.target.value.trim(),
-    };
-    window.electronAPI.saveSettings(newSettings);
-    currentSettings = newSettings;
-  });
+  speedLimitInput.addEventListener("change", (e) =>
+    saveSetting("speedLimit", e.target.value.trim())
+  );
+  outputTemplateInput.addEventListener("change", (e) =>
+    saveSetting("outputTemplate", e.target.value.trim())
+  );
+  autoSubsToggle.addEventListener("change", (e) =>
+    saveSetting("downloadAutoSubs", e.target.checked)
+  );
+  sponsorblockToggle.addEventListener("change", (e) =>
+    saveSetting("removeSponsors", e.target.checked)
+  );
 
-  autoSubsToggle.addEventListener("change", (e) => {
-    const newSettings = {
-      ...currentSettings,
-      downloadAutoSubs: e.target.checked,
-    };
-    window.electronAPI.saveSettings(newSettings);
-    currentSettings = newSettings;
-  });
-
-  sponsorblockToggle.addEventListener("change", (e) => {
-    const newSettings = {
-      ...currentSettings,
-      removeSponsors: e.target.checked,
-    };
-    window.electronAPI.saveSettings(newSettings);
-    currentSettings = newSettings;
-  });
-
-  // Custom Select Dropdown Logic
   cookieBrowserSelect.addEventListener("click", (e) => {
-    const selectedOption =
-      cookieBrowserSelect.querySelector(".selected-option");
-    const optionsList = cookieBrowserSelect.querySelector(".options-list");
-    if (e.target.closest(".selected-option")) {
-      cookieBrowserSelect.classList.toggle("open");
-    } else if (e.target.classList.contains("option-item")) {
-      const selectedValue = e.target.dataset.value;
-      selectedOption.querySelector("span").textContent = e.target.textContent;
-      selectedOption.dataset.value = selectedValue;
-      optionsList
-        .querySelectorAll(".option-item")
-        .forEach((i) => i.classList.remove("selected"));
-      e.target.classList.add("selected");
-      cookieBrowserSelect.classList.remove("open");
-      const newSettings = { ...currentSettings, cookieBrowser: selectedValue };
-      window.electronAPI.saveSettings(newSettings);
-      currentSettings = newSettings;
+    if (e.target.classList.contains("option-item")) {
+      saveSetting("cookieBrowser", e.target.dataset.value);
       showNotification(
         `Cookie setting saved to: ${e.target.textContent}`,
         "success"
       );
+      loadSettings(); // Reload UI to reflect change
     }
+    if (e.target.closest(".selected-option"))
+      cookieBrowserSelect.classList.toggle("open");
   });
 
   document.addEventListener("click", (e) => {
-    if (!cookieBrowserSelect.contains(e.target)) {
+    if (!cookieBrowserSelect.contains(e.target))
       cookieBrowserSelect.classList.remove("open");
-    }
   });
 
-  // --- Maintenance and Danger Zone Buttons ---
   updateYtdlpBtn.addEventListener("click", async () => {
     updateYtdlpBtn.disabled = true;
     updateYtdlpBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Updating...`;
     updaterConsole.textContent = "Starting update process...\n";
     updaterConsoleContainer.classList.remove("hidden");
-
     const result = await window.electronAPI.checkYtDlpUpdate();
-
     updateYtdlpBtn.disabled = false;
     updateYtdlpBtn.innerHTML = `<i class="fa-solid fa-cloud-arrow-down"></i> Check for Updates`;
-
-    if (result.success) {
-      showNotification("Downloader updated successfully!", "success");
-      updaterConsole.textContent += "\nUpdate process finished.";
-    } else {
-      showNotification(
-        "Downloader update failed. See log for details.",
-        "error"
-      );
-      updaterConsole.textContent += "\nUpdate process failed.";
-    }
+    showNotification(
+      result.success
+        ? "Downloader updated successfully!"
+        : "Downloader update failed. See log for details.",
+      result.success ? "success" : "error"
+    );
+    updaterConsole.textContent += result.success
+      ? "\nUpdate process finished."
+      : "\nUpdate process failed.";
   });
 
   resetAppBtn.addEventListener("click", () => {
@@ -189,7 +151,9 @@ export function initializeSettingsPage() {
       async () => {
         const newSettings = await window.electronAPI.resetApp();
         updateSettingsUI(newSettings);
-        loadSettings(); // Reloads player settings from localStorage
+        const playerModule = await import("./player.js");
+        // We need to reload settings from localStorage for the player.
+        playerModule.loadSettings();
         showNotification(
           "ViveStream has been reset to default settings.",
           "info"
@@ -218,7 +182,6 @@ export function initializeSettingsPage() {
     );
   });
 
-  // --- About Section Links ---
   templateHelpLink.addEventListener("click", () =>
     window.electronAPI.openExternal(
       "https://github.com/yt-dlp/yt-dlp#output-template"
@@ -240,7 +203,6 @@ export function initializeSettingsPage() {
     );
 }
 
-// --- IPC Listeners ---
 window.electronAPI.onYtDlpUpdateProgress((message) => {
   updaterConsole.textContent += message;
   updaterConsole.scrollTop = updaterConsole.scrollHeight;
