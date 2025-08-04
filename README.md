@@ -2,93 +2,91 @@
   <img src="./assets/logo.svg" style="width: 10%" alt="ViveStream Logo">
   <img src="./assets/Banner.png" style="width: 75%" alt="ViveStream Banner">
   <img src="./assets/logo.svg" style="width: 10%" alt="ViveStream Logo">
-  <h2><strong>Tired of YouTube buffering? 😵‍💫 Snag your favorite videos and watch them offline in style!</strong></h2>
+  <h2><strong>Your personal, offline, and stylish media sanctuary.</strong></h2>
   <p>
-    <img src="https://img.shields.io/badge/version-2.0.0-blue.svg" alt="Version">
-    <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License">
-    <img src="https://img.shields.io/badge/platform-Windows-informational.svg" alt="Platform">
+    <img src="https://img.shields.io/github/v/release/Md-Siam-Mia-Code/ViveStream-Revived?style=flat-square" alt="Latest Release Version">
+    <img src="https://img.shields.io/github/license/Md-Siam-Mia-Code/ViveStream-Revived?style=flat-square" alt="License">
+    <img src="https://img.shields.io/badge/platform-Windows-informational?style=flat-square" alt="Platform">
   </p>
 </div>
 
-Welcome, media hoarders and vibe connoisseurs! 🥳 **ViveStream** is your new best friend for building your own personal, offline YouTube™️ vortex. Download anything, manage it beautifully, and play it back without ever touching the internet again.
+Welcome! **ViveStream** is a modern, offline-first media player and downloader built for those who want to curate their own collection of videos and music. It downloads content using `yt-dlp`, organizes it into a robust local database, and provides a polished, high-performance interface for you to enjoy your media without ads, buffering, or an internet connection.
 
 <div align="center">
 <img src="./assets/UI.png" alt="ViveStream UI">
-<em>Behold! The command center of your new media empire. ✨</em>
+<em>The command center for your personal media library. ✨</em>
 </div>
 
 ---
 
-## 🚀 Features That Rock
+## 🚀 Core Features
 
-- 📥 **Snag Anything!** Paste a URL (video, playlist, you name it!) and download it as a video (`.mp4`) or just the audio (`.mp3`). Easy peasy.
-- 👑 **Choose Your Quality:** Go from standard 480p to glorious, pixel-perfect HD. You're the boss!
-- ✨ **Powerful Playlist Manager:** Don't just download—organize! Create custom playlists, add videos with a single click, and reorder them with intuitive drag-and-drop.
-- ❤️ **Favorites Collection:** Keep your most-loved videos in a dedicated Favorites section for instant access.
-- 🎬 **Built-in Player:** Why open another app? Watch everything right here in our slick, integrated player.
-- 🎛️ **Pro-Level Controls:**
-  - 🎭 **Theater & Fullscreen:** For that cinematic feel.
-  - 🔳 **Picture-in-Picture:** Multitask like a champ.
-  - ⏩ **Speed Control:** Slow-mo analysis or chipmunk-speed recaps.
-  - 💬 **Subtitles:** We'll even grab English subs for you automatically.
-  - 😴 **Sleep Timer:** Binge-watch responsibly... or try to.
-  - 🔁 **Autoplay:** Keep the good times rolling, non-stop.
-- 📚 **Your Personal Library:** All your downloads live in a beautiful, searchable grid of awesome.
-- 🔒 **Rock-Solid Database:** Your library is now powered by a robust SQLite database, ensuring your collection is safe, fast, and corruption-free.
-- 📦 **All-in-One-Box:** No need to install Python, yt-dlp, or FFmpeg. We packed everything you need. It just works!™️
-- ⌨️ **Ninja-Fast Hotkeys:** Control the player without ever touching your mouse. (See the list below!)
+- 📥 **Versatile Downloader:** Download videos or audio-only from YouTube and other supported sites. Choose from a wide range of quality and format options, from 480p up to 4K.
+- ✂️ **Advanced Download Controls:**
+  - Clip specific sections using start/end times.
+  - Automatically split videos by their chapters into individual files.
+  - Remove sponsored segments, intros, and outros using SponsorBlock integration.
+  - Use cookies from your browser to access members-only or age-restricted content.
+- 📚 **Robust Library Management:**
+  - **Playlists:** Create custom playlists, add media, and reorder with intuitive drag-and-drop.
+  - **Artists:** Media is automatically sorted by artist, creating dedicated pages for your favorite creators.
+  - **Favorites:** A dedicated section for your most-loved content.
+  - **Fast Search:** Instantly search your entire library of videos, playlists, and artists.
+- 🎬 **High-Performance Integrated Player:**
+  - **Gapless Playback:** Intelligent preloading ensures seamless, uninterrupted playback within playlists.
+  - **Hardware Acceleration:** Smooth, efficient playback of high-resolution content with minimal CPU usage.
+  - **System Media Keys:** Control playback with your keyboard's media keys, even when the app is in the background.
+  - **Full Feature Set:** Includes theater mode, fullscreen, miniplayer, playback speed control, sleep timer, and subtitle support.
+- 📦 **All-in-One & Standalone:** No need to install Python, yt-dlp, or FFmpeg separately. Everything is bundled and ready to go.
 
 ---
 
-## 📥 Installation (Let's Get This Party Started! 🎈)
+## 📥 Installation
 
-### For Everyone (The Easy-Peasy, No-Sweat Method) 🚀
+### Recommended Method (Installer)
 
-1️⃣ Go to the [**Releases**](https://github.com/Md-Siam-Mia-Code/ViveStream-Revived/releases) page.
-2️⃣ Download the latest `ViveStream-Setup-vX.X.X.exe` file.
-3️⃣ Run it, click "next" a few times, and voilà! You're in.
+1.  Go to the [**Releases**](https://github.com/Md-Siam-Mia-Code/ViveStream-Revived/releases) page.
+2.  Download the latest `ViveStream-Installer-vX.X.X.exe` file.
+3.  Run the installer. It will handle everything for you.
 
-### For Code Wizards & Tinkerers 🧙‍♂️
+### For Developers
 
-1️⃣ **Clone this thing:**
-
-```bash
+1.  **Clone the repository:**
+    ```bash
     git clone https://github.com/Md-Siam-Mia-Code/ViveStream-Revived.git
-    cd ViveStream
-```
+    cd ViveStream-Revived
+    ```
 
-2️⃣ **Install the magic spells (dependencies):**
-
-```bash
+2.  **Install dependencies:**
+    ```bash
     npm install
-```
+    ```
 
-3️⃣ **Fire it up!**
-
-```bash
+3.  **Run the application in development mode:**
+    ```bash
     npm start
-```
+    ```
 
 ---
 
 ## 🎮 How to Use
 
-1.  **Feed the Beast 🐲**
-    -   Navigate to the **Downloads** page on the sidebar.
-    -   Paste a YouTube URL into the box.
-    -   Choose your desired quality and format.
-    -   Hit `Download` and watch the progress bar go _brrrr_.
+1.  **Download Content**
+    -   Navigate to the **Downloads** page via the sidebar.
+    -   Paste a video or playlist URL into the input box.
+    -   Select your desired format (Video/Audio) and quality.
+    -   Use the "Advanced Options" for clipping or chapter splitting.
+    -   Click `Download` and monitor progress in the queue below.
 
-2.  **Enjoy the Spoils 🍿**
-    -   Head to the **Home** page to see your entire collection.
-    -   Use the **Playlists** tab to create and manage your curated lists.
+2.  **Enjoy Your Library**
+    -   The **Home** page displays all your downloaded media, sorted by most recent.
+    -   The **Playlists** and **Artists** pages provide curated views of your library.
     -   Mark videos as ❤️ **Favorites** to find them in their own dedicated section.
-    -   Use the search bar if your library gets too epic.
-    -   Click any video thumbnail to start playing it!
+    -   Click any thumbnail to begin playback.
 
 ---
 
-## ⌨️ Become a Keyboard Ninja
+## ⌨️ Keyboard Shortcuts (Player)
 
 | Key            | Action                    |
 | -------------- | ------------------------- |
@@ -96,37 +94,38 @@ Welcome, media hoarders and vibe connoisseurs! 🥳 **ViveStream** is your new b
 | `M`            | Mute / Unmute             |
 | `F`            | Toggle Fullscreen         |
 | `T`            | Toggle Theater Mode       |
-| `I`            | Toggle Picture-in-Picture |
-| `←` / `→`      | Skip Back / Forward 5s    |
+| `I`            | Toggle Miniplayer         |
+| `←` / `→`      | Seek Back / Forward 5s    |
 | `↑` / `↓`      | Volume Up / Down          |
-| `N`            | Play Next Video           |
-| `P`            | Play Previous Video       |
+| `N`            | Play Next Media           |
+| `P`            | Play Previous Media       |
 
 ---
 
-## 🛠️ Build Your Own Version
+## 🛠️ Build From Source
 
-Made some epic changes? Time to wrap it up and put a bow on it! 🎁
+If you've made changes and want to create your own installer:
 
 ```bash
-# This packages the app and creates your very own installer!
+# This command will package the app and generate a setup executable
 npm run build
 ```
+The final installer will be located in the `release/` directory.
 
 ---
 
-## 🤝 Let's Vibe Together (Contributing)
+## 🤝 Contributing
 
-Love ViveStream? Want to make it even more awesome? Let's do it! 💪
+Contributions are welcome! If you have an idea for a new feature or have found a bug, please feel free to fork the repository, make your changes, and open a Pull Request.
 
 1.  Fork the repo.
-2.  Create your feature branch (`git checkout -b feature/MyCoolNewVibe`).
-3.  Commit your changes (`git commit -m 'feat: Add a new, even cooler vibe'`).
-4.  Push to the branch (`git push origin feature/MyCoolNewVibe`).
-5.  Open a Pull Request and let the good times roll!
+2.  Create your feature branch (`git checkout -b feature/MyAwesomeFeature`).
+3.  Commit your changes (`git commit -m 'feat: Add MyAwesomeFeature'`).
+4.  Push to the branch (`git push origin feature/MyAwesomeFeature`).
+5.  Open a Pull Request.
 
 ---
 
 ## 📄 License
 
-It's the MIT License. Go nuts. (Just be nice and include the original license.)
+This project is licensed under the MIT License. See the [LICENSE.md](LICENSE.md) file for details.
