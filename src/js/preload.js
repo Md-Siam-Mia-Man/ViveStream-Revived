@@ -40,7 +40,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   onWindowMaximized: (cb) =>
     ipcRenderer.on("window-maximized", (e, v) => cb(v)),
 
-  // --- NEW: Updater API ---
+  // Updater API
   checkYtDlpUpdate: () => ipcRenderer.invoke("updater:check-yt-dlp"),
   onYtDlpUpdateProgress: (cb) =>
     ipcRenderer.on("updater:yt-dlp-progress", (e, v) => cb(v)),
@@ -64,4 +64,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // Artist API
   artistGetAll: () => ipcRenderer.invoke("artist:get-all"),
   artistGetDetails: (id) => ipcRenderer.invoke("artist:get-details", id),
+
+  // NEW: Media Key API
+  onMediaKeyPlayPause: (cb) => ipcRenderer.on("media-key-play-pause", cb),
+  onMediaKeyNextTrack: (cb) => ipcRenderer.on("media-key-next-track", cb),
+  onMediaKeyPrevTrack: (cb) => ipcRenderer.on("media-key-prev-track", cb),
 });
