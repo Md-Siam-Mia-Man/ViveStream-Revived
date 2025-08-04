@@ -13,6 +13,17 @@ const audioQualitySelect = document.getElementById(
   "audio-quality-select-container"
 );
 const downloadTypeVideo = document.getElementById("download-type-video");
+const downloadTypeAudio = document.getElementById("download-type-audio");
+const videoOptionsContainer = document.getElementById(
+  "video-options-container"
+);
+const audioOptionsContainer = document.getElementById(
+  "audio-options-container"
+);
+const advancedOptionsToggle = document.getElementById(
+  "advanced-options-toggle"
+);
+const advancedOptionsPanel = document.getElementById("advanced-options-panel");
 
 // --- State ---
 const downloadJobs = new Map();
@@ -30,13 +41,11 @@ function updateQueuePlaceholder() {
 downloadForm.addEventListener("submit", (e) => {
   e.preventDefault();
 
-  // Determine selected quality based on download type
   const isVideo = downloadTypeVideo.checked;
   const qualityContainer = isVideo ? videoQualitySelect : audioQualitySelect;
   const selectedQuality =
     qualityContainer.querySelector(".selected-option").dataset.value;
 
-  // Get other options from the form
   const type = document.querySelector(
     'input[name="download-type"]:checked'
   ).value;
@@ -104,6 +113,26 @@ document.getElementById("clear-all-btn").addEventListener("click", () => {
   updateQueuePlaceholder();
 });
 
+// FIXED: Added event listener for the advanced options toggle
+advancedOptionsToggle.addEventListener("click", () => {
+  advancedOptionsPanel.classList.toggle("hidden");
+});
+
+// Added event listeners to toggle quality selectors based on download type
+downloadTypeVideo.addEventListener("change", () => {
+  if (downloadTypeVideo.checked) {
+    videoOptionsContainer.classList.remove("hidden");
+    audioOptionsContainer.classList.add("hidden");
+  }
+});
+
+downloadTypeAudio.addEventListener("change", () => {
+  if (downloadTypeAudio.checked) {
+    videoOptionsContainer.classList.add("hidden");
+    audioOptionsContainer.classList.remove("hidden");
+  }
+});
+
 /**
  * Updates the action buttons available for a download item based on its status.
  * @param {string} videoId - The ID of the video item.
@@ -130,7 +159,6 @@ window.electronAPI.onDownloadQueueStart((videos) => {
   videos.forEach((video) => {
     if (downloadJobs.has(video.id)) return;
 
-    // Reconstruct the job object from the form state when the queue starts
     const type = document.querySelector(
       'input[name="download-type"]:checked'
     ).value;
