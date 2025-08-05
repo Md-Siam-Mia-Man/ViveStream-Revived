@@ -1,7 +1,8 @@
-// src/js/ui.js
+// src/renderer/js/ui.js
 import { AppState } from "./state.js";
 import { showPage } from "./renderer.js";
-import { playLibraryItem, formatTime } from "./player.js";
+import { formatTime, debounce } from "./utils.js"; // Corrected import
+import { eventBus } from "./event-bus.js"; // Corrected import
 import { openAddToPlaylistModal } from "./playlists.js";
 import { renderArtistsPage } from "./artists.js";
 import { renderPlaylistsPage } from "./playlists.js";
@@ -11,24 +12,28 @@ import { showLoader, hideLoader } from "./renderer.js";
 const sidebarToggle = document.getElementById("sidebar-toggle");
 const logoHomeButton = document.getElementById("logo-home-button");
 const homeSearchInput = document.getElementById("home-search-input");
-const favoriteBtn = document.getElementById("favorite-btn");
 const videoContextMenu = document.getElementById("video-item-context-menu");
 const contextRemoveFromPlaylistBtn = document.getElementById(
   "context-remove-from-playlist-btn"
 );
 
-// --- Debounce Utility ---
-function debounce(func, wait) {
-  let timeout;
-  return function executedFunction(...args) {
-    const later = () => {
-      clearTimeout(timeout);
-      func(...args);
-    };
-    clearTimeout(timeout);
-    timeout = setTimeout(later, wait);
-  };
-}
+// --- Lazy Loading ---
+const lazyLoadObserver = new IntersectionObserver(
+  (entries, observer) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) {
+        const img = entry.target;
+        const src = img.dataset.src;
+        if (src) {
+          img.src = src;
+        }
+        img.classList.remove("lazy");
+        observer.unobserve(img);
+      }
+    });
+  },
+  { rootMargin: "0px 0px 200px 0px" } // Load images 200px before they enter viewport
+);
 
 // --- Event Listeners ---
 sidebarToggle.addEventListener("click", () => {
@@ -47,8 +52,9 @@ logoHomeButton.addEventListener("click", (e) => {
 
 // --- Grid Rendering ---
 /**
- * Creates the HTML for a single video grid item.
+ * Creates the HTML for a single video grid item with lazy loading attributes.
  * @param {object} item - The video data object.
+ * @param {boolean} isPlaylistItem - Indicates if the item is part of a playlist detail view.
  * @returns {string} The inner HTML string for the grid item element.
  */
 export function renderGridItem(item, isPlaylistItem = false) {
@@ -56,16 +62,18 @@ export function renderGridItem(item, isPlaylistItem = false) {
     item.type === "audio"
       ? '<div class="thumbnail-overlay-icon"><i class="fa-solid fa-music"></i></div>'
       : "";
+  const placeholderSrc = "../assets/logo.png"; // A generic placeholder
+  const actualSrc = item.coverPath
+    ? decodeURIComponent(item.coverPath)
+    : placeholderSrc;
+
+  // Note: The formatTime function is now imported from utils.js
   return `
         <div class="video-grid-item" data-id="${item.id}" ${
-    isPlaylistItem ? `data-playlist-item="true"` : ""
-  }>
+          isPlaylistItem ? `data-playlist-item="true"` : ""
+        }>
             <div class="grid-thumbnail-container">
-                <img src="${
-                  item.coverPath
-                    ? decodeURIComponent(item.coverPath)
-                    : "../assets/logo.png"
-                }" class="grid-thumbnail" alt="thumbnail" onerror="this.onerror=null;this.src='../assets/logo.png';">
+                <img data-src="${actualSrc}" src="${placeholderSrc}" class="grid-thumbnail lazy" alt="thumbnail" onerror="this.onerror=null;this.src='${placeholderSrc}';">
                 ${audioIconOverlay}
                 <span class="thumbnail-duration">${formatTime(
                   item.duration || 0
@@ -95,23 +103,32 @@ export function renderGridItem(item, isPlaylistItem = false) {
         </div>`;
 }
 
+/**
+ * Efficiently renders a grid of items into a container element.
+ * @param {HTMLElement} container - The element to render the grid into.
+ * @param {Array} library - The array of items to render.
+ * @param {boolean} isPlaylistItem - Whether items are for a playlist view.
+ */
 function renderGrid(container, library, isPlaylistItem = false) {
   if (!container) return;
+
   const fragment = document.createDocumentFragment();
   if (library && library.length > 0) {
     library.forEach((item) => {
-      const gridItem = document.createElement("div");
-      gridItem.className = "video-grid-item";
-      gridItem.dataset.id = item.id;
-      if (isPlaylistItem) {
-        gridItem.dataset.playlistItem = "true";
-      }
-      gridItem.innerHTML = renderGridItem(item, isPlaylistItem); // Corrected this line
+      const gridItemWrapper = document.createElement("div"); // Wrapper to avoid direct innerHTML on a live element
+      gridItemWrapper.innerHTML = renderGridItem(item, isPlaylistItem);
+      const gridItem = gridItemWrapper.firstElementChild;
       fragment.appendChild(gridItem);
     });
   }
-  container.innerHTML = "";
+
+  container.innerHTML = ""; // Clear previous content
   container.appendChild(fragment);
+
+  // After appending, find all lazy images and observe them
+  container
+    .querySelectorAll("img.lazy")
+    .forEach((img) => lazyLoadObserver.observe(img));
 }
 
 function ensureGridExists(pageElement, gridId) {
@@ -182,11 +199,9 @@ function handleGridClick(event) {
     }px`;
     videoContextMenu.style.top = `${rect.bottom + 5}px`;
     videoContextMenu.dataset.videoId = videoId;
-    if (itemEl.dataset.playlistItem) {
-      contextRemoveFromPlaylistBtn.style.display = "flex";
-    } else {
-      contextRemoveFromPlaylistBtn.style.display = "none";
-    }
+    contextRemoveFromPlaylistBtn.style.display = itemEl.dataset.playlistItem
+      ? "flex"
+      : "none";
     videoContextMenu.classList.add("visible");
     return;
   }
@@ -201,7 +216,9 @@ function handleGridClick(event) {
     return;
   }
   const videoIndex = sourceLib.findIndex((v) => v.id === videoId);
-  if (videoIndex > -1) playLibraryItem(videoIndex, sourceLib);
+  if (videoIndex > -1) {
+    eventBus.emit("player:play_request", videoIndex, sourceLib);
+  }
 }
 
 document.getElementById("home-page").addEventListener("click", handleGridClick);
@@ -218,27 +235,35 @@ document
 export async function toggleFavoriteStatus(videoId) {
   const result = await window.electronAPI.toggleFavorite(videoId);
   if (result.success) {
+    // Update local state
     const localVideo = AppState.library.find((v) => v.id === videoId);
     if (localVideo) localVideo.isFavorite = result.isFavorite;
     const playbackVideo = AppState.playbackQueue.find((v) => v.id === videoId);
     if (playbackVideo) playbackVideo.isFavorite = result.isFavorite;
-    updateFavoriteStatusInUI(videoId, result.isFavorite);
-    const activePage = document.querySelector(".nav-item.active")?.dataset.page;
-    if (activePage === "favorites") {
-      renderFavoritesPage();
-    }
+
+    // Emit an event that the UI is listening for
+    eventBus.emit("ui:favorite_toggled", videoId, result.isFavorite);
   }
 }
 
-export function updateFavoriteStatusInUI(videoId, isFavorite) {
+/**
+ * Centralized listener for favorite status changes to update all relevant UI parts.
+ * @param {string} videoId - The ID of the video.
+ * @param {boolean} isFavorite - The new favorite status.
+ */
+function updateFavoriteUI(videoId, isFavorite) {
+  // Update main player button if it's the current video
   if (
     AppState.currentlyPlayingIndex > -1 &&
     AppState.playbackQueue[AppState.currentlyPlayingIndex]?.id === videoId
   ) {
+    const favoriteBtn = document.getElementById("favorite-btn");
     favoriteBtn.classList.toggle("is-favorite", isFavorite);
     const playerIcon = favoriteBtn.querySelector("i");
     playerIcon.className = `fa-solid fa-heart`;
   }
+
+  // Update all grid items for this video ID
   const gridItems = document.querySelectorAll(
     `.video-grid-item[data-id="${videoId}"]`
   );
@@ -251,17 +276,26 @@ export function updateFavoriteStatusInUI(videoId, isFavorite) {
       gridIcon.className = `fa-${isFavorite ? "solid" : "regular"} fa-heart`;
     }
   });
+
+  // Re-render favorites page if it's the active one
+  const activePage = document.querySelector(".nav-item.active")?.dataset.page;
+  if (activePage === "favorites") {
+    renderFavoritesPage();
+  }
 }
 
+// Subscribe to the favorite toggle event
+eventBus.on("ui:favorite_toggled", updateFavoriteUI);
+
 // --- Debounced Search ---
-const debouncedSearch = debounce((term, page) => {
+const debouncedSearchHandler = debounce((term, page) => {
+  const lowerTerm = term.toLowerCase().trim();
   switch (page) {
     case "home": {
       const filtered = AppState.library.filter(
         (v) =>
-          v.title.toLowerCase().includes(term) ||
-          (v.creator && v.creator.toLowerCase().includes(term)) ||
-          (v.uploader && v.uploader.toLowerCase().includes(term))
+          v.title.toLowerCase().includes(lowerTerm) ||
+          v.creator?.toLowerCase().includes(lowerTerm)
       );
       renderHomePageGrid(filtered);
       break;
@@ -270,35 +304,35 @@ const debouncedSearch = debounce((term, page) => {
       const favoritesLibrary = AppState.library.filter((v) => v.isFavorite);
       const filtered = favoritesLibrary.filter(
         (v) =>
-          v.title.toLowerCase().includes(term) ||
-          (v.creator && v.creator.toLowerCase().includes(term)) ||
-          (v.uploader && v.uploader.toLowerCase().includes(term))
+          v.title.toLowerCase().includes(lowerTerm) ||
+          v.creator?.toLowerCase().includes(lowerTerm)
       );
       renderFavoritesPage(filtered);
       break;
     }
     case "playlists": {
       const filtered = AppState.playlists.filter((p) =>
-        p.name.toLowerCase().includes(term)
+        p.name.toLowerCase().includes(lowerTerm)
       );
       renderPlaylistsPage(filtered);
       break;
     }
     case "artists": {
       const filtered = AppState.artists.filter((a) =>
-        a.name.toLowerCase().includes(term)
+        a.name.toLowerCase().includes(lowerTerm)
       );
       renderArtistsPage(filtered);
       break;
     }
   }
+  hideLoader(); // Hide loader after search render is complete
 }, 300);
 
 homeSearchInput.addEventListener("input", (e) => {
-  const searchTerm = e.target.value.toLowerCase().trim();
+  const searchTerm = e.target.value;
   const activeNavItem = document.querySelector(".nav-item.active");
   if (!activeNavItem) return;
   const activePage = activeNavItem.dataset.page;
   showLoader(); // Show loader while search is processing
-  debouncedSearch(searchTerm, activePage);
+  debouncedSearchHandler(searchTerm, activePage);
 });
