@@ -1,5 +1,6 @@
-// src/js/miniplayer.js
+// src/renderer/js/miniplayer.js
 import { showPage } from "./renderer.js";
+import { eventBus } from "./event-bus.js";
 
 // --- DOM Element Selectors ---
 const miniplayer = document.getElementById("miniplayer");
@@ -18,6 +19,9 @@ const miniplayerExpandBtn = document.getElementById("miniplayer-expand-btn");
 const miniplayerCloseBtn = document.getElementById("miniplayer-close-btn");
 const videoPlayer = document.getElementById("video-player"); // Shared from main player
 const playerSection = document.getElementById("player-section"); // Main player container
+const miniplayerProgressBar = document.querySelector(
+  ".miniplayer-progress-bar"
+);
 
 /**
  * Activates and shows the miniplayer, moving the video element into it.
@@ -26,12 +30,6 @@ export function activateMiniplayer() {
   if (!videoPlayer.src) return;
 
   const wasHidden = miniplayer.classList.contains("hidden");
-  // To get current item, we need to import state, but that creates a circular dependency.
-  // Instead, we derive info from the main player's UI elements which are already populated.
-  const currentTitle = document.getElementById("video-info-title").textContent;
-  const currentUploader = document.getElementById(
-    "video-info-uploader"
-  ).textContent;
   const isAudioMode = playerSection.classList.contains("audio-mode");
 
   if (isAudioMode) {
@@ -49,11 +47,6 @@ export function activateMiniplayer() {
   if (wasHidden) {
     miniplayer.classList.remove("hidden");
   }
-
-  miniplayerTitle.textContent = currentTitle;
-  miniplayerUploader.textContent = currentUploader;
-
-  videoPlayer.play();
 }
 
 /**
@@ -65,7 +58,6 @@ export function deactivateMiniplayer() {
   miniplayerArtworkImg.classList.add("hidden");
   miniplayerVideoContainer.style.display = "block";
 
-  // Move video player back to the main player view
   playerSection.insertBefore(videoPlayer, playerSection.firstChild);
   miniplayer.classList.add("hidden");
 }
@@ -75,34 +67,26 @@ export function deactivateMiniplayer() {
  */
 export function closeMiniplayer() {
   deactivateMiniplayer();
-  videoPlayer.pause();
-  videoPlayer.src = "";
-  // We cannot reset state here due to circular dependencies.
-  // This is handled in the renderer/context menu where the call originates.
+  eventBus.emit("controls:close_player");
 }
 
 /**
  * Initializes all event listeners for the miniplayer controls.
  */
 export function initializeMiniplayer() {
-  // Using dynamic imports within event listeners to break circular dependencies
-  // between player.js and miniplayer.js.
-  miniplayerPlayPauseBtn.addEventListener("click", async (e) => {
+  miniplayerPlayPauseBtn.addEventListener("click", (e) => {
     e.stopPropagation();
-    const { togglePlay } = await import("./player.js");
-    togglePlay();
+    eventBus.emit("controls:toggle_play");
   });
 
-  miniplayerNextBtn.addEventListener("click", async (e) => {
+  miniplayerNextBtn.addEventListener("click", (e) => {
     e.stopPropagation();
-    const { playNext } = await import("./player.js");
-    playNext();
+    eventBus.emit("controls:next");
   });
 
-  miniplayerPrevBtn.addEventListener("click", async (e) => {
+  miniplayerPrevBtn.addEventListener("click", (e) => {
     e.stopPropagation();
-    const { playPrevious } = await import("./player.js");
-    playPrevious();
+    eventBus.emit("controls:prev");
   });
 
   miniplayerExpandBtn.addEventListener("click", (e) => {
@@ -120,11 +104,28 @@ export function initializeMiniplayer() {
     showPage("player");
   });
 
-  videoPlayer.addEventListener("play", () => {
+  // Listen to events from the event bus to update UI
+  eventBus.on("playback:play", () => {
     miniplayerPlayPauseBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
   });
 
-  videoPlayer.addEventListener("pause", () => {
+  eventBus.on("playback:pause", () => {
     miniplayerPlayPauseBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
+  });
+
+  eventBus.on("playback:trackchange", (item) => {
+    miniplayerTitle.textContent = item.title;
+    miniplayerUploader.textContent = item.creator || item.uploader;
+    if (item.type === "audio") {
+      miniplayerArtworkImg.src = item.coverPath
+        ? decodeURIComponent(item.coverPath)
+        : "../assets/logo.png";
+    }
+  });
+
+  eventBus.on("playback:timeupdate", (progress) => {
+    if (!miniplayer.classList.contains("hidden")) {
+      miniplayerProgressBar.style.width = `${progress}%`;
+    }
   });
 }
