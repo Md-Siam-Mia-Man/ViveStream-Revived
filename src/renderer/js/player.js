@@ -1,10 +1,12 @@
-// src/js/player.js
+// src/renderer/js/player.js
 import { AppState, setCurrentlyPlaying } from "./state.js";
 import { showPage } from "./renderer.js";
 import { activateMiniplayer } from "./miniplayer.js";
 import { openAddToPlaylistModal } from "./playlists.js";
-import { toggleFavoriteStatus, updateFavoriteStatusInUI } from "./ui.js";
+import { toggleFavoriteStatus } from "./ui.js"; // This is now safe
 import { showNotification } from "./notifications.js";
+import { eventBus } from "./event-bus.js";
+import { formatTime } from "./utils.js"; // Corrected import
 
 // --- DOM Element Selectors ---
 const playerPage = document.getElementById("player-page");
@@ -47,19 +49,27 @@ const videoMenuBtn = document.getElementById("video-menu-btn");
 const miniplayerBtn = document.getElementById("miniplayer-btn");
 const videoContextMenu = document.getElementById("video-item-context-menu");
 const miniplayer = document.getElementById("miniplayer");
-const miniplayerProgressBar = document.querySelector(
-  ".miniplayer-progress-bar"
-);
 
 // --- Player State ---
-let activePlayer = videoPlayer;
-let preloadPlayer = videoPlayerPreload;
 let sleepTimerId = null;
 let hideControlsTimeout;
 
-// --- Preloading Logic ---
+// --- Lazy Loading for Up Next ---
+const lazyLoadObserver = new IntersectionObserver(
+  (entries, observer) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) {
+        const img = entry.target;
+        img.src = img.dataset.src;
+        observer.unobserve(img);
+      }
+    });
+  },
+  { root: upNextList } // Observe within the list itself
+);
+
 /**
- * Silently loads the next item in the playback queue into the hidden video element.
+ * Preloads the next item in the playback queue.
  */
 function preloadNextItem() {
   const queue = AppState.playbackQueue;
@@ -70,44 +80,31 @@ function preloadNextItem() {
   ) {
     const nextIndex = (AppState.currentlyPlayingIndex + 1) % queue.length;
     const nextItem = queue[nextIndex];
-    preloadPlayer.src = decodeURIComponent(nextItem.filePath);
+    videoPlayerPreload.src = decodeURIComponent(nextItem.filePath);
   }
 }
 
 /**
- * Handles the transition when a track ends.
+ * Handles the end of a track.
  */
 function handleTrackEnd() {
   if (autoplayToggle.checked) {
     playNext();
   } else {
-    // If autoplay is off, simply update the UI to a paused state.
     playPauseBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
+    eventBus.emit("playback:pause");
   }
 }
 
 // --- Core Player Functions ---
-
-/**
- * Starts playback of a media item from a given library.
- * @param {number} index - The index of the item to play.
- * @param {Array} sourceLibrary - The array of media items to use as the playback queue.
- * @param {object} [options={}] - Playback options like { stayInMiniplayer: true }.
- */
-export function playLibraryItem(index, sourceLibrary, options = {}) {
+function playLibraryItem(index, sourceLibrary, options = {}) {
   if (!sourceLibrary || index < 0 || index >= sourceLibrary.length) return;
 
   setCurrentlyPlaying(index, sourceLibrary);
   const item = AppState.playbackQueue[AppState.currentlyPlayingIndex];
 
-  // Determine which player is active and which is for preloading
-  // This logic simplifies the swap: we always load into the main player.
-  // The browser cache and preloading `src` makes this fast.
-  activePlayer = videoPlayer;
-  preloadPlayer = videoPlayerPreload;
-
-  activePlayer.src = decodeURIComponent(item.filePath);
-  subtitleTrack.src = "";
+  videoPlayer.src = decodeURIComponent(item.filePath);
+  subtitleTrack.src = ""; // Reset subtitle track
 
   if (item.type === "audio") {
     playerSection.classList.add("audio-mode");
@@ -123,7 +120,7 @@ export function playLibraryItem(index, sourceLibrary, options = {}) {
     fullscreenBtn.disabled = false;
   }
 
-  const playPromise = activePlayer.play();
+  const playPromise = videoPlayer.play();
   if (playPromise) {
     playPromise.catch((e) => {
       if (e.name !== "AbortError") console.error("Playback error:", e);
@@ -133,6 +130,7 @@ export function playLibraryItem(index, sourceLibrary, options = {}) {
   updateVideoDetails(item);
   renderUpNextList();
   preloadNextItem();
+  eventBus.emit("playback:trackchange", item);
 
   if (options.stayInMiniplayer) {
     activateMiniplayer();
@@ -141,11 +139,7 @@ export function playLibraryItem(index, sourceLibrary, options = {}) {
   }
 }
 
-/**
- * Updates the player's detailed information section based on the current media item.
- * @param {object | null} item - The media item to display, or null to clear the UI.
- */
-export async function updateVideoDetails(item) {
+export function updateVideoDetails(item) {
   if (!item) {
     videoInfoTitle.textContent = "No media selected";
     videoInfoUploader.textContent = "";
@@ -170,16 +164,16 @@ export async function updateVideoDetails(item) {
       ).toLocaleDateString()}`
     : "";
 
-  const { updateFavoriteStatusInUI } = await import("./ui.js");
-  updateFavoriteStatusInUI(item.id, !!item.isFavorite);
+  eventBus.emit("ui:favorite_toggled", item.id, !!item.isFavorite);
 
-  if (item.description && item.description.trim()) {
+  if (item.description?.trim()) {
     videoDescriptionBox.style.display = "block";
     descriptionContent.textContent = item.description;
     setTimeout(() => {
-      const isOverflowing =
-        descriptionContent.scrollHeight > descriptionContent.clientHeight;
-      showMoreDescBtn.style.display = isOverflowing ? "block" : "none";
+      showMoreDescBtn.style.display =
+        descriptionContent.scrollHeight > descriptionContent.clientHeight
+          ? "block"
+          : "none";
     }, 100);
     videoDescriptionBox.classList.remove("expanded");
     showMoreDescBtn.textContent = "Show more";
@@ -188,13 +182,11 @@ export async function updateVideoDetails(item) {
   }
 }
 
-/**
- * Renders the "Up Next" playlist based on the current playback state.
- */
 export function renderUpNextList() {
   upNextList.innerHTML = "";
   if (AppState.currentlyPlayingIndex < 0 || AppState.playbackQueue.length <= 1)
     return;
+
   const fragment = document.createDocumentFragment();
   for (let i = 1; i < AppState.playbackQueue.length; i++) {
     const itemIndex =
@@ -203,38 +195,40 @@ export function renderUpNextList() {
     const li = document.createElement("li");
     li.className = "up-next-item";
     li.dataset.id = video.id;
-    li.innerHTML = `<img src="${
-      video.coverPath
-        ? decodeURIComponent(video.coverPath)
-        : "../assets/logo.png"
-    }" class="thumbnail" alt="thumbnail" onerror="this.onerror=null;this.src='../assets/logo.png';"><div class="item-info"><p class="item-title">${
-      video.title
-    }</p><p class="item-uploader">${
-      video.creator || video.uploader || "Unknown"
-    }</p></div>`;
+    const placeholderSrc = "../assets/logo.png";
+    const actualSrc = video.coverPath
+      ? decodeURIComponent(video.coverPath)
+      : placeholderSrc;
+    li.innerHTML = `
+      <img data-src="${actualSrc}" src="${placeholderSrc}" class="thumbnail" alt="thumbnail" onerror="this.onerror=null;this.src='${placeholderSrc}';">
+      <div class="item-info">
+        <p class="item-title">${video.title}</p>
+        <p class="item-uploader">${video.creator || video.uploader}</p>
+      </div>`;
     fragment.appendChild(li);
   }
   upNextList.appendChild(fragment);
+  upNextList
+    .querySelectorAll(".thumbnail")
+    .forEach((img) => lazyLoadObserver.observe(img));
 }
 
 // --- Player Controls & Utilities ---
-export function togglePlay() {
-  if (activePlayer.src)
-    activePlayer.paused ? activePlayer.play() : activePlayer.pause();
+function togglePlay() {
+  if (videoPlayer.src) {
+    videoPlayer.paused ? videoPlayer.play() : videoPlayer.pause();
+  }
 }
-export function formatTime(seconds) {
-  if (isNaN(seconds) || seconds < 0) return "0:00";
-  const result = new Date(seconds * 1000).toISOString().slice(11, 19);
-  return seconds < 3600 ? result.substring(3) : result;
-}
-export function playNext() {
+
+function playNext() {
   if (AppState.playbackQueue.length > 0) {
     const nextIndex =
       (AppState.currentlyPlayingIndex + 1) % AppState.playbackQueue.length;
     playLibraryItem(nextIndex, AppState.playbackQueue);
   }
 }
-export function playPrevious() {
+
+function playPrevious() {
   if (AppState.playbackQueue.length > 0) {
     const prevIndex =
       (AppState.currentlyPlayingIndex - 1 + AppState.playbackQueue.length) %
@@ -242,16 +236,18 @@ export function playPrevious() {
     playLibraryItem(prevIndex, AppState.playbackQueue);
   }
 }
+
 function updateVolume(newVolume) {
   const vol = Math.max(0, Math.min(1, newVolume));
-  activePlayer.volume = vol;
-  preloadPlayer.volume = vol;
-  activePlayer.muted = vol === 0;
-  preloadPlayer.muted = vol === 0;
+  videoPlayer.volume = vol;
+  videoPlayerPreload.volume = vol;
+  videoPlayer.muted = vol === 0;
+  videoPlayerPreload.muted = vol === 0;
 }
+
 export function updateVolumeUI() {
-  const vol = activePlayer.volume;
-  const muted = activePlayer.muted;
+  const vol = videoPlayer.volume;
+  const muted = videoPlayer.muted;
   volumeSlider.value = muted ? 0 : vol;
   volumeSlider.style.setProperty(
     "--volume-progress",
@@ -269,30 +265,29 @@ export function loadSettings() {
   const savedTheater = localStorage.getItem("theaterMode") === "true";
   const savedAutoplay = localStorage.getItem("autoplayEnabled");
 
-  activePlayer.muted = savedMuted;
-  preloadPlayer.muted = savedMuted;
+  videoPlayer.muted = savedMuted;
+  videoPlayerPreload.muted = savedMuted;
   if (savedVolume !== null && !savedMuted) {
     const vol = parseFloat(savedVolume);
-    activePlayer.volume = vol;
-    preloadPlayer.volume = vol;
+    videoPlayer.volume = vol;
+    videoPlayerPreload.volume = vol;
   }
   updateVolumeUI();
 
   if (savedTheater) playerPage.classList.add("theater-mode");
   autoplayToggle.checked = savedAutoplay !== "false";
-  activePlayer.disablePictureInPicture = true;
-  preloadPlayer.disablePictureInPicture = true;
+  videoPlayer.disablePictureInPicture = true;
+  videoPlayerPreload.disablePictureInPicture = true;
 }
 
-// --- Settings Menu Logic ---
 function buildSettingsMenu() {
   const hasSubtitles =
-    (activePlayer.textTracks.length > 0 && activePlayer.textTracks[0].cues) ||
+    (videoPlayer.textTracks.length > 0 && videoPlayer.textTracks[0].cues) ||
     (subtitleTrack.track.src && subtitleTrack.track.src.startsWith("file"));
   let isSubtitlesOn =
     hasSubtitles &&
-    ((activePlayer.textTracks.length > 0 &&
-      activePlayer.textTracks[0].mode === "showing") ||
+    ((videoPlayer.textTracks.length > 0 &&
+      videoPlayer.textTracks[0].mode === "showing") ||
       subtitleTrack.track.mode === "showing");
 
   settingsMenu.innerHTML = `
@@ -306,78 +301,72 @@ function buildSettingsMenu() {
             }</span>
         </div>
         <div class="settings-item" data-setting="speed"><i class="fa-solid fa-gauge-high"></i><span>Playback Speed</span><span class="setting-value" id="speed-value">${
-          activePlayer.playbackRate === 1
+          videoPlayer.playbackRate === 1
             ? "Normal"
-            : activePlayer.playbackRate + "x"
+            : videoPlayer.playbackRate + "x"
         }</span><span class="chevron"><i class="fa-solid fa-chevron-right"></i></span></div>
         <div class="settings-item" data-setting="sleep"><i class="fa-solid fa-moon"></i><span>Sleep Timer</span><span class="setting-value" id="sleep-value">${
-          sleepTimerId
-            ? settingsMenu.querySelector("#sleep-value")?.textContent || "On"
-            : "Off"
+          sleepTimerId ? "On" : "Off"
         }</span><span class="chevron"><i class="fa-solid fa-chevron-right"></i></span></div>`;
 }
 
 function handleSubmenu(mainSel, subMenuEl, values, type, labelFormatter) {
   const mainItem = settingsMenu.querySelector(mainSel);
-  if (!mainItem) return;
+  if (!mainItem || mainItem.classList.contains("disabled")) return;
 
   const openSubmenu = () => {
-    if (mainItem.classList.contains("disabled")) return;
     settingsMenu.classList.remove("active");
-    const currentVal = type === "speed" ? activePlayer.playbackRate : null;
+    const currentVal = type === "speed" ? videoPlayer.playbackRate : null;
     subMenuEl.innerHTML = `
-            <div class="submenu-item" data-action="back">
-                <span class="chevron"><i class="fa-solid fa-chevron-left"></i></span>
-                <span>${
-                  mainItem.querySelector("span:nth-child(2)").textContent
-                }</span>
-            </div>
-            ${values
-              .map(
-                (v) =>
-                  `<div class="submenu-item ${
-                    v == currentVal ? "active" : ""
-                  }" data-${type}="${v}"><span class="check"><i class="fa-solid fa-check"></i></span><span>${labelFormatter(
-                    v
-                  )}</span></div>`
-              )
-              .join("")}`;
+      <div class="submenu-item" data-action="back">
+          <span class="chevron"><i class="fa-solid fa-chevron-left"></i></span>
+          <span>${
+            mainItem.querySelector("span:nth-child(2)").textContent
+          }</span>
+      </div>
+      ${values
+        .map(
+          (v) =>
+            `<div class="submenu-item ${
+              v == currentVal ? "active" : ""
+            }" data-${type}="${v}"><span class="check"><i class="fa-solid fa-check"></i></span><span>${labelFormatter(
+              v
+            )}</span></div>`
+        )
+        .join("")}`;
     subMenuEl.classList.add("active");
   };
-
-  mainItem.addEventListener("click", (e) => {
-    e.stopPropagation();
-    openSubmenu();
-  });
+  mainItem.addEventListener("click", openSubmenu);
 }
 
-// --- Event Listeners ---
+// --- Event Listeners & Emitters ---
 [videoPlayer, videoPlayerPreload].forEach((player) => {
   player.addEventListener("play", () => {
     playerSection.classList.remove("paused");
     playPauseBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
+    if (player === videoPlayer) eventBus.emit("playback:play");
   });
   player.addEventListener("pause", () => {
     playerSection.classList.add("paused");
     playPauseBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
+    if (player === videoPlayer) eventBus.emit("playback:pause");
   });
   player.addEventListener("ended", handleTrackEnd);
   player.addEventListener("timeupdate", () => {
-    if (player === activePlayer) {
-      currentTimeEl.textContent = formatTime(activePlayer.currentTime);
-      const progress =
-        (activePlayer.currentTime / activePlayer.duration) * 100 || 0;
+    if (player === videoPlayer) {
+      const { currentTime, duration } = videoPlayer;
+      currentTimeEl.textContent = formatTime(currentTime);
+      const progress = (currentTime / duration) * 100 || 0;
       timelineProgress.style.width = `${progress}%`;
-      if (!miniplayer.classList.contains("hidden"))
-        miniplayerProgressBar.style.width = `${progress}%`;
+      eventBus.emit("playback:timeupdate", progress);
     }
   });
   player.addEventListener("loadedmetadata", () => {
-    if (player === activePlayer)
-      totalTimeEl.textContent = formatTime(activePlayer.duration);
+    if (player === videoPlayer)
+      totalTimeEl.textContent = formatTime(videoPlayer.duration);
   });
   player.addEventListener("volumechange", () => {
-    if (player === activePlayer) updateVolumeUI();
+    if (player === videoPlayer) updateVolumeUI();
   });
 });
 
@@ -393,18 +382,18 @@ playPauseBtn.addEventListener("click", togglePlay);
 nextBtn.addEventListener("click", playNext);
 prevBtn.addEventListener("click", playPrevious);
 muteBtn.addEventListener("click", () => {
-  const muted = !activePlayer.muted;
-  activePlayer.muted = muted;
-  preloadPlayer.muted = muted;
+  const muted = !videoPlayer.muted;
+  videoPlayer.muted = muted;
+  videoPlayerPreload.muted = muted;
 });
-volumeSlider.addEventListener("input", (e) => {
-  updateVolume(parseFloat(e.target.value));
-});
+volumeSlider.addEventListener("input", (e) =>
+  updateVolume(parseFloat(e.target.value))
+);
 timelineContainer.addEventListener("click", (e) => {
-  if (!activePlayer.duration) return;
+  if (!videoPlayer.duration) return;
   const rect = timelineContainer.getBoundingClientRect();
-  activePlayer.currentTime =
-    ((e.clientX - rect.left) / rect.width) * activePlayer.duration;
+  videoPlayer.currentTime =
+    ((e.clientX - rect.left) / rect.width) * videoPlayer.duration;
 });
 theaterBtn.addEventListener("click", () => {
   playerPage.classList.toggle("theater-mode");
@@ -418,7 +407,7 @@ fullscreenBtn.addEventListener("click", () => {
   else playerSection.requestFullscreen();
 });
 miniplayerBtn.addEventListener("click", () => {
-  if (activePlayer.src) {
+  if (videoPlayer.src) {
     activateMiniplayer();
     showPage("home");
   }
@@ -478,7 +467,7 @@ playerSection.addEventListener("mousemove", () => {
   controlsContainer.style.opacity = 1;
   playerSection.style.cursor = "default";
   clearTimeout(hideControlsTimeout);
-  if (!activePlayer.paused)
+  if (!videoPlayer.paused)
     hideControlsTimeout = setTimeout(() => {
       if (
         !settingsMenu.classList.contains("active") &&
@@ -491,7 +480,7 @@ playerSection.addEventListener("mousemove", () => {
     }, 3000);
 });
 playerSection.addEventListener("mouseleave", () => {
-  if (!activePlayer.paused) {
+  if (!videoPlayer.paused) {
     clearTimeout(hideControlsTimeout);
     hideControlsTimeout = setTimeout(() => {
       controlsContainer.style.opacity = 0;
@@ -500,15 +489,16 @@ playerSection.addEventListener("mouseleave", () => {
   }
 });
 document.addEventListener("keydown", (e) => {
-  const isPlayerActive =
-    !playerPage.classList.contains("hidden") ||
-    !miniplayer.classList.contains("hidden");
   if (
     document.activeElement.tagName.toLowerCase() === "input" ||
     document.querySelector(".modal-overlay:not(.hidden)")
   )
     return;
+  const isPlayerActive =
+    !playerPage.classList.contains("hidden") ||
+    !miniplayer.classList.contains("hidden");
   if (!isPlayerActive) return;
+
   e.preventDefault();
   switch (e.key.toLowerCase()) {
     case "k":
@@ -516,25 +506,17 @@ document.addEventListener("keydown", (e) => {
       togglePlay();
       break;
     case "m":
-      activePlayer.muted = !activePlayer.muted;
-      preloadPlayer.muted = activePlayer.muted;
+      videoPlayer.muted = !videoPlayer.muted;
+      videoPlayerPreload.muted = videoPlayer.muted;
       break;
     case "f":
-      if (
-        miniplayer.classList.contains("hidden") &&
-        !playerSection.classList.contains("audio-mode")
-      )
-        fullscreenBtn.click();
+      if (!miniplayer.classList.contains("hidden")) fullscreenBtn.click();
       break;
     case "t":
-      if (
-        miniplayer.classList.contains("hidden") &&
-        !playerSection.classList.contains("audio-mode")
-      )
-        theaterBtn.click();
+      if (!miniplayer.classList.contains("hidden")) theaterBtn.click();
       break;
     case "i":
-      if (activePlayer.src) {
+      if (videoPlayer.src) {
         if (miniplayer.classList.contains("hidden")) {
           activateMiniplayer();
           showPage("home");
@@ -544,16 +526,16 @@ document.addEventListener("keydown", (e) => {
       }
       break;
     case "arrowleft":
-      if (activePlayer.duration) activePlayer.currentTime -= 5;
+      if (videoPlayer.duration) videoPlayer.currentTime -= 5;
       break;
     case "arrowright":
-      if (activePlayer.duration) activePlayer.currentTime += 5;
+      if (videoPlayer.duration) videoPlayer.currentTime += 5;
       break;
     case "arrowup":
-      updateVolume(activePlayer.volume + 0.1);
+      updateVolume(videoPlayer.volume + 0.1);
       break;
     case "arrowdown":
-      updateVolume(activePlayer.volume - 0.1);
+      updateVolume(videoPlayer.volume - 0.1);
       break;
     case "n":
       playNext();
@@ -577,24 +559,23 @@ settingsBtn.addEventListener("click", (e) => {
 settingsMenu.addEventListener("click", (e) => {
   const item = e.target.closest(".settings-item");
   if (!item) return;
-  if (
-    item.dataset.setting === "subtitles" &&
-    !item.classList.contains("disabled")
-  ) {
+
+  const setting = item.dataset.setting;
+  if (setting === "subtitles" && !item.classList.contains("disabled")) {
     const isCurrentlyOn =
-      (activePlayer.textTracks.length > 0 &&
-        activePlayer.textTracks[0].mode === "showing") ||
+      (videoPlayer.textTracks.length > 0 &&
+        videoPlayer.textTracks[0].mode === "showing") ||
       subtitleTrack.track.mode === "showing";
     const newMode = isCurrentlyOn ? "hidden" : "showing";
-    if (activePlayer.textTracks.length > 0) {
-      for (const track of activePlayer.textTracks) track.mode = newMode;
+    if (videoPlayer.textTracks.length > 0) {
+      for (const track of videoPlayer.textTracks) track.mode = newMode;
     }
     if (subtitleTrack.track.src) subtitleTrack.track.mode = newMode;
     settingsMenu.querySelector("#subtitles-value").textContent =
       newMode === "showing" ? "On" : "Off";
     localStorage.setItem("subtitlesEnabled", newMode === "showing");
     settingsMenu.classList.remove("active");
-  } else if (item.dataset.setting === "speed") {
+  } else if (setting === "speed") {
     handleSubmenu(
       `[data-setting="speed"]`,
       speedSubmenu,
@@ -603,7 +584,7 @@ settingsMenu.addEventListener("click", (e) => {
       (v) => (v === 1 ? "Normal" : v + "x")
     );
     item.click();
-  } else if (item.dataset.setting === "sleep") {
+  } else if (setting === "sleep") {
     handleSubmenu(
       `[data-setting="sleep"]`,
       sleepSubmenu,
@@ -624,8 +605,8 @@ speedSubmenu.addEventListener("click", (e) => {
     return;
   }
   const value = parseFloat(target.dataset.speed);
-  activePlayer.playbackRate = value;
-  preloadPlayer.playbackRate = value;
+  videoPlayer.playbackRate = value;
+  videoPlayerPreload.playbackRate = value;
   settingsMenu.querySelector("#speed-value").textContent =
     value === 1 ? "Normal" : `${value}x`;
   speedSubmenu.classList.remove("active");
@@ -641,13 +622,17 @@ sleepSubmenu.addEventListener("click", (e) => {
   }
   const value = parseFloat(target.dataset.minutes);
   clearTimeout(sleepTimerId);
+  sleepTimerId = null;
   if (value > 0) {
-    sleepTimerId = setTimeout(() => {
-      activePlayer.pause();
-      showNotification(`Sleep timer ended. Playback paused.`, "info");
-      settingsMenu.querySelector("#sleep-value").textContent = "Off";
-      sleepTimerId = null;
-    }, value * 60 * 1000);
+    sleepTimerId = setTimeout(
+      () => {
+        videoPlayer.pause();
+        showNotification(`Sleep timer ended. Playback paused.`, "info");
+        settingsMenu.querySelector("#sleep-value").textContent = "Off";
+        sleepTimerId = null;
+      },
+      value * 60 * 1000
+    );
     showNotification(`Sleep timer set for ${value} minutes.`, "info");
   } else {
     showNotification(`Sleep timer cleared.`, "info");
@@ -668,3 +653,10 @@ document.addEventListener("click", (e) => {
     sleepSubmenu.classList.remove("active");
   }
 });
+
+// Subscribe to player control events
+eventBus.on("player:play_request", playLibraryItem);
+eventBus.on("controls:toggle_play", togglePlay);
+eventBus.on("controls:next", playNext);
+eventBus.on("controls:prev", playPrevious);
+eventBus.on("controls:pause", () => videoPlayer.pause());
