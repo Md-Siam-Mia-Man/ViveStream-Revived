@@ -1,13 +1,30 @@
-// src/js/artists.js
+// src/renderer/js/artists.js
 import { AppState, setAllArtists } from "./state.js";
 import { showPage, showLoader, hideLoader } from "./renderer.js";
 import { renderGridItem } from "./ui.js";
-import { playLibraryItem } from "./player.js";
+import { eventBus } from "./event-bus.js";
 import { showNotification } from "./notifications.js";
 
 // --- DOM Element Selectors ---
 const artistsPage = document.getElementById("artists-page");
 const artistDetailPage = document.getElementById("artist-detail-page");
+
+const lazyLoadObserver = new IntersectionObserver(
+  (entries, observer) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) {
+        const img = entry.target;
+        const src = img.dataset.src;
+        if (src) {
+          img.src = src;
+        }
+        img.classList.remove("lazy");
+        observer.unobserve(img);
+      }
+    });
+  },
+  { rootMargin: "0px 0px 200px 0px" }
+);
 
 /**
  * Renders the main artists grid page.
@@ -16,58 +33,74 @@ const artistDetailPage = document.getElementById("artist-detail-page");
 export async function renderArtistsPage(artistsToRender) {
   if (!artistsToRender) {
     const allArtists = await window.electronAPI.artistGetAll();
-    setAllArtists(allArtists); // Update central state
+    setAllArtists(allArtists);
     artistsToRender = AppState.artists;
   }
 
+  artistsPage.innerHTML = ""; // Clear existing content
+
+  const header = document.createElement("div");
+  header.className = "page-header";
+  header.innerHTML = `<h1 class="page-header-title">Artists</h1>`;
+  artistsPage.appendChild(header);
+
   if (AppState.artists.length === 0) {
-    artistsPage.innerHTML = `
-      <div class="page-header">
-        <h1 class="page-header-title">Artists</h1>
-      </div>
-      <div class="placeholder-page">
-        <i class="fa-solid fa-microphone-slash placeholder-icon"></i>
-        <h2 class="placeholder-title">No Artists Found</h2>
-        <p class="placeholder-text">Artists you download will appear here automatically.</p>
-      </div>`;
+    const placeholder = document.createElement("div");
+    placeholder.className = "placeholder-page";
+    placeholder.innerHTML = `
+      <i class="fa-solid fa-microphone-slash placeholder-icon"></i>
+      <h2 class="placeholder-title">No Artists Found</h2>
+      <p class="placeholder-text">Artists you download will appear here automatically.</p>`;
+    artistsPage.appendChild(placeholder);
   } else {
-    artistsPage.innerHTML = `
-      <div class="page-header">
-        <h1 class="page-header-title">Artists</h1>
-      </div>
-      <div class="artist-grid">
-        ${
-          artistsToRender.length > 0
-            ? artistsToRender.map(renderArtistCard).join("")
-            : '<p class="empty-message">No artists match your search.</p>'
-        }
-      </div>`;
+    const grid = document.createElement("div");
+    grid.className = "artist-grid";
+
+    if (artistsToRender.length > 0) {
+      const fragment = document.createDocumentFragment();
+      artistsToRender.forEach((artist) => {
+        const card = renderArtistCard(artist);
+        fragment.appendChild(card);
+      });
+      grid.appendChild(fragment);
+      grid
+        .querySelectorAll("img.lazy")
+        .forEach((img) => lazyLoadObserver.observe(img));
+    } else {
+      grid.innerHTML =
+        '<p class="empty-message">No artists match your search.</p>';
+    }
+    artistsPage.appendChild(grid);
   }
   hideLoader();
 }
 
 /**
- * Generates the HTML string for a single artist card.
+ * Generates the DOM element for a single artist card.
  * @param {object} artist - The artist data object.
- * @returns {string} The HTML string.
+ * @returns {HTMLElement} The artist card element.
  */
 function renderArtistCard(artist) {
   const videoCountText =
     artist.videoCount === 1 ? "1 video" : `${artist.videoCount} videos`;
+  const placeholderSrc = "../assets/logo.png";
   const thumbnailSrc = artist.thumbnailPath
     ? decodeURIComponent(artist.thumbnailPath)
-    : "../assets/logo.png";
+    : placeholderSrc;
 
-  return `
-    <div class="artist-grid-item" data-id="${artist.id}">
-      <div class="artist-thumbnail-container">
-        <img src="${thumbnailSrc}" class="artist-thumbnail" alt="${artist.name}" onerror="this.onerror=null;this.src='../assets/logo.png';">
-      </div>
-      <div class="artist-info">
-        <p class="artist-name">${artist.name}</p>
-        <p class="artist-meta">${videoCountText}</p>
-      </div>
+  const card = document.createElement("div");
+  card.className = "artist-grid-item";
+  card.dataset.id = artist.id;
+
+  card.innerHTML = `
+    <div class="artist-thumbnail-container">
+      <img data-src="${thumbnailSrc}" src="${placeholderSrc}" class="artist-thumbnail lazy" alt="${artist.name}" onerror="this.onerror=null;this.src='${placeholderSrc}';">
+    </div>
+    <div class="artist-info">
+      <p class="artist-name">${artist.name}</p>
+      <p class="artist-meta">${videoCountText}</p>
     </div>`;
+  return card;
 }
 
 /**
@@ -78,6 +111,8 @@ export async function renderArtistDetailPage(artistId) {
   showLoader();
   const artist = await window.electronAPI.artistGetDetails(artistId);
 
+  artistDetailPage.innerHTML = ""; // Clear existing content
+
   if (!artist) {
     showNotification(`Could not find artist with ID ${artistId}`, "error");
     showPage("artists");
@@ -87,48 +122,52 @@ export async function renderArtistDetailPage(artistId) {
 
   const videoCountText =
     artist.videos.length === 1 ? "1 video" : `${artist.videos.length} videos`;
+  const placeholderSrc = "../assets/logo.png";
   const thumbnailSrc = artist.thumbnailPath
     ? decodeURIComponent(artist.thumbnailPath)
-    : "../assets/logo.png";
+    : placeholderSrc;
 
-  artistDetailPage.innerHTML = `
-    <div class="artist-detail-header">
-      <img src="${thumbnailSrc}" class="artist-detail-image" alt="${
-    artist.name
-  }" onerror="this.onerror=null;this.src='../assets/logo.png';">
-      <div class="artist-detail-info">
-        <h1 class="artist-detail-name">${artist.name}</h1>
-        <p class="artist-detail-meta">${videoCountText}</p>
-      </div>
-    </div>
-    <div class="page-content" id="artist-detail-content">
-      ${
-        artist.videos.length > 0
-          ? `<div class="video-grid" id="video-grid-artist">${artist.videos
-              .map((item) => renderGridItem(item))
-              .join("")}</div>`
-          : `<div class="placeholder-page" style="flex-grow: 1;">
-            <i class="fa-solid fa-video-slash placeholder-icon"></i>
-            <h2 class="placeholder-title">No Videos Found</h2>
-            <p class="placeholder-text">This artist currently has no videos in your library.</p>
-        </div>`
-      }
+  const header = document.createElement("div");
+  header.className = "artist-detail-header";
+  header.innerHTML = `
+    <img src="${thumbnailSrc}" class="artist-detail-image" alt="${artist.name}" onerror="this.onerror=null;this.src='${placeholderSrc}';">
+    <div class="artist-detail-info">
+      <h1 class="artist-detail-name">${artist.name}</h1>
+      <p class="artist-detail-meta">${videoCountText}</p>
     </div>`;
+  artistDetailPage.appendChild(header);
 
-  // Attach event listener to the newly created grid.
-  const grid = artistDetailPage.querySelector("#video-grid-artist");
-  if (grid) {
-    grid.addEventListener("click", (event) => {
-      const itemEl = event.target.closest(".video-grid-item");
-      if (!itemEl) return;
-      const videoIndex = artist.videos.findIndex(
-        (v) => v.id === itemEl.dataset.id
-      );
-      if (videoIndex > -1) {
-        playLibraryItem(videoIndex, artist.videos);
-      }
+  const content = document.createElement("div");
+  content.className = "page-content";
+  content.id = "artist-detail-content";
+
+  if (artist.videos.length > 0) {
+    const grid = document.createElement("div");
+    grid.className = "video-grid";
+    grid.id = "video-grid-artist";
+
+    const fragment = document.createDocumentFragment();
+    artist.videos.forEach((item) => {
+      const gridItemWrapper = document.createElement("div");
+      gridItemWrapper.innerHTML = renderGridItem(item);
+      fragment.appendChild(gridItemWrapper.firstElementChild);
     });
+    grid.appendChild(fragment);
+    grid
+      .querySelectorAll("img.lazy")
+      .forEach((img) => lazyLoadObserver.observe(img));
+
+    content.appendChild(grid);
+  } else {
+    content.innerHTML = `
+      <div class="placeholder-page" style="flex-grow: 1;">
+        <i class="fa-solid fa-video-slash placeholder-icon"></i>
+        <h2 class="placeholder-title">No Videos Found</h2>
+        <p class="placeholder-text">This artist currently has no videos in your library.</p>
+      </div>`;
   }
+  artistDetailPage.appendChild(content);
+
   hideLoader();
 }
 
@@ -141,3 +180,5 @@ artistsPage.addEventListener("click", async (e) => {
     showPage("artist-detail-page", true);
   }
 });
+
+// Grid click events on the detail page are now handled by the central listener in ui.js
