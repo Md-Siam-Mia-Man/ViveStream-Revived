@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy" content="font-src 'self' data:; script-src 'self' 'unsafe-inline';">
+    <title>ViveStream</title>
+    <!-- Paths are now relative to src/renderer/ -->
+    <link rel="stylesheet" href="../../node_modules/@fortawesome/fontawesome-free/css/all.min.css">
+    <link rel="stylesheet" href="./css/style.css">
+    <link rel="stylesheet" href="./css/home.css">
+    <link rel="stylesheet" href="./css/downloads.css">
+    <link rel="stylesheet" href="./css/player.css">
+    <link rel="stylesheet" href="./css/miniplayer.css">
+    <link rel="stylesheet" href="./css/settings.css">
+    <link rel="stylesheet" href="./css/notifications.css">
+    <link rel="stylesheet" href="./css/playlists.css">
+    <link rel="stylesheet" href="./css/artists.css">
+</head>
+
+<body>
+    <div class="title-bar">
+        <div class="title-bar-drag-region"></div>
+        <div class="window-controls-container">
+            <button id="tray-btn" class="window-control-btn" title="Minimize to Tray"><i
+                    class="fa-solid fa-compress-arrows-alt"></i></button>
+            <button id="minimize-btn" class="window-control-btn" title="Minimize"><i
+                    class="fa-solid fa-minus"></i></button>
+            <button id="maximize-btn" class="window-control-btn" title="Maximize"><i
+                    class="fa-regular fa-square"></i></button>
+            <button id="close-btn" class="window-control-btn close-btn" title="Close"><i
+                    class="fa-solid fa-xmark"></i></button>
+        </div>
+    </div>
+    <div class="header-bar">
+        <div class="header-left">
+            <button class="header-button" id="sidebar-toggle"><i class="fa-solid fa-bars"></i></button>
+            <a href="#" class="logo-container" id="logo-home-button">
+                <svg class="logo-svg" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+                    <rect width="120" height="120" rx="20" fill="#ff0b55" />
+                    <path d="m30 30 30 60 30-60" stroke="#f1f1f1" stroke-width="6" fill="none" stroke-linecap="round" />
+                    <path
+                        d="M90 30c-58 15-65-10-54 0 2 10 4-5 6 0s4-15 6 0 4-8 6 0 4-2 6 0c2 12 4-14 6 0 2 5 4-10 6 0 2 15 4-5 6 0 2 10 4-12 6 0 2 6 4-8 6 0"
+                        stroke="#fff" stroke-width="1.25" fill="none" stroke-linecap="round"
+                        style="stroke-dasharray:1000;stroke-dashoffset:1000;animation:pulse-glow 5s ease-in-out infinite" />
+                </svg>
+                <span class="app-title">ViveStream</span>
+            </a>
+        </div>
+        <div class="header-center">
+            <div class="search-container">
+                <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                <input type="text" id="home-search-input" placeholder="Search...">
+            </div>
+        </div>
+        <div class="header-right">
+        </div>
+    </div>
+    <div class="app-body">
+        <nav class="sidebar">
+            <ul class="sidebar-nav">
+                <li class="nav-item active" data-page="home"><i class="fa-solid fa-house"></i><span>Home</span></li>
+                <li class="nav-item" data-page="favorites"><i class="fa-solid fa-heart"></i><span>Favorites</span></li>
+                <li class="nav-item" data-page="playlists"><i class="fa-solid fa-layer-group"></i><span>Playlists</span>
+                </li>
+                <li class="nav-item" data-page="artists"><i
+                        class="fa-solid fa-microphone-lines"></i><span>Artists</span>
+                </li>
+                <li class="nav-item" data-page="downloads"><i class="fa-solid fa-download"></i><span>Downloads</span>
+                </li>
+            </ul>
+            <ul class="sidebar-nav-bottom">
+                <li class="nav-item" data-page="settings"><i class="fa-solid fa-gear"></i><span>Settings</span></li>
+            </ul>
+        </nav>
+        <div class="content-wrapper">
+            <div id="loader-overlay" class="loader-overlay hidden">
+                <div class="loader-spinner"></div>
+            </div>
+            <div id="home-page" class="page"></div>
+            <div id="downloads-page" class="page hidden">
+                <div class="downloads-container">
+                    <div class="download-card">
+                        <h2>Download New Media</h2>
+                        <p class="download-card-subtitle">Paste a YouTube video or playlist URL to begin.</p>
+                        <form id="download-form">
+                            <div class="url-input-container">
+                                <i class="fa-solid fa-link url-icon"></i>
+                                <input type="text" id="url-input" placeholder="Enter YouTube URL..." required>
+                            </div>
+                            <div class="download-options">
+                                <div class="option-group">
+                                    <label>Type</label>
+                                    <div class="radio-group">
+                                        <label class="radio-label"><input type="radio" name="download-type"
+                                                id="download-type-video" value="video"
+                                                checked><span>Video</span></label>
+                                        <label class="radio-label"><input type="radio" name="download-type"
+                                                id="download-type-audio" value="audio"><span>Audio</span></label>
+                                    </div>
+                                </div>
+                                <div id="video-options-container" class="option-group select-group">
+                                    <label>Video Quality</label>
+                                    <div class="custom-select-container" id="video-quality-select-container">
+                                        <div class="selected-option" data-value="1080">
+                                            <span>1080p</span>
+                                            <span class="chevron"><i class="fa-solid fa-chevron-down"></i></span>
+                                        </div>
+                                        <div class="options-list">
+                                            <div class="option-item" data-value="best">Best</div>
+                                            <div class="option-item" data-value="2160">4K (2160p)</div>
+                                            <div class="option-item" data-value="1440">1440p</div>
+                                            <div class="option-item selected" data-value="1080">1080p</div>
+                                            <div class="option-item" data-value="720">720p</div>
+                                            <div class="option-item" data-value="480">480p</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="audio-options-container" class="option-group select-group hidden">
+                                    <label>Audio Quality</label>
+                                    <div class="custom-select-container" id="audio-quality-select-container">
+                                        <div class="selected-option" data-value="mp3-0">
+                                            <span>MP3 (Best)</span>
+                                            <span class="chevron"><i class="fa-solid fa-chevron-down"></i></span>
+                                        </div>
+                                        <div class="options-list">
+                                            <div class="option-item selected" data-value="mp3-0">MP3 (Best Quality)
+                                            </div>
+                                            <div class="option-item" data-value="mp3-5">MP3 (Standard)</div>
+                                            <div class="option-item" data-value="flac">FLAC (Lossless)</div>
+                                            <div class="option-item" data-value="wav">WAV (Uncompressed)</div>
+                                            <div class="option-item" data-value="m4a">M4A (AAC)</div>
+                                            <div class="option-item" data-value="opus">Opus</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button type="submit" class="download-button"><i
+                                        class="fa-solid fa-download"></i><span>Download</span></button>
+                            </div>
+                            <div class="advanced-options-toggle" id="advanced-options-toggle">
+                                <i class="fa-solid fa-sliders"></i> Advanced Options
+                            </div>
+                            <div class="advanced-options-panel hidden" id="advanced-options-panel">
+                                <div class="option-group">
+                                    <label for="start-time-input">Start Time</label>
+                                    <input type="text" id="start-time-input" class="time-input"
+                                        placeholder="e.g., 1:23">
+                                </div>
+                                <div class="option-group">
+                                    <label for="end-time-input">End Time</label>
+                                    <input type="text" id="end-time-input" class="time-input" placeholder="e.g., 2:45">
+                                </div>
+                                <div class="option-group">
+                                    <label for="split-chapters-toggle">Split by Chapters</label>
+                                    <label class="switch">
+                                        <input type="checkbox" id="split-chapters-toggle">
+                                        <span class="slider round"></span>
+                                    </label>
+                                </div>
+                                <p class="advanced-options-note">Download a clip OR split by chapters. Cannot be used at
+                                    the same time.</p>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="download-queue-header">
+                        <h3>Download Queue</h3>
+                        <div class="queue-actions">
+                            <button id="clear-completed-btn" class="queue-action-btn"><i class="fa-solid fa-check"></i>
+                                Clear Completed</button>
+                            <button id="clear-all-btn" class="queue-action-btn"><i class="fa-solid fa-trash-can"></i>
+                                Clear All</button>
+                        </div>
+                    </div>
+                    <div id="download-queue-area"></div>
+                    <div id="empty-queue-placeholder" class="hidden">
+                        <i class="fa-solid fa-download placeholder-icon"></i>
+                        <p>Your download queue is empty</p>
+                        <span>Paste a link above to get started</span>
+                    </div>
+                </div>
+            </div>
+            <div id="player-page" class="page hidden">
+                <main class="main-content">
+                    <div class="primary-column">
+                        <div class="player-section" id="player-section">
+                            <video id="video-player">
+                                <track kind="subtitles" srclang="en" id="subtitle-track">
+                            </video>
+                            <video id="video-player-preload"></video>
+                            <div class="audio-artwork-container">
+                                <img id="audio-artwork-img" src="" alt="Artwork">
+                            </div>
+                            <div class="video-controls-container">
+                                <div class="timeline-container">
+                                    <div class="timeline">
+                                        <div class="timeline-progress"></div>
+                                    </div>
+                                </div>
+                                <div class="bottom-controls">
+                                    <div class="left-controls">
+                                        <button class="control-button prev-btn"><i
+                                                class="fa-solid fa-backward-step"></i></button>
+                                        <button class="control-button play-pause-btn"><i
+                                                class="fa-solid fa-play"></i></button>
+                                        <button class="control-button next-btn"><i
+                                                class="fa-solid fa-forward-step"></i></button>
+                                        <div class="volume-container">
+                                            <button class="control-button mute-btn"><i
+                                                    class="fa-solid fa-volume-high"></i></button>
+                                            <div class="volume-slider-container">
+                                                <input class="volume-slider" type="range" min="0" max="1" step="0.01"
+                                                    value="1">
+                                            </div>
+                                        </div>
+                                        <div class="time-container"><span class="current-time">0:00</span> / <span
+                                                class="total-time">0:00</span></div>
+                                    </div>
+                                    <div class="right-controls">
+                                        <div class="autoplay-container"><label class="switch"><input type="checkbox"
+                                                    id="autoplay-toggle" checked><span
+                                                    class="slider round"></span></label></div>
+                                        <button class="control-button" id="settings-btn" title="Settings"><i
+                                                class="fa-solid fa-cog"></i></button>
+                                        <button class="control-button" id="miniplayer-btn" title="Miniplayer"><i
+                                                class="fa-solid fa-clone"></i></button>
+                                        <button class="control-button" id="theater-btn" title="Theater Mode"><i
+                                                class="fa-solid fa-desktop"></i></button>
+                                        <button class="control-button" id="fullscreen-btn" title="Fullscreen"><i
+                                                class="fa-solid fa-expand"></i></button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="settings-menu" id="settings-menu"></div>
+                            <div class="settings-submenu" id="speed-submenu"></div>
+                            <div class="settings-submenu" id="sleep-submenu"></div>
+                        </div>
+                        <div class="video-info-section">
+                            <h1 id="video-info-title"></h1>
+                            <div class="video-actions-meta">
+                                <div class="uploader-info">
+                                    <div class="channel-thumb-container"><img id="channel-thumb" src=""
+                                            alt="channel thumbnail" /></div>
+                                    <div class="uploader-text">
+                                        <span id="video-info-uploader"></span>
+                                        <span id="video-info-date"></span>
+                                    </div>
+                                </div>
+                                <div class="action-buttons">
+                                    <button class="action-button favorite-btn" id="favorite-btn"><i
+                                            class="fa-solid fa-heart"></i><span>Favorite</span></button>
+                                    <button class="action-button" id="save-to-playlist-btn"><i
+                                            class="fa-solid fa-plus"></i><span>Save</span></button>
+                                    <button class="action-button" id="video-menu-btn"><i
+                                            class="fa-solid fa-ellipsis-vertical"></i></button>
+                                </div>
+                            </div>
+                            <div class="video-description-box" id="video-description-box">
+                                <div class="description-content" id="description-content"></div>
+                                <button class="show-more-btn" id="show-more-desc-btn">Show more</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="secondary-column">
+                        <div class="playlist-area">
+                            <h4>Up next</h4>
+                            <ul id="up-next-list"></ul>
+                        </div>
+                    </div>
+                </main>
+            </div>
+            <div id="playlists-page" class="page hidden"></div>
+            <div id="playlist-detail-page" class="page hidden"></div>
+            <div id="artists-page" class="page hidden"></div>
+            <div id="artist-detail-page" class="page hidden"></div>
+            <div id="favorites-page" class="page hidden">
+                <div class="placeholder-page">
+                    <i class="fa-solid fa-heart-crack placeholder-icon"></i>
+                    <h2 class="placeholder-title">No Favorites Yet</h2>
+                    <p class="placeholder-text">Click the heart icon on any video to add it to your favorites.</p>
+                </div>
+                <div class="video-grid" id="video-grid-favorites"></div>
+            </div>
+            <div id="settings-page" class="page hidden">
+                <div class="settings-container">
+                    <h1 class="settings-header">Settings</h1>
+                    <div class="settings-section">
+                        <h2 class="settings-section-title">Downloads</h2>
+                        <div class="setting-item">
+                            <div class="setting-text">
+                                <label for="concurrent-downloads-slider">Concurrent Downloads</label>
+                                <p>Maximum number of videos to download at the same time.</p>
+                            </div>
+                            <div class="setting-control">
+                                <input type="range" id="concurrent-downloads-slider" min="1" max="10" value="3">
+                                <span id="concurrent-downloads-value">3</span>
+                            </div>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-text">
+                                <label for="concurrent-fragments-slider">Concurrent Fragments</label>
+                                <p>Speeds up HLS/DASH downloads by fetching parts in parallel.</p>
+                            </div>
+                            <div class="setting-control">
+                                <input type="range" id="concurrent-fragments-slider" min="1" max="10" value="1">
+                                <span id="concurrent-fragments-value">1</span>
+                            </div>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-text">
+                                <label for="speed-limit-input">Download Speed Limit</label>
+                                <p>e.g., 500K, 2.5M. Leave blank for no limit.</p>
+                            </div>
+                            <div class="setting-control">
+                                <input type="text" id="speed-limit-input" class="text-input-control"
+                                    placeholder="No limit">
+                            </div>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-text">
+                                <label>Browser Cookies</label>
+                                <p>Use cookies from a browser to bypass login/age restrictions.</p>
+                            </div>
+                            <div class="setting-control">
+                                <div class="custom-select-container" id="cookie-browser-select-container">
+                                    <div class="selected-option" data-value="none">
+                                        <span>None</span>
+                                        <span class="chevron"><i class="fa-solid fa-chevron-down"></i></span>
+                                    </div>
+                                    <div class="options-list">
+                                        <div class="option-item selected" data-value="none">None</div>
+                                        <div class="option-item" data-value="brave">Brave</div>
+                                        <div class="option-item" data-value="chrome">Chrome</div>
+                                        <div class="option-item" data-value="chromium">Chromium</div>
+                                        <div class="option-item" data-value="edge">Edge</div>
+                                        <div class="option-item" data-value="firefox">Firefox</div>
+                                        <div class="option-item" data-value="opera">Opera</div>
+                                        <div class="option-item" data-value="safari">Safari</div>
+                                        <div class="option-item" data-value="vivaldi">Vivaldi</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-text">
+                                <label for="auto-subs-toggle">Download Automatic Subtitles</label>
+                                <p>If official subtitles aren't found, download auto-generated ones (when available).
+                                </p>
+                            </div>
+                            <div class="setting-control">
+                                <label class="switch">
+                                    <input type="checkbox" id="auto-subs-toggle">
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-text">
+                                <label for="sponsorblock-toggle">Remove Sponsored Segments</label>
+                                <p>Automatically cut sponsored sections, intros, outros, etc., from videos.</p>
+                            </div>
+                            <div class="setting-control">
+                                <label class="switch">
+                                    <input type="checkbox" id="sponsorblock-toggle">
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="settings-section">
+                        <h2 class="settings-section-title">File Naming</h2>
+                        <div class="setting-item">
+                            <div class="setting-text">
+                                <label for="output-template-input">Custom Output Template</label>
+                                <p>Define how your files are named. <a id="template-help-link" class="link-style">See
+                                        documentation for available fields.</a></p>
+                            </div>
+                            <div class="setting-control">
+                                <input type="text" id="output-template-input" class="text-input-control"
+                                    placeholder="Default: %(id)s.%(ext)s">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="settings-section">
+                        <h2 class="settings-section-title">Maintenance</h2>
+                        <div class="setting-item">
+                            <div class="setting-text">
+                                <label>Update Downloader</label>
+                                <p>Keep the internal downloader (yt-dlp) up-to-date to prevent download errors.</p>
+                            </div>
+                            <div class="setting-control">
+                                <button class="setting-btn" id="update-ytdlp-btn"><i
+                                        class="fa-solid fa-cloud-arrow-down"></i> Check for Updates</button>
+                            </div>
+                        </div>
+                        <div id="updater-console-container" class="hidden">
+                            <pre id="updater-console"></pre>
+                        </div>
+                    </div>
+                    <div class="settings-section danger-zone">
+                        <h2 class="settings-section-title">Danger Zone</h2>
+                        <div class="setting-item">
+                            <div class="setting-text">
+                                <label>Reset ViveStream</label>
+                                <p>Resets all settings to their defaults. Your downloaded media will not be affected.
+                                </p>
+                            </div>
+                            <div class="setting-control"><button class="danger-btn" id="reset-app-btn">Reset
+                                    Now</button></div>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-text">
+                                <label>Clear All Local Media</label>
+                                <p><strong>Warning:</strong> This will permanently delete all your downloaded videos,
+                                    audio, and metadata.</p>
+                            </div>
+                            <div class="setting-control"><button class="danger-btn" id="clear-media-btn"><i
+                                        class="fa-solid fa-trash-can"></i> Clear Media</button></div>
+                        </div>
+                    </div>
+                    <div class="settings-section about-section">
+                        <h2 class="settings-section-title">About ViveStream</h2>
+                        <div class="about-content">
+                            <svg class="about-logo" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+                                <rect width="120" height="120" rx="20" fill="#ff0b55" />
+                                <path d="m30 30 30 60 30-60" stroke="#f1f1f1" stroke-width="6" fill="none"
+                                    stroke-linecap="round" />
+                                <path
+                                    d="M90 30c-58 15-65-10-54 0 2 10 4-5 6 0s4-15 6 0 4-8 6 0 4-2 6 0c2 12 4-14 6 0 2 5 4-10 6 0 2 15 4-5 6 0 2 10 4-12 6 0 2 6 4-8 6 0"
+                                    stroke="#fff" stroke-width="1.25" fill="none" stroke-linecap="round"
+                                    style="stroke-dasharray:1000;stroke-dashoffset:1000;animation:pulse-glow 5s ease-in-out infinite" />
+                            </svg>
+                            <h3 class="about-app-name">ViveStream</h3>
+                            <p class="about-version" id="app-version"></p>
+                            <p class="about-dev">Developed by Md. Siam Mia</p>
+                            <div class="about-links">
+                                <a id="github-view-link" class="about-btn github-view-btn"><i
+                                        class="fa-brands fa-github"></i> View on GitHub</a>
+                                <a id="github-star-link" class="about-btn github-star-btn"><i
+                                        class="fa-solid fa-star"></i> Star on GitHub</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="context-menu" id="video-item-context-menu">
+                <div class="context-menu-item" id="context-delete-btn"><i class="fa-solid fa-trash-can"></i> Delete
+                </div>
+                <div class="context-menu-item" id="context-remove-from-playlist-btn"><i class="fa-solid fa-times"></i>
+                    Remove from Playlist</div>
+            </div>
+            <div class="context-menu" id="playlist-item-context-menu">
+                <div class="context-menu-item" id="context-playlist-rename-btn"><i class="fa-solid fa-pencil"></i>
+                    Rename</div>
+                <div class="context-menu-item" id="context-playlist-delete-btn"><i class="fa-solid fa-trash-can"></i>
+                    Delete</div>
+            </div>
+        </div>
+    </div>
+    <div id="miniplayer" class="hidden">
+        <div id="miniplayer-video-container"></div>
+        <img id="miniplayer-artwork-img" class="miniplayer-artwork hidden" src="" alt="Artwork">
+        <div class="miniplayer-info">
+            <p class="miniplayer-title">Video Title</p>
+            <p class="miniplayer-uploader">Uploader</p>
+        </div>
+        <div class="miniplayer-controls">
+            <button class="mini-control-button" id="miniplayer-prev-btn"><i
+                    class="fa-solid fa-backward-step"></i></button>
+            <button class="mini-control-button" id="miniplayer-play-pause-btn"><i class="fa-solid fa-play"></i></button>
+            <button class="mini-control-button" id="miniplayer-next-btn"><i
+                    class="fa-solid fa-forward-step"></i></button>
+        </div>
+        <div class="miniplayer-actions">
+            <button class="mini-action-button" id="miniplayer-expand-btn"><i class="fa-solid fa-expand"></i></button>
+            <button class="mini-action-button" id="miniplayer-close-btn"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="miniplayer-progress-container">
+            <div class="miniplayer-progress-bar"></div>
+        </div>
+    </div>
+    <div id="notification-container"></div>
+    <div id="add-to-playlist-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h3>Add to playlist</h3>
+            <div class="add-playlist-list"></div>
+            <div class="add-playlist-new">
+                <input type="text" id="new-playlist-input" placeholder="...or create new playlist">
+                <button id="create-playlist-confirm-btn" class="modal-btn"><i class="fa-solid fa-plus"></i>
+                    Create</button>
+            </div>
+            <div class="modal-actions">
+                <button id="modal-done-btn" class="modal-btn">Done</button>
+            </div>
+        </div>
+    </div>
+    <div id="confirmation-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h3 id="modal-title">Are you sure?</h3>
+            <p id="modal-text">This action cannot be undone.</p>
+            <div class="modal-actions">
+                <button id="modal-cancel-btn" class="modal-btn">Cancel</button>
+                <button id="modal-confirm-btn" class="modal-btn danger-btn">Confirm</button>
+            </div>
+        </div>
+    </div>
+    <div id="prompt-modal" class="modal-overlay hidden">
+        <div class="modal-content prompt-modal-content">
+            <h3 id="prompt-title">Prompt</h3>
+            <p id="prompt-text">Enter a value:</p>
+            <input type="text" id="prompt-input">
+            <div class="modal-actions">
+                <button id="prompt-cancel-btn" class="modal-btn">Cancel</button>
+                <button id="prompt-confirm-btn" class="modal-btn">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Paths are now relative to src/renderer/ -->
+    <script src="../../node_modules/sortablejs/Sortable.min.js"></script>
+    <script src="./js/state.js" type="module"></script>
+    <script src="./js/modals.js" type="module"></script>
+    <script src="./js/renderer.js" type="module"></script>
+    <script src="./js/notifications.js" type="module"></script>
+    <script src="./js/ui.js" type="module"></script>
+    <script src="./js/downloader.js" type="module"></script>
+    <script src="./js/player.js" type="module"></script>
+    <script src="./js/miniplayer.js" type="module"></script>
+    <script src="./js/settings.js" type="module"></script>
+    <script src="./js/playlists.js" type="module"></script>
+    <script src="./js/artists.js" type="module"></script>
+</body>
+
+</html>
