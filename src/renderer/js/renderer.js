@@ -1,4 +1,4 @@
-// src/js/renderer.js
+// src/renderer/js/renderer.js
 import {
   AppState,
   setLibrary,
@@ -10,15 +10,13 @@ import { renderHomePageGrid, renderFavoritesPage } from "./ui.js";
 import {
   renderPlaylistsPage,
   initializePlaylistContextMenus,
+  renderPlaylistDetailPage,
 } from "./playlists.js";
 import { renderArtistsPage } from "./artists.js";
 import {
-  playLibraryItem,
   updateVideoDetails,
   renderUpNextList,
-  togglePlay,
-  playNext,
-  playPrevious,
+  loadSettings as loadPlayerSettings,
 } from "./player.js";
 import {
   activateMiniplayer,
@@ -26,9 +24,13 @@ import {
   closeMiniplayer,
   initializeMiniplayer,
 } from "./miniplayer.js";
-import { initializeSettingsPage, loadSettings } from "./settings.js";
+import {
+  initializeSettingsPage,
+  loadSettings as loadAppSettings,
+} from "./settings.js";
 import { showConfirmationModal } from "./modals.js";
 import { showNotification } from "./notifications.js";
+import { eventBus } from "./event-bus.js";
 
 // --- Element Selectors ---
 const sidebar = document.querySelector(".sidebar");
@@ -115,7 +117,7 @@ export function showPage(pageId, isSubPage = false) {
     targetPageId !== "player-page" &&
     !videoPlayer.paused
   ) {
-    videoPlayer.pause();
+    eventBus.emit("controls:pause");
   }
 }
 
@@ -218,10 +220,6 @@ function initializeContextMenu() {
                 videoId
             ) {
               closeMiniplayer();
-              videoPlayer.src = "";
-              resetPlaybackState();
-              updateVideoDetails(null);
-              renderUpNextList();
             }
             showNotification("Video deleted successfully.", "success");
             await loadLibrary();
@@ -244,7 +242,6 @@ function initializeContextMenu() {
       );
       if (result.success) {
         showNotification("Removed video from playlist.", "success");
-        const { renderPlaylistDetailPage } = await import("./playlists.js");
         await renderPlaylistDetailPage(playlistId);
       } else {
         showNotification(`Error: ${result.error}`, "error");
@@ -255,9 +252,22 @@ function initializeContextMenu() {
 }
 
 function initializeMediaKeyListeners() {
-  window.electronAPI.onMediaKeyPlayPause(() => togglePlay());
-  window.electronAPI.onMediaKeyNextTrack(() => playNext());
-  window.electronAPI.onMediaKeyPrevTrack(() => playPrevious());
+  window.electronAPI.onMediaKeyPlayPause(() =>
+    eventBus.emit("controls:toggle_play")
+  );
+  window.electronAPI.onMediaKeyNextTrack(() => eventBus.emit("controls:next"));
+  window.electronAPI.onMediaKeyPrevTrack(() => eventBus.emit("controls:prev"));
+}
+
+function initializeAppEventListeners() {
+  // Listen for player closure requests from any module
+  eventBus.on("controls:close_player", () => {
+    videoPlayer.pause();
+    videoPlayer.src = "";
+    resetPlaybackState();
+    updateVideoDetails(null);
+    renderUpNextList();
+  });
 }
 
 // --- App Initialization ---
@@ -273,7 +283,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   initializeContextMenu();
   initializePlaylistContextMenus();
   initializeSettingsPage();
-  loadSettings();
+  initializeAppEventListeners();
+  loadPlayerSettings();
+  loadAppSettings();
   initializeMediaKeyListeners();
 
   sidebarNav.addEventListener("click", handleNav);
