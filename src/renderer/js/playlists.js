@@ -1,4 +1,4 @@
-// src/js/playlists.js
+// src/renderer/js/playlists.js
 import { AppState, setAllPlaylists } from "./state.js";
 import {
   showPage,
@@ -9,7 +9,7 @@ import {
 import { renderGridItem } from "./ui.js";
 import { showConfirmationModal, showPromptModal } from "./modals.js";
 import { showNotification } from "./notifications.js";
-import { playLibraryItem } from "./player.js";
+import { eventBus } from "./event-bus.js";
 
 // --- DOM Element Selectors ---
 const playlistsPage = document.getElementById("playlists-page");
@@ -23,6 +23,24 @@ const playlistContextMenu = document.getElementById(
 let videoIdToAddToPlaylist = null;
 let sortableInstance = null;
 
+// --- Lazy Loading Observer ---
+const lazyLoadObserver = new IntersectionObserver(
+  (entries, observer) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) {
+        const img = entry.target;
+        const src = img.dataset.src;
+        if (src) {
+          img.src = src;
+        }
+        img.classList.remove("lazy");
+        observer.unobserve(img);
+      }
+    });
+  },
+  { rootMargin: "0px 0px 200px 0px" }
+);
+
 /**
  * Renders the main playlists page grid.
  * @param {Array} [playlistsToRender] - Optional array of playlists to render, used for filtering.
@@ -34,71 +52,89 @@ export async function renderPlaylistsPage(playlistsToRender) {
     playlistsToRender = AppState.playlists;
   }
 
+  playlistsPage.innerHTML = ""; // Clear existing content
+
+  const header = document.createElement("div");
+  header.className = "page-header";
+  header.innerHTML = `
+    <h1 class="page-header-title">Playlists</h1>
+    <div class="page-header-actions">
+        <button class="action-button" id="create-new-playlist-btn"><i class="fa-solid fa-plus"></i> Create Playlist</button>
+    </div>`;
+  playlistsPage.appendChild(header);
+
   if (AppState.playlists.length === 0) {
-    playlistsPage.innerHTML = `
-            <div class="page-header">
-                <h1 class="page-header-title">Playlists</h1>
-                <div class="page-header-actions">
-                    <button class="action-button" id="create-new-playlist-btn-placeholder"><i class="fa-solid fa-plus"></i> Create Playlist</button>
-                </div>
-            </div>
-            <div class="placeholder-page">
-                <i class="fa-solid fa-layer-group placeholder-icon"></i>
-                <h2 class="placeholder-title">No Playlists Yet</h2>
-                <p class="placeholder-text">Create your first playlist to organize your media.</p>
-            </div>`;
+    header.querySelector("#create-new-playlist-btn").id =
+      "create-new-playlist-btn-placeholder";
+    const placeholder = document.createElement("div");
+    placeholder.className = "placeholder-page";
+    placeholder.innerHTML = `
+        <i class="fa-solid fa-layer-group placeholder-icon"></i>
+        <h2 class="placeholder-title">No Playlists Yet</h2>
+        <p class="placeholder-text">Create your first playlist to organize your media.</p>`;
+    playlistsPage.appendChild(placeholder);
   } else {
-    playlistsPage.innerHTML = `
-            <div class="page-header">
-                <h1 class="page-header-title">Playlists</h1>
-                <div class="page-header-actions">
-                    <button class="action-button" id="create-new-playlist-btn"><i class="fa-solid fa-plus"></i> Create Playlist</button>
-                </div>
-            </div>
-            <div class="page-content">
-                <div class="playlist-grid" id="playlist-grid-main">
-                    ${
-                      playlistsToRender.length > 0
-                        ? playlistsToRender.map(renderPlaylistCard).join("")
-                        : '<p class="empty-message">No playlists match your search.</p>'
-                    }
-                </div>
-            </div>`;
+    const content = document.createElement("div");
+    content.className = "page-content";
+
+    const grid = document.createElement("div");
+    grid.className = "playlist-grid";
+    grid.id = "playlist-grid-main";
+
+    if (playlistsToRender.length > 0) {
+      const fragment = document.createDocumentFragment();
+      playlistsToRender.forEach((playlist) => {
+        const card = renderPlaylistCard(playlist);
+        fragment.appendChild(card);
+      });
+      grid.appendChild(fragment);
+      grid
+        .querySelectorAll("img.lazy")
+        .forEach((img) => lazyLoadObserver.observe(img));
+    } else {
+      grid.innerHTML =
+        '<p class="empty-message">No playlists match your search.</p>';
+    }
+    content.appendChild(grid);
+    playlistsPage.appendChild(content);
   }
   hideLoader();
 }
 
 /**
- * Generates the HTML string for a single playlist card.
+ * Generates the DOM element for a single playlist card.
  * @param {object} playlist - The playlist data object.
- * @returns {string} The HTML string.
+ * @returns {HTMLElement} The playlist card element.
  */
 function renderPlaylistCard(playlist) {
   const videoCountText =
     playlist.videoCount === 1 ? "1 video" : `${playlist.videoCount} videos`;
-  return `
-        <div class="playlist-grid-item" data-id="${playlist.id}" data-name="${
-    playlist.name
-  }">
-            <div class="playlist-thumbnail-container">
-                <img src="${
-                  playlist.thumbnail
-                    ? decodeURIComponent(playlist.thumbnail)
-                    : "../assets/logo.png"
-                }" class="playlist-thumbnail" alt="playlist-thumbnail" onerror="this.onerror=null;this.src='../assets/logo.png';">
-                <div class="playlist-overlay-info"><i class="fa-solid fa-layer-group"></i><span>Playlist</span></div>
-                <i class="fa-solid fa-play playlist-play-icon"></i>
-            </div>
-            <div class="playlist-item-details">
-                <div class="playlist-item-info">
-                    <p class="playlist-item-title">${playlist.name}</p>
-                    <p class="playlist-item-meta">${videoCountText}</p>
-                </div>
-                <div class="playlist-item-actions">
-                     <button class="grid-item-action-btn menu-btn" title="More"><i class="fa-solid fa-ellipsis-vertical"></i></button>
-                </div>
-            </div>
-        </div>`;
+  const placeholderSrc = "../assets/logo.png";
+  const thumbnailSrc = playlist.thumbnail
+    ? decodeURIComponent(playlist.thumbnail)
+    : placeholderSrc;
+
+  const card = document.createElement("div");
+  card.className = "playlist-grid-item";
+  card.dataset.id = playlist.id;
+  card.dataset.name = playlist.name;
+
+  card.innerHTML = `
+    <div class="playlist-thumbnail-container">
+        <img data-src="${thumbnailSrc}" src="${placeholderSrc}" class="playlist-thumbnail lazy" alt="playlist-thumbnail" onerror="this.onerror=null;this.src='${placeholderSrc}';">
+        <div class="playlist-overlay-info"><i class="fa-solid fa-layer-group"></i><span>Playlist</span></div>
+        <i class="fa-solid fa-play playlist-play-icon"></i>
+    </div>
+    <div class="playlist-item-details">
+        <div class="playlist-item-info">
+            <p class="playlist-item-title">${playlist.name}</p>
+            <p class="playlist-item-meta">${videoCountText}</p>
+        </div>
+        <div class="playlist-item-actions">
+             <button class="grid-item-action-btn menu-btn" title="More"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+        </div>
+    </div>`;
+  return card;
 }
 
 /**
@@ -109,6 +145,8 @@ export async function renderPlaylistDetailPage(playlistId) {
   showLoader();
   const playlist = await window.electronAPI.playlistGetDetails(playlistId);
 
+  playlistDetailPage.innerHTML = ""; // Clear existing content
+
   if (!playlist) {
     showNotification(`Could not find playlist with ID ${playlistId}`, "error");
     showPage("playlists");
@@ -118,38 +156,38 @@ export async function renderPlaylistDetailPage(playlistId) {
 
   setCurrentPlaylistId(playlistId);
 
-  playlistDetailPage.innerHTML = `
-        <div class="page-header">
-             <h1 class="page-header-title">${playlist.name}</h1>
-             <div class="page-header-actions">
-                 <button class="action-button" id="rename-playlist-btn" data-id="${
-                   playlist.id
-                 }" data-name="${
-    playlist.name
-  }"><i class="fa-solid fa-pencil"></i> Rename</button>
-                 <button class="action-button danger-btn" id="delete-playlist-btn" data-id="${
-                   playlist.id
-                 }" data-name="${
-    playlist.name
-  }"><i class="fa-solid fa-trash-can"></i> Delete</button>
-             </div>
-        </div>
-        <div class="page-content" id="playlist-detail-content">
-            ${
-              playlist.videos.length > 0
-                ? `<div class="video-grid" id="video-grid-playlist">${playlist.videos
-                    .map((item) => renderGridItem(item, true))
-                    .join("")}</div>`
-                : `<div class="placeholder-page" style="flex-grow: 1;">
-                <i class="fa-solid fa-video-slash placeholder-icon"></i>
-                <h2 class="placeholder-title">Playlist is Empty</h2>
-                <p class="placeholder-text">Add some videos to get started.</p>
-            </div>`
-            }
-        </div>`;
+  const header = document.createElement("div");
+  header.className = "page-header";
+  header.innerHTML = `
+    <h1 class="page-header-title">${playlist.name}</h1>
+    <div class="page-header-actions">
+        <button class="action-button" id="rename-playlist-btn" data-id="${playlist.id}" data-name="${playlist.name}"><i class="fa-solid fa-pencil"></i> Rename</button>
+        <button class="action-button danger-btn" id="delete-playlist-btn" data-id="${playlist.id}" data-name="${playlist.name}"><i class="fa-solid fa-trash-can"></i> Delete</button>
+    </div>`;
+  playlistDetailPage.appendChild(header);
 
-  const grid = playlistDetailPage.querySelector("#video-grid-playlist");
-  if (grid) {
+  const content = document.createElement("div");
+  content.className = "page-content";
+  content.id = "playlist-detail-content";
+
+  if (playlist.videos.length > 0) {
+    const grid = document.createElement("div");
+    grid.className = "video-grid";
+    grid.id = "video-grid-playlist";
+
+    const fragment = document.createDocumentFragment();
+    playlist.videos.forEach((item) => {
+      const gridItemWrapper = document.createElement("div");
+      gridItemWrapper.innerHTML = renderGridItem(item, true);
+      fragment.appendChild(gridItemWrapper.firstElementChild);
+    });
+    grid.appendChild(fragment);
+    grid
+      .querySelectorAll("img.lazy")
+      .forEach((img) => lazyLoadObserver.observe(img));
+
+    content.appendChild(grid);
+
     if (sortableInstance) sortableInstance.destroy();
     sortableInstance = new Sortable(grid, {
       animation: 150,
@@ -159,7 +197,16 @@ export async function renderPlaylistDetailPage(playlistId) {
         await window.electronAPI.playlistUpdateOrder(playlistId, videoIds);
       },
     });
+  } else {
+    content.innerHTML = `
+      <div class="placeholder-page" style="flex-grow: 1;">
+        <i class="fa-solid fa-video-slash placeholder-icon"></i>
+        <h2 class="placeholder-title">Playlist is Empty</h2>
+        <p class="placeholder-text">Add some videos to get started.</p>
+      </div>`;
   }
+  playlistDetailPage.appendChild(content);
+
   hideLoader();
 }
 
@@ -185,8 +232,8 @@ export async function openAddToPlaylistModal(videoId) {
             (p) => `
             <div class="add-playlist-item">
                 <input type="checkbox" id="playlist-check-${p.id}" data-id="${
-              p.id
-            }" ${checkedIds.has(p.id) ? "checked" : ""}>
+                  p.id
+                }" ${checkedIds.has(p.id) ? "checked" : ""}>
                 <label for="playlist-check-${p.id}">${p.name}</label>
             </div>`
           )
@@ -217,11 +264,10 @@ playlistsPage.addEventListener("click", async (e) => {
   if (playlistCard) {
     const playlistId = playlistCard.dataset.id;
     if (e.target.closest(".playlist-thumbnail-container")) {
-      const playlistData = await window.electronAPI.playlistGetDetails(
-        playlistId
-      );
+      const playlistData =
+        await window.electronAPI.playlistGetDetails(playlistId);
       if (playlistData && playlistData.videos.length > 0) {
-        playLibraryItem(0, playlistData.videos);
+        eventBus.emit("player:play_request", 0, playlistData.videos);
       } else {
         showNotification("Playlist is empty.", "info");
       }
