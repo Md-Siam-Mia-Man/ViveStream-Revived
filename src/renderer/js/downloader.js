@@ -1,4 +1,4 @@
-// src/js/downloader.js
+// src/renderer/js/downloader.js
 import { loadLibrary } from "./renderer.js";
 import { showNotification } from "./notifications.js";
 
@@ -27,6 +27,24 @@ const advancedOptionsPanel = document.getElementById("advanced-options-panel");
 
 // --- State ---
 const downloadJobs = new Map();
+
+// --- Lazy Loading ---
+const lazyLoadObserver = new IntersectionObserver(
+  (entries, observer) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) {
+        const img = entry.target;
+        const src = img.dataset.src;
+        if (src) {
+          img.src = src;
+        }
+        img.classList.remove("lazy");
+        observer.unobserve(img);
+      }
+    });
+  },
+  { rootMargin: "0px 0px 100px 0px" }
+);
 
 /**
  * Updates the visibility of the "queue is empty" placeholder.
@@ -81,9 +99,8 @@ downloadQueueArea.addEventListener("click", (e) => {
   } else if (btn.classList.contains("retry-btn")) {
     const job = downloadJobs.get(videoId);
     if (job) window.electronAPI.retryDownload(job);
-    item.querySelector(
-      ".download-item-status"
-    ).innerHTML = `<i class="fa-solid fa-clock"></i> Queued for retry...`;
+    item.querySelector(".download-item-status").innerHTML =
+      `<i class="fa-solid fa-clock"></i> Queued for retry...`;
     item.classList.remove("error");
   } else if (btn.classList.contains("remove-btn")) {
     item.remove();
@@ -113,12 +130,10 @@ document.getElementById("clear-all-btn").addEventListener("click", () => {
   updateQueuePlaceholder();
 });
 
-// FIXED: Added event listener for the advanced options toggle
 advancedOptionsToggle.addEventListener("click", () => {
   advancedOptionsPanel.classList.toggle("hidden");
 });
 
-// Added event listeners to toggle quality selectors based on download type
 downloadTypeVideo.addEventListener("change", () => {
   if (downloadTypeVideo.checked) {
     videoOptionsContainer.classList.remove("hidden");
@@ -174,10 +189,11 @@ window.electronAPI.onDownloadQueueStart((videos) => {
     };
     downloadJobs.set(video.id, job);
 
-    const thumb = video.thumbnail || "../assets/logo.png";
+    const placeholderSrc = "../assets/logo.png";
+    const thumb = video.thumbnail || placeholderSrc;
     const itemHTML = `
         <div class="download-item" data-id="${video.id}" data-status="queued">
-            <img src="${thumb}" class="download-item-thumb" alt="thumbnail" onerror="this.onerror=null;this.src='../assets/logo.png';">
+            <img data-src="${thumb}" src="${placeholderSrc}" class="download-item-thumb lazy" alt="thumbnail" onerror="this.onerror=null;this.src='${placeholderSrc}';">
             <div class="download-item-info">
                 <p class="download-item-title">${video.title}</p>
                 <p class="download-item-uploader">${
@@ -193,6 +209,11 @@ window.electronAPI.onDownloadQueueStart((videos) => {
             <div class="download-item-actions"></div>
         </div>`;
     downloadQueueArea.insertAdjacentHTML("beforeend", itemHTML);
+    const newItem = downloadQueueArea.querySelector(
+      `.download-item[data-id="${video.id}"]`
+    );
+    const newImg = newItem.querySelector("img.lazy");
+    if (newImg) lazyLoadObserver.observe(newImg);
     updateItemActions(video.id, "queued");
   });
   updateQueuePlaceholder();
@@ -204,14 +225,12 @@ window.electronAPI.onDownloadProgress((data) => {
   );
   if (!item) return;
   item.dataset.status = "downloading";
-  item.querySelector(
-    ".download-item-progress-bar"
-  ).style.width = `${data.percent}%`;
-  item.querySelector(
-    ".download-item-status"
-  ).innerHTML = `<i class="fa-solid fa-download"></i> Downloading (${data.percent.toFixed(
-    1
-  )}%)`;
+  item.querySelector(".download-item-progress-bar").style.width =
+    `${data.percent}%`;
+  item.querySelector(".download-item-status").innerHTML =
+    `<i class="fa-solid fa-download"></i> Downloading (${data.percent.toFixed(
+      1
+    )}%)`;
   item.querySelector(".download-item-speed").textContent = data.currentSpeed;
   item.querySelector(".download-item-eta").textContent = `ETA: ${
     data.eta || "N/A"
@@ -225,9 +244,8 @@ window.electronAPI.onDownloadComplete((data) => {
   );
   if (item) {
     item.dataset.status = "completed";
-    item.querySelector(
-      ".download-item-status"
-    ).innerHTML = `<i class="fa-solid fa-check-circle"></i> Completed`;
+    item.querySelector(".download-item-status").innerHTML =
+      `<i class="fa-solid fa-check-circle"></i> Completed`;
     const thumb = item.querySelector(".download-item-thumb");
     if (thumb && data.videoData.coverPath) {
       thumb.src = decodeURIComponent(data.videoData.coverPath);
@@ -249,9 +267,8 @@ window.electronAPI.onDownloadError((data) => {
   );
   if (item) {
     item.dataset.status = "error";
-    item.querySelector(
-      ".download-item-status"
-    ).innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> Error`;
+    item.querySelector(".download-item-status").innerHTML =
+      `<i class="fa-solid fa-triangle-exclamation"></i> Error`;
     item.querySelector(".download-item-eta").textContent =
       (data.error || "Unknown").substring(0, 50) + "...";
     showNotification(`Download failed: ${data.error || "Unknown"}`, "error");
