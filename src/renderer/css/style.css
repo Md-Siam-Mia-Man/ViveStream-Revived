@@ -1,4 +1,4 @@
-/* style.css */
+/* src/renderer/css/style.css */
 @font-face {
      font-family: 'Poppins';
      src: url('../assets/fonts/Poppins.ttf') format('truetype');
@@ -212,6 +212,15 @@ input,
      position: relative;
      display: flex;
      align-items: center;
+     transition: opacity 0.2s ease;
+     /* Added transition for disabled state */
+}
+
+/* NEW: Styles for disabled search container */
+.search-container.disabled {
+     opacity: 0.4;
+     cursor: not-allowed;
+     pointer-events: none;
 }
 
 .search-container .search-icon {
@@ -239,6 +248,11 @@ input,
      width: 480px;
      outline: none;
      border-color: var(--yt-red);
+}
+
+/* NEW: Style for disabled search input */
+#home-search-input:disabled {
+     cursor: not-allowed;
 }
 
 .app-body {
@@ -426,6 +440,22 @@ input,
 
 .placeholder-text {
      font-size: 1rem;
+}
+
+/* MOVED & ENHANCED: Global style for empty search results */
+.empty-message {
+     width: 100%;
+     text-align: center;
+     color: var(--yt-light-grey);
+     font-size: 1rem;
+     padding: 40px 20px;
+     grid-column: 1 / -1;
+     /* Make it span all columns in a grid */
+}
+
+.empty-message strong {
+     color: var(--yt-white);
+     font-weight: 500;
 }
 
 .link-style {
