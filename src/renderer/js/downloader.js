@@ -189,7 +189,7 @@ window.electronAPI.onDownloadQueueStart((videos) => {
     };
     downloadJobs.set(video.id, job);
 
-    const placeholderSrc = "../assets/logo.png";
+    const placeholderSrc = "../renderer/assets/logo.png";
     const thumb = video.thumbnail || placeholderSrc;
     const itemHTML = `
         <div class="download-item" data-id="${video.id}" data-status="queued">
