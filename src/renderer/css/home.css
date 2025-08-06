@@ -1,4 +1,4 @@
-/* src/css/home.css */
+/* src/renderer/css/home.css */
 #home-page {
      padding: 24px;
      align-items: center;
@@ -43,7 +43,6 @@
      transform: scale(1.05);
 }
 
-/* --- NEW Styles for Audio Icon Overlay --- */
 .thumbnail-overlay-icon {
      position: absolute;
      top: 0;
@@ -65,8 +64,6 @@
 .video-grid-item:hover .thumbnail-overlay-icon {
      opacity: 1;
 }
-
-/* --- End New Styles --- */
 
 .thumbnail-duration {
      position: absolute;
@@ -149,11 +146,4 @@
 
 .grid-item-action-btn.favorite-btn.is-favorite {
      color: var(--yt-red);
-}
-
-.empty-message {
-     text-align: center;
-     color: var(--yt-light-grey);
-     font-size: 1rem;
-     margin-top: 40px;
 }
