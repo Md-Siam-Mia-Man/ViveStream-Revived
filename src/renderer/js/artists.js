@@ -83,7 +83,7 @@ export async function renderArtistsPage(artistsToRender) {
 function renderArtistCard(artist) {
   const videoCountText =
     artist.videoCount === 1 ? "1 video" : `${artist.videoCount} videos`;
-  const placeholderSrc = "../renderer/assets/logo.png";
+  const placeholderSrc = ".../../../../assets/logo.png";
   const thumbnailSrc = artist.thumbnailPath
     ? decodeURIComponent(artist.thumbnailPath)
     : placeholderSrc;
@@ -122,7 +122,7 @@ export async function renderArtistDetailPage(artistId) {
 
   const videoCountText =
     artist.videos.length === 1 ? "1 video" : `${artist.videos.length} videos`;
-  const placeholderSrc = "../renderer/assets/logo.png";
+  const placeholderSrc = ".../../../../assets/logo.png";
   const thumbnailSrc = artist.thumbnailPath
     ? decodeURIComponent(artist.thumbnailPath)
     : placeholderSrc;

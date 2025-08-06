@@ -119,7 +119,7 @@ export function initializeMiniplayer() {
     if (item.type === "audio") {
       miniplayerArtworkImg.src = item.coverPath
         ? decodeURIComponent(item.coverPath)
-        : "../renderer/assets/logo.png";
+        : ".../../../../assets/logo.png";
     }
   });
 

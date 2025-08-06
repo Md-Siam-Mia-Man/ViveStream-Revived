@@ -56,7 +56,7 @@ export function renderGridItem(item, isPlaylistItem = false) {
     item.type === "audio"
       ? '<div class="thumbnail-overlay-icon"><i class="fa-solid fa-music"></i></div>'
       : "";
-  const placeholderSrc = "../renderer/assets/logo.png";
+  const placeholderSrc = ".../../../../assets/logo.png";
   const actualSrc = item.coverPath
     ? decodeURIComponent(item.coverPath)
     : placeholderSrc;

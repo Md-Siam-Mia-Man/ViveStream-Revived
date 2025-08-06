@@ -109,7 +109,7 @@ export async function renderPlaylistsPage(playlistsToRender) {
 function renderPlaylistCard(playlist) {
   const videoCountText =
     playlist.videoCount === 1 ? "1 video" : `${playlist.videoCount} videos`;
-  const placeholderSrc = "../renderer/assets/logo.png";
+  const placeholderSrc = ".../../../../assets/logo.png";
   const thumbnailSrc = playlist.thumbnail
     ? decodeURIComponent(playlist.thumbnail)
     : placeholderSrc;
