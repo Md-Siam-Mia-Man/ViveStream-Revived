@@ -14,10 +14,10 @@
   "devDependencies": {
     "@electron/packager": "^18.4.0",
     "electron": "^37.2.5",
-    "@fortawesome/fontawesome-free": "^7.0.0",
     "electron-rebuild": "^3.2.9"
   },
   "dependencies": {
+    "@fortawesome/fontawesome-free": "^7.0.0",
     "fs-extra": "^11.3.0",
     "innosetup-compiler": "^6.3.1",
     "knex": "^3.1.0",
