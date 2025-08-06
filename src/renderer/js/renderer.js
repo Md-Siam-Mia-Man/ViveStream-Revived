@@ -31,6 +31,7 @@ import {
 import { showConfirmationModal } from "./modals.js";
 import { showNotification } from "./notifications.js";
 import { eventBus } from "./event-bus.js";
+import { formatTime } from "./utils.js"; // Ensure formatTime is imported if needed elsewhere
 
 // --- Element Selectors ---
 const sidebar = document.querySelector(".sidebar");
@@ -39,6 +40,7 @@ const logoHomeButton = document.getElementById("logo-home-button");
 const sidebarNav = document.querySelector(".sidebar-nav");
 const sidebarNavBottom = document.querySelector(".sidebar-nav-bottom");
 const pages = document.querySelectorAll(".page");
+const searchContainer = document.querySelector(".search-container");
 const homeSearchInput = document.getElementById("home-search-input");
 const playerPage = document.getElementById("player-page");
 const videoPlayer = document.getElementById("video-player");
@@ -81,6 +83,8 @@ export function showPage(pageId, isSubPage = false) {
   );
 
   let placeholderText = "Search...";
+  let isSearchable = true;
+
   if (!isSubPage) {
     document
       .querySelectorAll(".nav-item")
@@ -90,7 +94,7 @@ export function showPage(pageId, isSubPage = false) {
     switch (pageId) {
       case "home":
       case "favorites":
-        placeholderText = "Search videos...";
+        placeholderText = "Search your library...";
         break;
       case "playlists":
         placeholderText = "Search playlists...";
@@ -100,11 +104,17 @@ export function showPage(pageId, isSubPage = false) {
         break;
       case "downloads":
       case "settings":
-        placeholderText = "Search is disabled here";
+        placeholderText = "Search is unavailable on this page";
+        isSearchable = false;
         break;
     }
   }
+
+  // Update search bar state
   homeSearchInput.placeholder = placeholderText;
+  homeSearchInput.disabled = !isSearchable;
+  searchContainer.classList.toggle("disabled", !isSearchable);
+
   if (homeSearchInput.value) {
     homeSearchInput.value = "";
     homeSearchInput.dispatchEvent(new Event("input", { bubbles: true }));
