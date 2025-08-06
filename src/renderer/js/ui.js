@@ -1,8 +1,8 @@
 // src/renderer/js/ui.js
 import { AppState } from "./state.js";
 import { showPage } from "./renderer.js";
-import { formatTime, debounce } from "./utils.js"; // Corrected import
-import { eventBus } from "./event-bus.js"; // Corrected import
+import { formatTime, debounce } from "./utils.js";
+import { eventBus } from "./event-bus.js";
 import { openAddToPlaylistModal } from "./playlists.js";
 import { renderArtistsPage } from "./artists.js";
 import { renderPlaylistsPage } from "./playlists.js";
@@ -32,7 +32,7 @@ const lazyLoadObserver = new IntersectionObserver(
       }
     });
   },
-  { rootMargin: "0px 0px 200px 0px" } // Load images 200px before they enter viewport
+  { rootMargin: "0px 0px 200px 0px" }
 );
 
 // --- Event Listeners ---
@@ -51,27 +51,20 @@ logoHomeButton.addEventListener("click", (e) => {
 });
 
 // --- Grid Rendering ---
-/**
- * Creates the HTML for a single video grid item with lazy loading attributes.
- * @param {object} item - The video data object.
- * @param {boolean} isPlaylistItem - Indicates if the item is part of a playlist detail view.
- * @returns {string} The inner HTML string for the grid item element.
- */
 export function renderGridItem(item, isPlaylistItem = false) {
   const audioIconOverlay =
     item.type === "audio"
       ? '<div class="thumbnail-overlay-icon"><i class="fa-solid fa-music"></i></div>'
       : "";
-  const placeholderSrc = "../assets/logo.png"; // A generic placeholder
+  const placeholderSrc = "../renderer/assets/logo.png";
   const actualSrc = item.coverPath
     ? decodeURIComponent(item.coverPath)
     : placeholderSrc;
 
-  // Note: The formatTime function is now imported from utils.js
   return `
         <div class="video-grid-item" data-id="${item.id}" ${
-          isPlaylistItem ? `data-playlist-item="true"` : ""
-        }>
+    isPlaylistItem ? `data-playlist-item="true"` : ""
+  }>
             <div class="grid-thumbnail-container">
                 <img data-src="${actualSrc}" src="${placeholderSrc}" class="grid-thumbnail lazy" alt="thumbnail" onerror="this.onerror=null;this.src='${placeholderSrc}';">
                 ${audioIconOverlay}
@@ -103,29 +96,22 @@ export function renderGridItem(item, isPlaylistItem = false) {
         </div>`;
 }
 
-/**
- * Efficiently renders a grid of items into a container element.
- * @param {HTMLElement} container - The element to render the grid into.
- * @param {Array} library - The array of items to render.
- * @param {boolean} isPlaylistItem - Whether items are for a playlist view.
- */
 function renderGrid(container, library, isPlaylistItem = false) {
   if (!container) return;
 
   const fragment = document.createDocumentFragment();
   if (library && library.length > 0) {
     library.forEach((item) => {
-      const gridItemWrapper = document.createElement("div"); // Wrapper to avoid direct innerHTML on a live element
+      const gridItemWrapper = document.createElement("div");
       gridItemWrapper.innerHTML = renderGridItem(item, isPlaylistItem);
       const gridItem = gridItemWrapper.firstElementChild;
       fragment.appendChild(gridItem);
     });
   }
 
-  container.innerHTML = ""; // Clear previous content
+  container.innerHTML = "";
   container.appendChild(fragment);
 
-  // After appending, find all lazy images and observe them
   container
     .querySelectorAll("img.lazy")
     .forEach((img) => lazyLoadObserver.observe(img));
@@ -150,8 +136,7 @@ export function renderHomePageGrid(library = AppState.library) {
   } else {
     const grid = ensureGridExists(homePage, "video-grid");
     if (library.length === 0 && homeSearchInput.value) {
-      grid.innerHTML =
-        '<p class="empty-message">No items match your search.</p>';
+      grid.innerHTML = `<p class="empty-message">No results found for "<strong>${homeSearchInput.value}</strong>"</p>`;
     } else {
       renderGrid(grid, library);
     }
@@ -172,8 +157,7 @@ export function renderFavoritesPage(library) {
   } else {
     if (placeholder) placeholder.style.display = "none";
     if (libraryToRender.length === 0 && homeSearchInput.value) {
-      grid.innerHTML =
-        '<p class="empty-message">No favorite items match your search.</p>';
+      grid.innerHTML = `<p class="empty-message">No favorite items match "<strong>${homeSearchInput.value}</strong>"</p>`;
     } else {
       renderGrid(grid, libraryToRender);
     }
@@ -235,24 +219,16 @@ document
 export async function toggleFavoriteStatus(videoId) {
   const result = await window.electronAPI.toggleFavorite(videoId);
   if (result.success) {
-    // Update local state
     const localVideo = AppState.library.find((v) => v.id === videoId);
     if (localVideo) localVideo.isFavorite = result.isFavorite;
     const playbackVideo = AppState.playbackQueue.find((v) => v.id === videoId);
     if (playbackVideo) playbackVideo.isFavorite = result.isFavorite;
 
-    // Emit an event that the UI is listening for
     eventBus.emit("ui:favorite_toggled", videoId, result.isFavorite);
   }
 }
 
-/**
- * Centralized listener for favorite status changes to update all relevant UI parts.
- * @param {string} videoId - The ID of the video.
- * @param {boolean} isFavorite - The new favorite status.
- */
 function updateFavoriteUI(videoId, isFavorite) {
-  // Update main player button if it's the current video
   if (
     AppState.currentlyPlayingIndex > -1 &&
     AppState.playbackQueue[AppState.currentlyPlayingIndex]?.id === videoId
@@ -263,7 +239,6 @@ function updateFavoriteUI(videoId, isFavorite) {
     playerIcon.className = `fa-solid fa-heart`;
   }
 
-  // Update all grid items for this video ID
   const gridItems = document.querySelectorAll(
     `.video-grid-item[data-id="${videoId}"]`
   );
@@ -277,14 +252,12 @@ function updateFavoriteUI(videoId, isFavorite) {
     }
   });
 
-  // Re-render favorites page if it's the active one
   const activePage = document.querySelector(".nav-item.active")?.dataset.page;
   if (activePage === "favorites") {
     renderFavoritesPage();
   }
 }
 
-// Subscribe to the favorite toggle event
 eventBus.on("ui:favorite_toggled", updateFavoriteUI);
 
 // --- Debounced Search ---
@@ -325,7 +298,7 @@ const debouncedSearchHandler = debounce((term, page) => {
       break;
     }
   }
-  hideLoader(); // Hide loader after search render is complete
+  hideLoader();
 }, 300);
 
 homeSearchInput.addEventListener("input", (e) => {
@@ -333,6 +306,6 @@ homeSearchInput.addEventListener("input", (e) => {
   const activeNavItem = document.querySelector(".nav-item.active");
   if (!activeNavItem) return;
   const activePage = activeNavItem.dataset.page;
-  showLoader(); // Show loader while search is processing
+  showLoader();
   debouncedSearchHandler(searchTerm, activePage);
 });
