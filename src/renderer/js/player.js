@@ -110,7 +110,7 @@ function playLibraryItem(index, sourceLibrary, options = {}) {
     playerSection.classList.add("audio-mode");
     audioArtworkImg.src = item.coverPath
       ? decodeURIComponent(item.coverPath)
-      : "../assets/logo.png";
+      : "../renderer/assets/logo.png";
     theaterBtn.disabled = true;
     fullscreenBtn.disabled = true;
   } else {
@@ -154,9 +154,9 @@ export function updateVideoDetails(item) {
   videoInfoUploader.textContent = item.creator || item.uploader;
   channelThumb.src = item.coverPath
     ? decodeURIComponent(item.coverPath)
-    : "../assets/logo.png";
+    : "../renderer/assets/logo.png";
   channelThumb.onerror = () => {
-    channelThumb.src = "../assets/logo.png";
+    channelThumb.src = "../renderer/assets/logo.png";
   };
   videoInfoDate.textContent = item.upload_date
     ? ` • ${new Date(
@@ -195,7 +195,7 @@ export function renderUpNextList() {
     const li = document.createElement("li");
     li.className = "up-next-item";
     li.dataset.id = video.id;
-    const placeholderSrc = "../assets/logo.png";
+    const placeholderSrc = "../renderer/assets/logo.png";
     const actualSrc = video.coverPath
       ? decodeURIComponent(video.coverPath)
       : placeholderSrc;
