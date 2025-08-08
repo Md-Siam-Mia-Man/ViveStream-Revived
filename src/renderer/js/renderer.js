@@ -5,6 +5,7 @@ import {
   setAllPlaylists,
   setAllArtists,
   resetPlaybackState,
+  setAssetsPath, // Import the new state setter
 } from "./state.js";
 import { renderHomePageGrid, renderFavoritesPage } from "./ui.js";
 import {
@@ -31,7 +32,7 @@ import {
 import { showConfirmationModal } from "./modals.js";
 import { showNotification } from "./notifications.js";
 import { eventBus } from "./event-bus.js";
-import { formatTime } from "./utils.js"; // Ensure formatTime is imported if needed elsewhere
+import { formatTime } from "./utils.js";
 
 // --- Element Selectors ---
 const sidebar = document.querySelector(".sidebar");
@@ -261,6 +262,55 @@ function initializeContextMenu() {
   });
 }
 
+/**
+ * Initializes the behavior for all custom dropdowns in the app.
+ */
+function initializeCustomSelects() {
+  document.addEventListener("click", (e) => {
+    const selectContainer = e.target.closest(".custom-select-container");
+
+    // Close all other selects when one is clicked
+    document
+      .querySelectorAll(".custom-select-container.open")
+      .forEach((openSelect) => {
+        if (openSelect !== selectContainer) {
+          openSelect.classList.remove("open");
+        }
+      });
+
+    if (selectContainer) {
+      // Toggle the 'open' class on the container
+      if (e.target.closest(".selected-option")) {
+        selectContainer.classList.toggle("open");
+      }
+
+      // Handle clicking on an option item
+      const optionItem = e.target.closest(".option-item");
+      if (optionItem) {
+        const selectedOption =
+          selectContainer.querySelector(".selected-option");
+        const previouslySelected = selectContainer.querySelector(
+          ".option-item.selected"
+        );
+
+        if (previouslySelected) previouslySelected.classList.remove("selected");
+        optionItem.classList.add("selected");
+
+        selectedOption.dataset.value = optionItem.dataset.value;
+        // For quality dropdowns, use just the main text, not the chevron
+        selectedOption.querySelector("span:first-child").textContent =
+          optionItem.textContent;
+        selectContainer.classList.remove("open");
+
+        // Manually dispatch a 'change' event for any other modules listening
+        selectContainer.dispatchEvent(
+          new CustomEvent("change", { bubbles: true })
+        );
+      }
+    }
+  });
+}
+
 function initializeMediaKeyListeners() {
   window.electronAPI.onMediaKeyPlayPause(() =>
     eventBus.emit("controls:toggle_play")
@@ -283,6 +333,10 @@ function initializeAppEventListeners() {
 // --- App Initialization ---
 document.addEventListener("DOMContentLoaded", async () => {
   showLoader();
+  // Fetch and set the assets path first thing.
+  const assetsPath = await window.electronAPI.getAssetsPath();
+  setAssetsPath(assetsPath);
+
   await loadLibrary();
   renderHomePageGrid();
   showPage("home");
@@ -290,6 +344,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   initializeMiniplayer();
   initializeWindowControls();
+  initializeCustomSelects(); // Initialize dropdowns
   initializeContextMenu();
   initializePlaylistContextMenus();
   initializeSettingsPage();
