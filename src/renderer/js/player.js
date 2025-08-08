@@ -3,10 +3,10 @@ import { AppState, setCurrentlyPlaying } from "./state.js";
 import { showPage } from "./renderer.js";
 import { activateMiniplayer } from "./miniplayer.js";
 import { openAddToPlaylistModal } from "./playlists.js";
-import { toggleFavoriteStatus } from "./ui.js"; // This is now safe
+import { toggleFavoriteStatus } from "./ui.js";
 import { showNotification } from "./notifications.js";
 import { eventBus } from "./event-bus.js";
-import { formatTime } from "./utils.js"; // Corrected import
+import { formatTime } from "./utils.js";
 
 // --- DOM Element Selectors ---
 const playerPage = document.getElementById("player-page");
@@ -110,7 +110,7 @@ function playLibraryItem(index, sourceLibrary, options = {}) {
     playerSection.classList.add("audio-mode");
     audioArtworkImg.src = item.coverPath
       ? decodeURIComponent(item.coverPath)
-      : ".../../../../assets/logo.png";
+      : `${AppState.assetsPath}/logo.png`;
     theaterBtn.disabled = true;
     fullscreenBtn.disabled = true;
   } else {
@@ -140,6 +140,8 @@ function playLibraryItem(index, sourceLibrary, options = {}) {
 }
 
 export function updateVideoDetails(item) {
+  const placeholderSrc = `${AppState.assetsPath}/logo.png`;
+
   if (!item) {
     videoInfoTitle.textContent = "No media selected";
     videoInfoUploader.textContent = "";
@@ -154,9 +156,9 @@ export function updateVideoDetails(item) {
   videoInfoUploader.textContent = item.creator || item.uploader;
   channelThumb.src = item.coverPath
     ? decodeURIComponent(item.coverPath)
-    : ".../../../../assets/logo.png";
+    : placeholderSrc;
   channelThumb.onerror = () => {
-    channelThumb.src = ".../../../../assets/logo.png";
+    channelThumb.src = placeholderSrc;
   };
   videoInfoDate.textContent = item.upload_date
     ? ` • ${new Date(
@@ -187,6 +189,7 @@ export function renderUpNextList() {
   if (AppState.currentlyPlayingIndex < 0 || AppState.playbackQueue.length <= 1)
     return;
 
+  const placeholderSrc = `${AppState.assetsPath}/logo.png`;
   const fragment = document.createDocumentFragment();
   for (let i = 1; i < AppState.playbackQueue.length; i++) {
     const itemIndex =
@@ -195,7 +198,6 @@ export function renderUpNextList() {
     const li = document.createElement("li");
     li.className = "up-next-item";
     li.dataset.id = video.id;
-    const placeholderSrc = ".../../../../assets/logo.png";
     const actualSrc = video.coverPath
       ? decodeURIComponent(video.coverPath)
       : placeholderSrc;
@@ -510,10 +512,10 @@ document.addEventListener("keydown", (e) => {
       videoPlayerPreload.muted = videoPlayer.muted;
       break;
     case "f":
-      if (!miniplayer.classList.contains("hidden")) fullscreenBtn.click();
+      if (miniplayer.classList.contains("hidden")) fullscreenBtn.click();
       break;
     case "t":
-      if (!miniplayer.classList.contains("hidden")) theaterBtn.click();
+      if (miniplayer.classList.contains("hidden")) theaterBtn.click();
       break;
     case "i":
       if (videoPlayer.src) {
