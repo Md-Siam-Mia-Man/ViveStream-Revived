@@ -83,7 +83,7 @@ export async function renderArtistsPage(artistsToRender) {
 function renderArtistCard(artist) {
   const videoCountText =
     artist.videoCount === 1 ? "1 video" : `${artist.videoCount} videos`;
-  const placeholderSrc = ".../../../../assets/logo.png";
+  const placeholderSrc = `${AppState.assetsPath}/logo.png`;
   const thumbnailSrc = artist.thumbnailPath
     ? decodeURIComponent(artist.thumbnailPath)
     : placeholderSrc;
@@ -122,7 +122,7 @@ export async function renderArtistDetailPage(artistId) {
 
   const videoCountText =
     artist.videos.length === 1 ? "1 video" : `${artist.videos.length} videos`;
-  const placeholderSrc = ".../../../../assets/logo.png";
+  const placeholderSrc = `${AppState.assetsPath}/logo.png`;
   const thumbnailSrc = artist.thumbnailPath
     ? decodeURIComponent(artist.thumbnailPath)
     : placeholderSrc;
@@ -180,5 +180,3 @@ artistsPage.addEventListener("click", async (e) => {
     showPage("artist-detail-page", true);
   }
 });
-
-// Grid click events on the detail page are now handled by the central listener in ui.js
