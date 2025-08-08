@@ -163,41 +163,43 @@ class Downloader {
       "5",
       "--impersonate",
       "chrome",
-      "--write-info-json",
+      // REMOVED --write-info-json as it is unreliable.
       "--write-thumbnail",
       "--convert-thumbnails",
       "jpg",
       "--write-description",
       "--embed-metadata",
-      "--embed-thumbnail",
       "--embed-chapters",
     ];
 
+    // --- START: BUG FIX ---
+    // This logic ensures the output filename is predictable and robust.
+    const outputTemplate = this.settings.outputTemplate || "%(id)s.%(ext)s";
+
     if (splitChapters) {
-      const chapterOutputTemplate = this.settings.outputTemplate
-        ? path.join(videoPath, this.settings.outputTemplate)
-        : path.join(
-            videoPath,
-            "%(playlist_title,title)s/%(chapter_number)s - %(chapter)s.%(ext)s"
-          );
-      args.push("-o", chapterOutputTemplate, "--split-chapters");
+      const chapterTemplate = path.join(
+        videoPath,
+        "%(playlist_title,title)s/%(chapter_number)s - %(chapter)s.%(ext)s"
+      );
+      args.push("-o", chapterTemplate, "--split-chapters");
     } else {
-      const mediaOutputTemplate = this.settings.outputTemplate
-        ? path.join(videoPath, this.settings.outputTemplate)
-        : path.join(videoPath, "%(id)s.%(ext)s");
-      args.push("-o", mediaOutputTemplate);
+      args.push("-o", path.join(videoPath, outputTemplate));
     }
+    // --- END: BUG FIX ---
 
     if (type === "audio") {
       const [format, audioQuality] = quality.split("-");
       args.push("-x", "--audio-format", format, "-f", "bestaudio/best");
       if (audioQuality) args.push("--audio-quality", audioQuality);
     } else {
+      // --- START: BUG FIX ---
+      // This format selection is more robust. It prioritizes MP4-compatible streams (avc codec)
+      // and falls back to other options, greatly reducing the chances of a failed merge.
+      const qualityFilter = quality === "best" ? "" : `[height<=${quality}]`;
+      const formatString = `bestvideo[ext=mp4]${qualityFilter}+bestaudio[ext=m4a]/bestvideo[vcodec^=avc]${qualityFilter}+bestaudio/best[ext=mp4]/best`;
       args.push(
         "-f",
-        `bestvideo${
-          quality === "best" ? "" : `[height<=${quality}]`
-        }+bestaudio/best`,
+        formatString,
         "--merge-output-format",
         "mp4",
         "--write-subs",
@@ -205,6 +207,7 @@ class Downloader {
         "en.*,-live_chat",
         "--embed-subs"
       );
+      // --- END: BUG FIX ---
       if (this.settings.downloadAutoSubs) args.push("--write-auto-subs");
     }
 
@@ -295,52 +298,68 @@ class Downloader {
       return;
     }
     try {
-      const infoJsonPath = path.join(videoPath, `${videoInfo.id}.info.json`);
-      if (!fs.existsSync(infoJsonPath))
-        throw new Error(".info.json file not found after download.");
+      // --- START: BUG FIX ---
+      // This is the new, more direct logic. We no longer read a .info.json file.
+      // Instead, we find the downloaded media file directly.
+      const files = fs.readdirSync(videoPath);
 
-      const fullInfo = JSON.parse(fs.readFileSync(infoJsonPath, "utf-8"));
-      fs.unlinkSync(infoJsonPath);
+      // Find the final media file. It might have a different extension (.mkv, .webm)
+      // if the merge format was changed or failed in a specific way.
+      const mediaFile = files.find(
+        (f) =>
+          f.startsWith(videoInfo.id) &&
+          [
+            ".mp4",
+            ".mkv",
+            ".webm",
+            ".mp3",
+            ".m4a",
+            ".flac",
+            ".opus",
+            ".wav",
+          ].some((ext) => f.endsWith(ext))
+      );
 
-      const mediaFilePath = fullInfo._filename;
-      if (!mediaFilePath || !fs.existsSync(mediaFilePath))
+      if (!mediaFile) {
         throw new Error(
-          `Media file from info.json could not be found at path: ${mediaFilePath}`
+          `Post-processing failed: Final media file for ${videoInfo.id} not found.`
         );
+      }
+
+      const mediaFilePath = path.join(videoPath, mediaFile);
+      const baseName = path.parse(mediaFile).name;
+      // --- END: BUG FIX ---
 
       let finalCoverPath = null;
-      const tempCoverPath = path.join(videoPath, `${fullInfo.id}.jpg`);
+      const tempCoverPath = path.join(videoPath, `${baseName}.jpg`);
       if (fs.existsSync(tempCoverPath)) {
-        finalCoverPath = path.join(coverPath, `${fullInfo.id}.jpg`);
-        fs.renameSync(tempCoverPath, finalCoverPath);
+        finalCoverPath = path.join(coverPath, `${videoInfo.id}.jpg`);
+        fse.moveSync(tempCoverPath, finalCoverPath, { overwrite: true });
       }
       const finalCoverUri = finalCoverPath
         ? `file://${finalCoverPath.replace(/\\/g, "/")}`
         : null;
 
-      const allFiles = fs.readdirSync(videoPath);
-      const tempSubFilename = allFiles.find(
-        (file) => file.startsWith(fullInfo.id) && file.endsWith(".vtt")
+      let finalSubPath = null;
+      // Find subtitle file, e.g., "VIDEO_ID.en.vtt"
+      const tempSubFile = files.find(
+        (f) => f.startsWith(videoInfo.id) && f.endsWith(".vtt")
       );
-      const tempSubPath = tempSubFilename
-        ? path.join(videoPath, tempSubFilename)
+      const tempSubPath = tempSubFile
+        ? path.join(videoPath, tempSubFile)
         : null;
-      const finalSubPath = tempSubPath
-        ? path.join(subtitlePath, `${fullInfo.id}.vtt`)
-        : null;
+
       const subFileUri = tempSubPath
-        ? (fs.renameSync(tempSubPath, finalSubPath),
+        ? ((finalSubPath = path.join(subtitlePath, `${videoInfo.id}.vtt`)),
+          fs.renameSync(tempSubPath, finalSubPath),
           `file://${finalSubPath.replace(/\\/g, "/")}`)
         : null;
 
-      const descriptionPath = path.join(
-        videoPath,
-        `${fullInfo.id}.description`
-      );
+      const descriptionPath = path.join(videoPath, `${baseName}.description`);
       if (fs.existsSync(descriptionPath)) fs.unlinkSync(descriptionPath);
 
       const artistString =
-        fullInfo.artist || fullInfo.creator || fullInfo.uploader;
+        videoInfo.artist || videoInfo.creator || videoInfo.uploader;
       const artistNames = artistString
         ? artistString.split(/[,;&]/).map((name) => name.trim())
         : [];
@@ -349,19 +368,19 @@ class Downloader {
         for (const name of artistNames) {
           if (!name) continue;
           const artist = await db.findOrCreateArtist(name, finalCoverUri);
-          if (artist) await db.linkVideoToArtist(fullInfo.id, artist.id);
+          if (artist) await db.linkVideoToArtist(videoInfo.id, artist.id);
         }
       }
 
       const videoData = {
-        id: fullInfo.id,
-        title: fullInfo.title,
-        uploader: fullInfo.uploader,
+        id: videoInfo.id,
+        title: videoInfo.title,
+        uploader: videoInfo.uploader,
         creator: artistString || null,
-        description: fullInfo.description,
-        duration: fullInfo.duration,
-        upload_date: fullInfo.upload_date,
-        originalUrl: fullInfo.webpage_url,
+        description: videoInfo.description,
+        duration: videoInfo.duration,
+        upload_date: videoInfo.upload_date,
+        originalUrl: videoInfo.webpage_url,
         filePath: `file://${mediaFilePath.replace(/\\/g, "/")}`,
         coverPath: finalCoverUri,
         subtitlePath: subFileUri,
@@ -377,6 +396,7 @@ class Downloader {
           videoData,
         });
     } catch (e) {
+      console.error(`Post-processing failed for ${videoInfo.id}:`, e);
       if (win)
         win.webContents.send("download-error", {
           id: videoInfo.id,
@@ -397,7 +417,6 @@ function createWindow() {
     minHeight: 600,
     backgroundColor: "#0F0F0F",
     webPreferences: {
-      // Corrected path to preload script
       preload: path.join(__dirname, "..", "preload", "preload.js"),
       contextIsolation: true,
       nodeIntegration: false,
@@ -406,7 +425,6 @@ function createWindow() {
     frame: false,
     icon: iconPath,
   });
-  // Corrected path to index.html
   win.loadFile(path.join(__dirname, "..", "renderer", "index.html"));
   win.on("maximize", () => win.webContents.send("window-maximized", true));
   win.on("unmaximize", () => win.webContents.send("window-maximized", false));
@@ -486,6 +504,14 @@ app.on(
 );
 
 // --- IPC Handlers ---
+
+// Path API
+ipcMain.handle("get-assets-path", () => {
+  const assetsPath = getResourcePath("assets", "");
+  return assetsPath.replace(/\\/g, "/");
+});
+
+// Window Controls
 ipcMain.on("minimize-window", () => win.minimize());
 ipcMain.on("maximize-window", () =>
   win.isMaximized() ? win.unmaximize() : win.maximize()
@@ -493,6 +519,8 @@ ipcMain.on("maximize-window", () =>
 ipcMain.on("close-window", () => win.close());
 ipcMain.on("tray-window", () => win.hide());
 ipcMain.on("open-external", (e, url) => shell.openExternal(url));
+
+// Settings & App Info
 ipcMain.handle("get-settings", getSettings);
 ipcMain.handle("get-app-version", () => app.getVersion());
 ipcMain.on("save-settings", (e, s) => {
@@ -520,6 +548,8 @@ ipcMain.handle("clear-all-media", async () => {
     return { success: false, error: e.message };
   }
 });
+
+// Media Management
 ipcMain.handle("delete-video", async (e, id) => {
   const video = await db.getVideoById(id);
   if (!video) return { success: false, message: "Video not found in DB." };
@@ -537,6 +567,8 @@ ipcMain.handle("delete-video", async (e, id) => {
     });
   return await db.deleteVideo(id);
 });
+
+// Downloader
 ipcMain.on("download-video", (e, o) => {
   const args = [
     o.url,
@@ -596,6 +628,8 @@ ipcMain.handle("updater:check-yt-dlp", () => {
     });
   });
 });
+
+// Playlists
 ipcMain.handle("playlist:create", (e, name) => db.createPlaylist(name));
 ipcMain.handle("playlist:get-all", () => db.getAllPlaylistsWithStats());
 ipcMain.handle("playlist:get-details", (e, id) => db.getPlaylistDetails(id));
@@ -615,5 +649,7 @@ ipcMain.handle("playlist:update-order", (e, playlistId, videoIds) =>
 ipcMain.handle("playlist:get-for-video", (e, videoId) =>
   db.getPlaylistsForVideo(videoId)
 );
+
+// Artists
 ipcMain.handle("artist:get-all", () => db.getAllArtistsWithStats());
 ipcMain.handle("artist:get-details", (e, id) => db.getArtistDetails(id));
