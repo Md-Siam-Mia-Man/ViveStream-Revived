@@ -1,9 +1,12 @@
-// src/js/state.js
+// src/renderer/js/state.js
 
 /**
  * The single source of truth for the application's renderer-side state.
  */
 export const AppState = {
+  // Global App State
+  assetsPath: "",
+
   // Library and Playback State
   library: [],
   playbackQueue: [],
@@ -12,6 +15,14 @@ export const AppState = {
   playlists: [],
   artists: [],
 };
+
+/**
+ * Sets the absolute path to the application's assets folder.
+ * @param {string} path - The assets path.
+ */
+export function setAssetsPath(path) {
+  AppState.assetsPath = path;
+}
 
 /**
  * Updates the main media library.
