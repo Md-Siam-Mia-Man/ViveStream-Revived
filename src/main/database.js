@@ -7,12 +7,6 @@ let db;
 
 function initialize(app) {
   const dbPath = path.join(app.getPath("userData"), "ViveStream.db");
-  const viveStreamPath = path.join(app.getPath("home"), "ViveStream");
-  const oldLibraryPath = path.join(viveStreamPath, "library.json");
-  const migratedLibraryPath = path.join(
-    viveStreamPath,
-    "library.json.migrated"
-  );
 
   db = knex({
     client: "sqlite3",
@@ -42,24 +36,6 @@ function initialize(app) {
           table.timestamp("downloadedAt").defaultTo(db.fn.now());
           table.boolean("isFavorite").defaultTo(false);
         });
-
-        if (
-          fs.existsSync(oldLibraryPath) &&
-          !fs.existsSync(migratedLibraryPath)
-        ) {
-          console.log("Found legacy library.json, starting migration...");
-          const oldLibrary = JSON.parse(
-            fs.readFileSync(oldLibraryPath, "utf-8")
-          );
-          if (oldLibrary && oldLibrary.length > 0) {
-            await db.batchInsert("videos", oldLibrary);
-            console.log(`Successfully migrated ${oldLibrary.length} items.`);
-          }
-          fs.renameSync(oldLibraryPath, migratedLibraryPath);
-          console.log(
-            "Migration complete. Renamed library.json to library.json.migrated."
-          );
-        }
       }
 
       if (!(await db.schema.hasTable("playlists"))) {
@@ -114,6 +90,7 @@ function initialize(app) {
         });
       }
 
+      // Ensure all columns exist on existing databases for smooth updates
       if (!(await db.schema.hasColumn("videos", "creator"))) {
         await db.schema.alterTable("videos", (table) => {
           table.string("creator");
@@ -133,6 +110,14 @@ function initialize(app) {
       }
     } catch (error) {
       console.error("Database initialization failed:", error);
+      // In case of a fatal db error, it's better to show a dialog and quit.
+      const { dialog } = require("electron");
+      dialog.showErrorBox(
+        "Database Error",
+        "A critical database error occurred and ViveStream must close. Please try restarting the app. Error: " +
+          error.message
+      );
+      app.quit();
     }
   })();
 }
@@ -199,10 +184,7 @@ async function clearAllMedia() {
     await db("playlists").del();
     await db("videos").del();
     return { success: true };
-  } catch (
-    error
-    // Truncated because the user provided an incomplete file. I will complete it from context.
-  ) {
+  } catch (error) {
     console.error("Error clearing all media from DB:", error);
     return { success: false, error: error.message };
   }
