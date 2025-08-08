@@ -56,15 +56,15 @@ export function renderGridItem(item, isPlaylistItem = false) {
     item.type === "audio"
       ? '<div class="thumbnail-overlay-icon"><i class="fa-solid fa-music"></i></div>'
       : "";
-  const placeholderSrc = ".../../../../assets/logo.png";
+  const placeholderSrc = `${AppState.assetsPath}/logo.png`;
   const actualSrc = item.coverPath
     ? decodeURIComponent(item.coverPath)
     : placeholderSrc;
 
   return `
         <div class="video-grid-item" data-id="${item.id}" ${
-    isPlaylistItem ? `data-playlist-item="true"` : ""
-  }>
+          isPlaylistItem ? `data-playlist-item="true"` : ""
+        }>
             <div class="grid-thumbnail-container">
                 <img data-src="${actualSrc}" src="${placeholderSrc}" class="grid-thumbnail lazy" alt="thumbnail" onerror="this.onerror=null;this.src='${placeholderSrc}';">
                 ${audioIconOverlay}
