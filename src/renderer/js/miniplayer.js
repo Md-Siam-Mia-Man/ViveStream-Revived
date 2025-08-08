@@ -1,6 +1,7 @@
 // src/renderer/js/miniplayer.js
 import { showPage } from "./renderer.js";
 import { eventBus } from "./event-bus.js";
+import { AppState } from "./state.js";
 
 // --- DOM Element Selectors ---
 const miniplayer = document.getElementById("miniplayer");
@@ -119,7 +120,7 @@ export function initializeMiniplayer() {
     if (item.type === "audio") {
       miniplayerArtworkImg.src = item.coverPath
         ? decodeURIComponent(item.coverPath)
-        : ".../../../../assets/logo.png";
+        : `${AppState.assetsPath}/logo.png`;
     }
   });
 
