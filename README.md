@@ -4,8 +4,8 @@
   <img src="./assets/logo.svg" style="width: 10%" alt="ViveStream Logo">
   <h2><strong>Your personal, offline, and stylish media sanctuary.</strong></h2>
   <p>
-    <img src="https://img.shields.io/github/v/release/Md-Siam-Mia-Code/ViveStream-Revived?style=flat-square" alt="Latest Release Version">
-    <img src="https://img.shields.io/github/license/Md-Siam-Mia-Code/ViveStream-Revived?style=flat-square" alt="License">
+    <img src="https://img.shields.io/github/v/release/Md-Siam-Mia-Man/ViveStream-Revived?style=flat-square" alt="Latest Release Version">
+    <img src="https://img.shields.io/github/license/Md-Siam-Mia-Man/ViveStream-Revived?style=flat-square" alt="License">
     <img src="https://img.shields.io/badge/platform-Windows-informational?style=flat-square" alt="Platform">
   </p>
 </div>
@@ -45,7 +45,7 @@ Welcome! **ViveStream** is a modern, offline-first media player and downloader b
 
 ### Recommended Method (Installer)
 
-1.  Go to the [**Releases**](https://github.com/Md-Siam-Mia-Code/ViveStream-Revived/releases) page.
+1.  Go to the [**Releases**](https://github.com/Md-Siam-Mia-Man/ViveStream-Revived/releases) page.
 2.  Download the latest `ViveStream-Installer-vX.X.X.exe` file.
 3.  Run the installer. It will handle everything for you.
 
@@ -53,7 +53,7 @@ Welcome! **ViveStream** is a modern, offline-first media player and downloader b
 
 1.  **Clone the repository:**
     ```bash
-    git clone https://github.com/Md-Siam-Mia-Code/ViveStream-Revived.git
+    git clone https://github.com/Md-Siam-Mia-Man/ViveStream-Revived.git
     cd ViveStream-Revived
     ```
 
