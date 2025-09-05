@@ -57,17 +57,18 @@ const defaultSettings = {
   downloadAutoSubs: false,
   removeSponsors: false,
   concurrentFragments: 1,
-  outputTemplate: "",
+  outputTemplate: "%(id)s.%(ext)s",
   speedLimit: "",
 };
 
 function getSettings() {
   if (fs.existsSync(settingsPath)) {
     try {
-      return {
-        ...defaultSettings,
-        ...JSON.parse(fs.readFileSync(settingsPath, "utf-8")),
-      };
+      const saved = JSON.parse(fs.readFileSync(settingsPath, "utf-8"));
+      if (!saved.outputTemplate) {
+        saved.outputTemplate = defaultSettings.outputTemplate;
+      }
+      return { ...defaultSettings, ...saved };
     } catch (e) {
       console.error("Error reading settings.json, using defaults.", e);
       return defaultSettings;
@@ -105,6 +106,8 @@ function parseYtDlpError(stderr) {
     return "The URL provided is invalid. Please check and try again.";
   if (stderr.includes("429"))
     return "Too many requests. YouTube may be temporarily limiting your connection.";
+  if (stderr.includes("HTTP Error 403: Forbidden"))
+    return "Download failed (403 Forbidden). YouTube may be blocking the request.";
   return "An unknown download error occurred. Check the console for details.";
 }
 
@@ -163,7 +166,7 @@ class Downloader {
       "5",
       "--impersonate",
       "chrome",
-      // REMOVED --write-info-json as it is unreliable.
+      "--write-info-json",
       "--write-thumbnail",
       "--convert-thumbnails",
       "jpg",
@@ -172,29 +175,24 @@ class Downloader {
       "--embed-chapters",
     ];
 
-    // --- START: BUG FIX ---
-    // This logic ensures the output filename is predictable and robust.
-    const outputTemplate = this.settings.outputTemplate || "%(id)s.%(ext)s";
-
+    const outputTemplate =
+      this.settings.outputTemplate || defaultSettings.outputTemplate;
     if (splitChapters) {
       const chapterTemplate = path.join(
         videoPath,
-        "%(playlist_title,title)s/%(chapter_number)s - %(chapter)s.%(ext)s"
+        "%(playlist_title,title)s",
+        "%(chapter_number)s - %(chapter)s.%(ext)s"
       );
       args.push("-o", chapterTemplate, "--split-chapters");
     } else {
       args.push("-o", path.join(videoPath, outputTemplate));
     }
-    // --- END: BUG FIX ---
 
     if (type === "audio") {
       const [format, audioQuality] = quality.split("-");
       args.push("-x", "--audio-format", format, "-f", "bestaudio/best");
       if (audioQuality) args.push("--audio-quality", audioQuality);
     } else {
-      // --- START: BUG FIX ---
-      // This format selection is more robust. It prioritizes MP4-compatible streams (avc codec)
-      // and falls back to other options, greatly reducing the chances of a failed merge.
       const qualityFilter = quality === "best" ? "" : `[height<=${quality}]`;
       const formatString = `bestvideo[ext=mp4]${qualityFilter}+bestaudio[ext=m4a]/bestvideo[vcodec^=avc]${qualityFilter}+bestaudio/best[ext=mp4]/best`;
       args.push(
@@ -207,7 +205,6 @@ class Downloader {
         "en.*,-live_chat",
         "--embed-subs"
       );
-      // --- END: BUG FIX ---
       if (this.settings.downloadAutoSubs) args.push("--write-auto-subs");
     }
 
@@ -240,14 +237,14 @@ class Downloader {
       stallTimeout = setTimeout(() => {
         stderrOutput =
           "Download stalled for over 90 seconds and was cancelled.";
-        proc.kill(); // This will trigger the 'close' event
-      }, 90000); // 90 seconds
+        proc.kill();
+      }, 90000);
     };
 
-    resetStallTimer(); // Start the timer initially
+    resetStallTimer();
 
     proc.stdout.on("data", (data) => {
-      resetStallTimer(); // Reset timer on any progress
+      resetStallTimer();
       const m = data
         .toString()
         .match(
@@ -269,7 +266,7 @@ class Downloader {
     });
 
     proc.on("close", async (code) => {
-      clearTimeout(stallTimeout); // Crucial: clear timer when process ends
+      clearTimeout(stallTimeout);
       this.activeDownloads.delete(videoInfo.id);
       if (code === 0) {
         await this.postProcess(videoInfo, job);
@@ -298,68 +295,75 @@ class Downloader {
       return;
     }
     try {
-      // --- START: BUG FIX ---
-      // This is the new, more direct logic. We no longer read a .info.json file.
-      // Instead, we find the downloaded media file directly.
-      const files = fs.readdirSync(videoPath);
+      const baseName = path.parse(
+        this.settings.outputTemplate.replace("%(ext)s", "ext")
+      ).name;
 
-      // Find the final media file. It might have a different extension (.mkv, .webm)
-      // if the merge format was changed or failed in a specific way.
-      const mediaFile = files.find(
-        (f) =>
-          f.startsWith(videoInfo.id) &&
-          [
-            ".mp4",
-            ".mkv",
-            ".webm",
-            ".mp3",
-            ".m4a",
-            ".flac",
-            ".opus",
-            ".wav",
-          ].some((ext) => f.endsWith(ext))
-      );
+      let tempInfoJsonPath;
+      if (this.settings.outputTemplate.includes("%(id)s")) {
+        tempInfoJsonPath = path.join(
+          videoPath,
+          `${baseName.replace("%(id)s", videoInfo.id)}.info.json`
+        );
+      } else {
+        const files = fs.readdirSync(videoPath);
+        const infoJsonFile = files.find(
+          (f) => f.endsWith(".info.json") && f.includes(videoInfo.id)
+        );
+        if (!infoJsonFile) {
+          throw new Error(
+            `Post-processing failed: .info.json file not found for video ID ${videoInfo.id}. Your output template might be too complex.`
+          );
+        }
+        tempInfoJsonPath = path.join(videoPath, infoJsonFile);
+      }
 
-      if (!mediaFile) {
+      if (!fs.existsSync(tempInfoJsonPath)) {
         throw new Error(
-          `Post-processing failed: Final media file for ${videoInfo.id} not found.`
+          `Post-processing failed: .info.json file not found at ${tempInfoJsonPath}`
         );
       }
 
-      const mediaFilePath = path.join(videoPath, mediaFile);
-      const baseName = path.parse(mediaFile).name;
-      // --- END: BUG FIX ---
+      const info = JSON.parse(fs.readFileSync(tempInfoJsonPath, "utf-8"));
+      fs.unlinkSync(tempInfoJsonPath);
+
+      const mediaFilePath = info._filename;
+      if (!fs.existsSync(mediaFilePath)) {
+        throw new Error(
+          `Post-processing failed: Media file specified in .info.json not found at ${mediaFilePath}`
+        );
+      }
 
       let finalCoverPath = null;
-      const tempCoverPath = path.join(videoPath, `${baseName}.jpg`);
-      if (fs.existsSync(tempCoverPath)) {
-        finalCoverPath = path.join(coverPath, `${videoInfo.id}.jpg`);
-        fse.moveSync(tempCoverPath, finalCoverPath, { overwrite: true });
+      if (info.thumbnail) {
+        const tempCoverPath = info.thumbnail;
+        if (fs.existsSync(tempCoverPath)) {
+          finalCoverPath = path.join(coverPath, `${info.id}.jpg`);
+          fse.moveSync(tempCoverPath, finalCoverPath, { overwrite: true });
+        }
       }
       const finalCoverUri = finalCoverPath
         ? `file://${finalCoverPath.replace(/\\/g, "/")}`
         : null;
 
       let finalSubPath = null;
-      // Find subtitle file, e.g., "VIDEO_ID.en.vtt"
-      const tempSubFile = files.find(
-        (f) => f.startsWith(videoInfo.id) && f.endsWith(".vtt")
-      );
-      const tempSubPath = tempSubFile
-        ? path.join(videoPath, tempSubFile)
-        : null;
+      let subFileUri = null;
+      if (info.subtitles && Object.keys(info.subtitles).length > 0) {
+        const subLang = Object.keys(info.subtitles)[0];
+        const tempSubPath = info.subtitles[subLang][0].filepath;
+        if (fs.existsSync(tempSubPath)) {
+          finalSubPath = path.join(subtitlePath, `${info.id}.vtt`);
+          fs.renameSync(tempSubPath, finalSubPath);
+          subFileUri = `file://${finalSubPath.replace(/\\/g, "/")}`;
+        }
+      }
 
-      const subFileUri = tempSubPath
-        ? ((finalSubPath = path.join(subtitlePath, `${videoInfo.id}.vtt`)),
-          fs.renameSync(tempSubPath, finalSubPath),
-          `file://${finalSubPath.replace(/\\/g, "/")}`)
-        : null;
+      const descriptionPath = info.description_filename;
+      if (descriptionPath && fs.existsSync(descriptionPath)) {
+        fs.unlinkSync(descriptionPath);
+      }
 
-      const descriptionPath = path.join(videoPath, `${baseName}.description`);
-      if (fs.existsSync(descriptionPath)) fs.unlinkSync(descriptionPath);
-
-      const artistString =
-        videoInfo.artist || videoInfo.creator || videoInfo.uploader;
+      const artistString = info.artist || info.creator || info.uploader;
       const artistNames = artistString
         ? artistString.split(/[,;&]/).map((name) => name.trim())
         : [];
@@ -368,19 +372,19 @@ class Downloader {
         for (const name of artistNames) {
           if (!name) continue;
           const artist = await db.findOrCreateArtist(name, finalCoverUri);
-          if (artist) await db.linkVideoToArtist(videoInfo.id, artist.id);
+          if (artist) await db.linkVideoToArtist(info.id, artist.id);
         }
       }
 
       const videoData = {
-        id: videoInfo.id,
-        title: videoInfo.title,
-        uploader: videoInfo.uploader,
+        id: info.id,
+        title: info.title,
+        uploader: info.uploader,
         creator: artistString || null,
-        description: videoInfo.description,
-        duration: videoInfo.duration,
-        upload_date: videoInfo.upload_date,
-        originalUrl: videoInfo.webpage_url,
+        description: info.description,
+        duration: info.duration,
+        upload_date: info.upload_date,
+        originalUrl: info.webpage_url,
         filePath: `file://${mediaFilePath.replace(/\\/g, "/")}`,
         coverPath: finalCoverUri,
         subtitlePath: subFileUri,
