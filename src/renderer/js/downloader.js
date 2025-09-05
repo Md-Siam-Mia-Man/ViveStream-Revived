@@ -28,6 +28,7 @@ const advancedOptionsPanel = document.getElementById("advanced-options-panel");
 
 // --- State ---
 const downloadJobs = new Map();
+const pendingInfoJobs = new Map();
 
 // --- Lazy Loading ---
 const lazyLoadObserver = new IntersectionObserver(
@@ -56,42 +57,57 @@ function updateQueuePlaceholder() {
   placeholder.classList.toggle("hidden", hasItems);
 }
 
+function createFetchingPlaceholder(url, jobId) {
+  const itemHTML = `
+        <div class="download-item" data-job-id="${jobId}" data-status="fetching">
+            <div class="download-item-thumb"><div class="spinner"></div></div>
+            <div class="download-item-info">
+                <p class="download-item-title">${url}</p>
+                <p class="download-item-uploader">Requesting from YouTube...</p>
+                <div class="download-item-progress-bar-container" style="display:none;"></div>
+                <div class="download-item-stats">
+                    <span class="download-item-status"><i class="fa-solid fa-sync-alt fa-spin"></i> Fetching details...</span>
+                </div>
+            </div>
+            <div class="download-item-actions"></div>
+        </div>`;
+  downloadQueueArea.insertAdjacentHTML("beforeend", itemHTML);
+  updateQueuePlaceholder();
+}
+
 // --- Event Listeners ---
 downloadForm.addEventListener("submit", (e) => {
   e.preventDefault();
+  const url = urlInput.value.trim();
+  if (!url) return;
 
   const isVideo = downloadTypeVideo.checked;
   const qualityContainer = isVideo ? videoQualitySelect : audioQualitySelect;
-  const selectedQuality =
-    qualityContainer.querySelector(".selected-option").dataset.value;
 
-  const type = document.querySelector(
-    'input[name="download-type"]:checked'
-  ).value;
-  const startTime = document.getElementById("start-time-input").value.trim();
-  const endTime = document.getElementById("end-time-input").value.trim();
-  const splitChapters = document.getElementById(
-    "split-chapters-toggle"
-  ).checked;
+  const downloadOptions = {
+    url,
+    quality: qualityContainer.querySelector(".selected-option").dataset.value,
+    type: document.querySelector('input[name="download-type"]:checked').value,
+    startTime: document.getElementById("start-time-input").value.trim(),
+    endTime: document.getElementById("end-time-input").value.trim(),
+    splitChapters: document.getElementById("split-chapters-toggle").checked,
+  };
 
-  if (urlInput.value) {
-    window.electronAPI.downloadVideo({
-      url: urlInput.value,
-      quality: selectedQuality,
-      type,
-      startTime,
-      endTime,
-      splitChapters,
-    });
-    urlInput.value = "";
-  }
+  const jobId = Date.now().toString();
+  pendingInfoJobs.set(jobId, downloadOptions);
+  createFetchingPlaceholder(url, jobId);
+  window.electronAPI.downloadVideo(downloadOptions, jobId);
+
+  urlInput.value = "";
 });
 
 downloadQueueArea.addEventListener("click", (e) => {
   const btn = e.target.closest(".download-action-btn");
   if (!btn) return;
+
   const item = e.target.closest(".download-item");
   const videoId = item.dataset.id;
+  const jobId = item.dataset.jobId;
 
   if (btn.classList.contains("cancel-btn")) {
     window.electronAPI.cancelDownload(videoId);
@@ -102,11 +118,20 @@ downloadQueueArea.addEventListener("click", (e) => {
     if (job) window.electronAPI.retryDownload(job);
     item.querySelector(".download-item-status").innerHTML =
       `<i class="fa-solid fa-clock"></i> Queued for retry...`;
-    item.classList.remove("error");
+    item.dataset.status = "queued";
   } else if (btn.classList.contains("remove-btn")) {
     item.remove();
-    downloadJobs.delete(videoId);
+    if (videoId) downloadJobs.delete(videoId);
+    if (jobId) pendingInfoJobs.delete(jobId);
+  } else if (btn.classList.contains("info-retry-btn")) {
+    const originalOptions = pendingInfoJobs.get(jobId);
+    if (originalOptions) {
+      item.remove();
+      createFetchingPlaceholder(originalOptions.url, jobId);
+      window.electronAPI.downloadVideo(originalOptions, jobId);
+    }
   }
+
   updateQueuePlaceholder();
 });
 
@@ -149,75 +174,65 @@ downloadTypeAudio.addEventListener("change", () => {
   }
 });
 
-/**
- * Updates the action buttons available for a download item based on its status.
- * @param {string} videoId - The ID of the video item.
- * @param {string} status - The new status ('queued', 'downloading', 'completed', 'error').
- */
-function updateItemActions(videoId, status) {
-  const item = downloadQueueArea.querySelector(
-    `.download-item[data-id="${videoId}"]`
-  );
+function updateItemActions(item, status) {
   if (!item) return;
   const actionsContainer = item.querySelector(".download-item-actions");
   let actionsHTML = "";
+
   if (status === "downloading" || status === "queued") {
     actionsHTML = `<button class="download-action-btn cancel-btn" title="Cancel"><i class="fa-solid fa-times"></i></button>`;
   } else if (status === "error") {
     actionsHTML = `<button class="download-action-btn retry-btn" title="Retry"><i class="fa-solid fa-sync-alt"></i></button>`;
+  } else if (status === "info-error") {
+    actionsHTML = `<button class="download-action-btn info-retry-btn" title="Retry Fetch"><i class="fa-solid fa-sync-alt"></i></button>`;
   }
   actionsHTML += `<button class="download-action-btn remove-btn" title="Remove from list"><i class="fa-solid fa-trash-can"></i></button>`;
   actionsContainer.innerHTML = actionsHTML;
 }
 
 // --- IPC Event Handlers ---
-window.electronAPI.onDownloadQueueStart((videos) => {
-  videos.forEach((video) => {
+window.electronAPI.onDownloadQueueStart(({ infos, jobId }) => {
+  const placeholder = downloadQueueArea.querySelector(
+    `.download-item[data-job-id="${jobId}"]`
+  );
+  if (!placeholder) return;
+
+  const fragment = document.createDocumentFragment();
+
+  infos.forEach((video) => {
     if (downloadJobs.has(video.id)) return;
 
-    const type = document.querySelector(
-      'input[name="download-type"]:checked'
-    ).value;
-    const qualityContainer =
-      type === "video" ? videoQualitySelect : audioQualitySelect;
-    const job = {
-      videoInfo: video,
-      quality: qualityContainer.querySelector(".selected-option").dataset.value,
-      type: type,
-      startTime: document.getElementById("start-time-input").value.trim(),
-      endTime: document.getElementById("end-time-input").value.trim(),
-      splitChapters: document.getElementById("split-chapters-toggle").checked,
-    };
+    const originalOptions = pendingInfoJobs.get(jobId);
+    const job = { ...originalOptions, videoInfo: video };
     downloadJobs.set(video.id, job);
 
     const placeholderSrc = `${AppState.assetsPath}/logo.png`;
     const thumb = video.thumbnail || placeholderSrc;
-    const itemHTML = `
-        <div class="download-item" data-id="${video.id}" data-status="queued">
-            <img data-src="${thumb}" src="${placeholderSrc}" class="download-item-thumb lazy" alt="thumbnail" onerror="this.onerror=null;this.src='${placeholderSrc}';">
-            <div class="download-item-info">
-                <p class="download-item-title">${video.title}</p>
-                <p class="download-item-uploader">${
-                  video.uploader || "Unknown"
-                }</p>
-                <div class="download-item-progress-bar-container"><div class="download-item-progress-bar"></div></div>
-                <div class="download-item-stats">
-                    <span class="download-item-status"><i class="fa-solid fa-clock"></i> Queued</span>
-                    <span class="download-item-speed"></span>
-                    <span class="download-item-eta"></span>
-                </div>
+    const itemEl = document.createElement("div");
+    itemEl.className = "download-item";
+    itemEl.dataset.id = video.id;
+    itemEl.dataset.status = "queued";
+    itemEl.innerHTML = `
+        <img data-src="${thumb}" src="${placeholderSrc}" class="download-item-thumb lazy" alt="thumbnail" onerror="this.onerror=null;this.src='${placeholderSrc}';">
+        <div class="download-item-info">
+            <p class="download-item-title">${video.title}</p>
+            <p class="download-item-uploader">${video.uploader || "Unknown"}</p>
+            <div class="download-item-progress-bar-container"><div class="download-item-progress-bar"></div></div>
+            <div class="download-item-stats">
+                <span class="download-item-status"><i class="fa-solid fa-clock"></i> Queued</span>
+                <span class="download-item-speed"></span>
+                <span class="download-item-eta"></span>
             </div>
-            <div class="download-item-actions"></div>
-        </div>`;
-    downloadQueueArea.insertAdjacentHTML("beforeend", itemHTML);
-    const newItem = downloadQueueArea.querySelector(
-      `.download-item[data-id="${video.id}"]`
-    );
-    const newImg = newItem.querySelector("img.lazy");
+        </div>
+        <div class="download-item-actions"></div>`;
+    fragment.appendChild(itemEl);
+    const newImg = itemEl.querySelector("img.lazy");
     if (newImg) lazyLoadObserver.observe(newImg);
-    updateItemActions(video.id, "queued");
+    updateItemActions(itemEl, "queued");
   });
-  updateQueuePlaceholder();
+
+  placeholder.replaceWith(fragment);
+  pendingInfoJobs.delete(jobId);
 });
 
 window.electronAPI.onDownloadProgress((data) => {
@@ -225,7 +240,12 @@ window.electronAPI.onDownloadProgress((data) => {
     `.download-item[data-id="${data.id}"]`
   );
   if (!item) return;
-  item.dataset.status = "downloading";
+
+  if (item.dataset.status !== "downloading") {
+    item.dataset.status = "downloading";
+    updateItemActions(item, "downloading");
+  }
+
   item.querySelector(".download-item-progress-bar").style.width =
     `${data.percent}%`;
   item.querySelector(".download-item-status").innerHTML =
@@ -236,7 +256,6 @@ window.electronAPI.onDownloadProgress((data) => {
   item.querySelector(".download-item-eta").textContent = `ETA: ${
     data.eta || "N/A"
   }`;
-  updateItemActions(data.id, "downloading");
 });
 
 window.electronAPI.onDownloadComplete((data) => {
@@ -257,7 +276,7 @@ window.electronAPI.onDownloadComplete((data) => {
       `'${data.videoData.title}' downloaded successfully.`,
       "success"
     );
-    updateItemActions(data.id, "completed");
+    updateItemActions(item, "completed");
   }
   loadLibrary();
 });
@@ -274,16 +293,25 @@ window.electronAPI.onDownloadError((data) => {
       (data.error || "Unknown").substring(0, 50) + "...";
     showNotification(`Download failed: ${data.error || "Unknown"}`, "error");
     if (data.job) downloadJobs.set(data.id, data.job);
-    updateItemActions(data.id, "error");
+    updateItemActions(item, "error");
   }
 });
 
-window.electronAPI.onDownloadInfoError((data) => {
-  showNotification(
-    `Could not get info for URL: ${data.url}`,
-    "error",
-    "Please check the URL and your connection."
+window.electronAPI.onDownloadInfoError(({ jobId, error }) => {
+  const placeholder = downloadQueueArea.querySelector(
+    `.download-item[data-job-id="${jobId}"]`
   );
+  if (placeholder) {
+    placeholder.dataset.status = "info-error";
+    placeholder.querySelector(".download-item-thumb .spinner").style.display =
+      "none";
+    placeholder.querySelector(".download-item-title").textContent = error;
+    placeholder.querySelector(".download-item-uploader").textContent =
+      "Failed to fetch details";
+    placeholder.querySelector(".download-item-status").innerHTML =
+      `<i class="fa-solid fa-triangle-exclamation"></i> Error`;
+    updateItemActions(placeholder, "info-error");
+  }
 });
 
 // --- Initial State ---
