@@ -38,13 +38,16 @@
      z-index: 1;
 }
 
+#miniplayer.audio-mode #miniplayer-video-container {
+     display: none;
+}
+
 #miniplayer-video-container #video-player {
      width: 100%;
      height: 100%;
      object-fit: cover;
 }
 
-/* --- NEW Styles for Miniplayer Artwork --- */
 .miniplayer-artwork {
      position: absolute;
      top: 0;
@@ -59,8 +62,6 @@
 .miniplayer-artwork.hidden {
      display: none;
 }
-
-/* --- End New Styles --- */
 
 .miniplayer-info,
 .miniplayer-controls,
