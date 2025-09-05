@@ -6,7 +6,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   getAssetsPath: () => ipcRenderer.invoke("get-assets-path"),
 
   // Downloader API
-  downloadVideo: (options) => ipcRenderer.send("download-video", options),
+  downloadVideo: (options, jobId) =>
+    ipcRenderer.send("download-video", { downloadOptions: options, jobId }),
   cancelDownload: (videoId) => ipcRenderer.send("cancel-download", videoId),
   retryDownload: (job) => ipcRenderer.send("retry-download", job),
   onDownloadQueueStart: (cb) =>
