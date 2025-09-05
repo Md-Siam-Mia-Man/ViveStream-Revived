@@ -332,6 +332,18 @@
      gap: 12px;
 }
 
+@keyframes fade-in-item {
+     from {
+          opacity: 0;
+          transform: scale(0.98);
+     }
+
+     to {
+          opacity: 1;
+          transform: scale(1);
+     }
+}
+
 .download-item {
      display: flex;
      align-items: center;
@@ -343,6 +355,7 @@
      transition: all 0.3s ease;
      position: relative;
      overflow: hidden;
+     animation: fade-in-item 0.3s ease-out forwards;
 }
 
 .download-item[data-status="downloading"] {
@@ -354,9 +367,15 @@
      opacity: 0.7;
 }
 
-.download-item[data-status="error"] {
+.download-item[data-status="error"],
+.download-item[data-status="info-error"] {
      border-left: 4px solid #f44336;
 }
+
+.download-item[data-status="fetching"] {
+     border-left: 4px solid #3498db;
+}
+
 
 .download-item-thumb {
      width: 120px;
@@ -365,6 +384,23 @@
      border-radius: 4px;
      flex-shrink: 0;
      background-color: var(--yt-black);
+     display: flex;
+     align-items: center;
+     justify-content: center;
+}
+
+.download-item-thumb .spinner {
+     width: 24px;
+     height: 24px;
+     border: 3px solid rgba(255, 255, 255, 0.3);
+     border-top-color: var(--yt-white);
+     border-radius: 50%;
+     animation: spin 1s linear infinite;
+     display: none;
+}
+
+.download-item[data-status="fetching"] .download-item-thumb .spinner {
+     display: block;
 }
 
 .download-item-info {
@@ -432,8 +468,13 @@
      color: #4caf50;
 }
 
-.download-item[data-status="error"] .download-item-status {
+.download-item[data-status="error"] .download-item-status,
+.download-item[data-status="info-error"] .download-item-status {
      color: #f44336;
+}
+
+.download-item[data-status="fetching"] .download-item-status {
+     color: #3498db;
 }
 
 .download-item-actions {
