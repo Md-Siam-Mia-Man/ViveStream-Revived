@@ -295,71 +295,78 @@ class Downloader {
       return;
     }
     try {
-      const baseName = path.parse(
-        this.settings.outputTemplate.replace("%(ext)s", "ext")
-      ).name;
+      const files = fs.readdirSync(videoPath);
 
-      let tempInfoJsonPath;
-      if (this.settings.outputTemplate.includes("%(id)s")) {
-        tempInfoJsonPath = path.join(
-          videoPath,
-          `${baseName.replace("%(id)s", videoInfo.id)}.info.json`
-        );
-      } else {
-        const files = fs.readdirSync(videoPath);
-        const infoJsonFile = files.find(
-          (f) => f.endsWith(".info.json") && f.includes(videoInfo.id)
-        );
-        if (!infoJsonFile) {
-          throw new Error(
-            `Post-processing failed: .info.json file not found for video ID ${videoInfo.id}. Your output template might be too complex.`
+      const infoJsonFile = files.find((file) => {
+        if (!file.endsWith(".info.json")) return false;
+        try {
+          const content = JSON.parse(
+            fs.readFileSync(path.join(videoPath, file))
           );
+          return content.id === videoInfo.id;
+        } catch {
+          return false;
         }
-        tempInfoJsonPath = path.join(videoPath, infoJsonFile);
-      }
+      });
 
-      if (!fs.existsSync(tempInfoJsonPath)) {
+      if (!infoJsonFile) {
         throw new Error(
-          `Post-processing failed: .info.json file not found at ${tempInfoJsonPath}`
+          `Post-processing failed: Could not find .info.json for video ID ${videoInfo.id}`
         );
       }
 
-      const info = JSON.parse(fs.readFileSync(tempInfoJsonPath, "utf-8"));
-      fs.unlinkSync(tempInfoJsonPath);
+      const infoJsonPath = path.join(videoPath, infoJsonFile);
+      const info = JSON.parse(fs.readFileSync(infoJsonPath, "utf-8"));
+      const baseName = path.parse(infoJsonFile).name;
 
-      const mediaFilePath = info._filename;
-      if (!fs.existsSync(mediaFilePath)) {
+      const mediaFile = files.find(
+        (f) =>
+          path.parse(f).name === baseName &&
+          [
+            ".mp4",
+            ".mkv",
+            ".webm",
+            ".mp3",
+            ".m4a",
+            ".flac",
+            ".opus",
+            ".wav",
+          ].some((ext) => f.endsWith(ext))
+      );
+
+      if (!mediaFile) {
         throw new Error(
-          `Post-processing failed: Media file specified in .info.json not found at ${mediaFilePath}`
+          `Post-processing failed: Could not find media file for basename ${baseName}`
         );
       }
+
+      const mediaFilePath = path.join(videoPath, mediaFile);
+
+      fs.unlinkSync(infoJsonPath);
 
       let finalCoverPath = null;
-      if (info.thumbnail) {
-        const tempCoverPath = info.thumbnail;
-        if (fs.existsSync(tempCoverPath)) {
-          finalCoverPath = path.join(coverPath, `${info.id}.jpg`);
-          fse.moveSync(tempCoverPath, finalCoverPath, { overwrite: true });
-        }
+      const tempCoverPath = path.join(videoPath, `${baseName}.jpg`);
+      if (fs.existsSync(tempCoverPath)) {
+        finalCoverPath = path.join(coverPath, `${info.id}.jpg`);
+        fse.moveSync(tempCoverPath, finalCoverPath, { overwrite: true });
       }
       const finalCoverUri = finalCoverPath
         ? `file://${finalCoverPath.replace(/\\/g, "/")}`
         : null;
 
-      let finalSubPath = null;
       let subFileUri = null;
-      if (info.subtitles && Object.keys(info.subtitles).length > 0) {
-        const subLang = Object.keys(info.subtitles)[0];
-        const tempSubPath = info.subtitles[subLang][0].filepath;
-        if (fs.existsSync(tempSubPath)) {
-          finalSubPath = path.join(subtitlePath, `${info.id}.vtt`);
-          fs.renameSync(tempSubPath, finalSubPath);
-          subFileUri = `file://${finalSubPath.replace(/\\/g, "/")}`;
-        }
+      const tempSubFile = files.find(
+        (f) => path.parse(f).name === baseName && f.endsWith(".vtt")
+      );
+      if (tempSubFile) {
+        const tempSubPath = path.join(videoPath, tempSubFile);
+        const finalSubPath = path.join(subtitlePath, `${info.id}.vtt`);
+        fs.renameSync(tempSubPath, finalSubPath);
+        subFileUri = `file://${finalSubPath.replace(/\\/g, "/")}`;
       }
 
-      const descriptionPath = info.description_filename;
-      if (descriptionPath && fs.existsSync(descriptionPath)) {
+      const descriptionPath = path.join(videoPath, `${baseName}.description`);
+      if (fs.existsSync(descriptionPath)) {
         fs.unlinkSync(descriptionPath);
       }
 
