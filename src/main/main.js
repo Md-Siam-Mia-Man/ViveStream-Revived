@@ -317,7 +317,8 @@ class Downloader {
 
       const infoJsonPath = path.join(videoPath, infoJsonFile);
       const info = JSON.parse(fs.readFileSync(infoJsonPath, "utf-8"));
-      const baseName = path.parse(infoJsonFile).name;
+      const baseNameWithInfoExt = path.parse(infoJsonFile).name;
+      const baseName = path.parse(baseNameWithInfoExt).name;
 
       const mediaFile = files.find(
         (f) =>
