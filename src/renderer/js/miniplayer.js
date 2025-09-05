@@ -32,14 +32,13 @@ export function activateMiniplayer() {
 
   const wasHidden = miniplayer.classList.contains("hidden");
   const isAudioMode = playerSection.classList.contains("audio-mode");
+  miniplayer.classList.toggle("audio-mode", isAudioMode);
 
   if (isAudioMode) {
     miniplayerArtworkImg.src = document.getElementById("audio-artwork-img").src;
     miniplayerArtworkImg.classList.remove("hidden");
-    miniplayerVideoContainer.style.display = "none";
   } else {
     miniplayerArtworkImg.classList.add("hidden");
-    miniplayerVideoContainer.style.display = "block";
     if (videoPlayer.parentElement !== miniplayerVideoContainer) {
       miniplayerVideoContainer.appendChild(videoPlayer);
     }
@@ -56,8 +55,8 @@ export function activateMiniplayer() {
 export function deactivateMiniplayer() {
   if (miniplayer.classList.contains("hidden")) return;
 
+  miniplayer.classList.remove("audio-mode");
   miniplayerArtworkImg.classList.add("hidden");
-  miniplayerVideoContainer.style.display = "block";
 
   playerSection.insertBefore(videoPlayer, playerSection.firstChild);
   miniplayer.classList.add("hidden");
