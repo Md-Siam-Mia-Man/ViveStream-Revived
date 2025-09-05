@@ -573,9 +573,9 @@ ipcMain.handle("delete-video", async (e, id) => {
 });
 
 // Downloader
-ipcMain.on("download-video", (e, o) => {
+ipcMain.on("download-video", (e, { downloadOptions, jobId }) => {
   const args = [
-    o.url,
+    downloadOptions.url,
     "--dump-json",
     "--no-warnings",
     "--flat-playlist",
@@ -585,31 +585,50 @@ ipcMain.on("download-video", (e, o) => {
   const settings = getSettings();
   if (settings.cookieBrowser && settings.cookieBrowser !== "none")
     args.push("--cookies-from-browser", settings.cookieBrowser);
+
   const proc = spawn(ytDlpPath, args);
   let j = "";
   let errorOutput = "";
+
+  const timeout = setTimeout(() => {
+    proc.kill();
+    errorOutput = "Network timeout: The request took too long to complete.";
+  }, 30000); // 30-second timeout
+
   proc.stdout.on("data", (d) => (j += d));
   proc.stderr.on("data", (d) => (errorOutput += d));
+
   proc.on("close", (c) => {
+    clearTimeout(timeout);
     if (c === 0 && j.trim()) {
       try {
         const infos = j
           .trim()
           .split("\n")
           .map((l) => JSON.parse(l));
-        if (win) win.webContents.send("download-queue-start", infos);
-        downloader.addToQueue(infos.map((i) => ({ ...o, videoInfo: i })));
+        if (win) win.webContents.send("download-queue-start", { infos, jobId });
+        downloader.addToQueue(
+          infos.map((i) => ({ ...downloadOptions, videoInfo: i }))
+        );
       } catch (parseError) {
         console.error(
-          `Failed to parse JSON for ${o.url}. Stderr: ${errorOutput}, Output: ${j}`
+          `Failed to parse JSON for ${downloadOptions.url}. Stderr: ${errorOutput}, Output: ${j}`
         );
-        if (win) win.webContents.send("download-info-error", { url: o.url });
+        if (win)
+          win.webContents.send("download-info-error", {
+            jobId,
+            error: "Failed to parse video information.",
+          });
       }
     } else {
       console.error(
-        `Failed to get video info for ${o.url}. Stderr: ${errorOutput}`
+        `Failed to get video info for ${downloadOptions.url}. Stderr: ${errorOutput}`
       );
-      if (win) win.webContents.send("download-info-error", { url: o.url });
+      if (win)
+        win.webContents.send("download-info-error", {
+          jobId,
+          error: parseYtDlpError(errorOutput),
+        });
     }
   });
 });
