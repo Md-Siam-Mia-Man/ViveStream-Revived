@@ -107,7 +107,6 @@
      color: var(--yt-red);
 }
 
-/* --- NEW: Style for generic text inputs in settings --- */
 .text-input-control {
      background: var(--yt-black);
      border: 1px solid var(--yt-border);
