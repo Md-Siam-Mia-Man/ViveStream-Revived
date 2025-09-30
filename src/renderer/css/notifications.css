@@ -15,7 +15,6 @@
      border-radius: 12px;
      padding: 16px;
      border: 1px solid var(--yt-border);
-     border-left-width: 5px;
      box-shadow: 0 5px 20px rgba(0, 0, 0, 0.4);
      display: flex;
      align-items: flex-start;
@@ -27,25 +26,16 @@
      animation: slide-out 0.4s ease-in forwards;
 }
 
-.notification.info {
-     border-left-color: #3498db; /* Blue for info */
-}
 .notification.info .notification-icon {
-    color: #3498db;
+     color: #3498db;
 }
 
-.notification.success {
-     border-left-color: #4caf50;
-}
 .notification.success .notification-icon {
-    color: #4caf50;
+     color: #4caf50;
 }
 
-.notification.error {
-     border-left-color: #f44336;
-}
 .notification.error .notification-icon {
-    color: #f44336;
+     color: #f44336;
 }
 
 .notification .notification-icon {
