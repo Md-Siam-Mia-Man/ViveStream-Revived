@@ -1,17 +1,11 @@
 /* src/css/artists.css */
-
-/* --- Artists List Page Styles --- */
-
-/* The main grid container for all artists */
 .artist-grid {
   display: grid;
-  /* Using a fixed size for artist cards for a uniform look */
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 32px 24px;
   padding: 24px;
 }
 
-/* Individual artist card */
 .artist-grid-item {
   display: flex;
   flex-direction: column;
@@ -23,17 +17,15 @@
 }
 
 .artist-grid-item:hover {
-  transform: translateY(-5px); /* Simple hover effect */
+  transform: translateY(-5px);
 }
 
-/* Container for the artist's thumbnail image */
 .artist-thumbnail-container {
   width: 150px;
   height: 150px;
   position: relative;
 }
 
-/* The artist's image itself, styled to be circular */
 .artist-thumbnail {
   width: 100%;
   height: 100%;
@@ -48,69 +40,81 @@
   border-color: var(--yt-red);
 }
 
-/* Artist's name below the thumbnail */
 .artist-name {
   font-weight: 500;
   font-size: 1rem;
   color: var(--yt-white);
-  /* Prevent long names from breaking layout */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   width: 100%;
 }
 
-/* Meta info like video count */
 .artist-meta {
   font-size: 0.85rem;
   color: var(--yt-light-grey);
 }
 
-/* --- Artist Detail Page Styles --- */
+.artist-detail-header-wrapper {
+  position: relative;
+  overflow: hidden;
+}
 
-/* Header section for the specific artist page */
+.artist-detail-header-wrapper::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: var(--bg-image);
+  background-size: cover;
+  background-position: center;
+  filter: blur(20px) brightness(0.4);
+  transform: scale(1.2);
+  z-index: 1;
+}
+
 .artist-detail-header {
+  position: relative;
+  z-index: 2;
   display: flex;
   align-items: center;
   gap: 24px;
   padding: 32px;
-  background: linear-gradient(to bottom, var(--yt-dark-grey), transparent);
-  border-bottom: 1px solid var(--yt-border);
+  background: linear-gradient(to top, rgba(18, 18, 18, 1) 0%, rgba(18, 18, 18, 0.7) 50%, rgba(18, 18, 18, 0.4) 100%);
 }
 
-/* Large circular image for the artist on their detail page */
 .artist-detail-image {
   width: 180px;
   height: 180px;
   object-fit: cover;
   border-radius: 50%;
   flex-shrink: 0;
-  background-color: #000;
-  border: 4px solid var(--yt-border);
+  background-color: var(--yt-black);
+  border: 4px solid var(--yt-white);
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.5);
 }
 
-/* Container for the artist's name and stats */
 .artist-detail-info {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  text-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
 }
 
-/* Large title for the artist's name */
 .artist-detail-name {
   font-family: var(--font-display);
-  font-size: 3rem;
+  font-size: 3.5rem;
   font-weight: 700;
 }
 
-/* Meta info on the detail page header */
 .artist-detail-meta {
   font-size: 1rem;
   color: var(--yt-light-grey);
   font-weight: 500;
 }
 
-/* The container for the artist's videos on their detail page */
 #artist-detail-page .video-grid {
   padding: 24px;
 }
