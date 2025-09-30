@@ -1,11 +1,10 @@
 // src/renderer/js/artists.js
 import { AppState, setAllArtists } from "./state.js";
 import { showPage, showLoader, hideLoader } from "./renderer.js";
-import { renderGridItem } from "./ui.js";
+import { createGridItem } from "./ui.js";
 import { eventBus } from "./event-bus.js";
 import { showNotification } from "./notifications.js";
 
-// --- DOM Element Selectors ---
 const artistsPage = document.getElementById("artists-page");
 const artistDetailPage = document.getElementById("artist-detail-page");
 
@@ -26,10 +25,6 @@ const lazyLoadObserver = new IntersectionObserver(
   { rootMargin: "0px 0px 200px 0px" }
 );
 
-/**
- * Renders the main artists grid page.
- * @param {Array} [artistsToRender] - Optional array of artists for filtering/searching.
- */
 export async function renderArtistsPage(artistsToRender) {
   if (!artistsToRender) {
     const allArtists = await window.electronAPI.artistGetAll();
@@ -37,7 +32,7 @@ export async function renderArtistsPage(artistsToRender) {
     artistsToRender = AppState.artists;
   }
 
-  artistsPage.innerHTML = ""; // Clear existing content
+  artistsPage.innerHTML = "";
 
   const header = document.createElement("div");
   header.className = "page-header";
@@ -75,11 +70,6 @@ export async function renderArtistsPage(artistsToRender) {
   hideLoader();
 }
 
-/**
- * Generates the DOM element for a single artist card.
- * @param {object} artist - The artist data object.
- * @returns {HTMLElement} The artist card element.
- */
 function renderArtistCard(artist) {
   const videoCountText =
     artist.videoCount === 1 ? "1 video" : `${artist.videoCount} videos`;
@@ -103,15 +93,11 @@ function renderArtistCard(artist) {
   return card;
 }
 
-/**
- * Renders the detailed view for a single artist.
- * @param {number} artistId - The ID of the artist to display.
- */
 export async function renderArtistDetailPage(artistId) {
   showLoader();
   const artist = await window.electronAPI.artistGetDetails(artistId);
 
-  artistDetailPage.innerHTML = ""; // Clear existing content
+  artistDetailPage.innerHTML = "";
 
   if (!artist) {
     showNotification(`Could not find artist with ID ${artistId}`, "error");
@@ -127,15 +113,21 @@ export async function renderArtistDetailPage(artistId) {
     ? decodeURIComponent(artist.thumbnailPath)
     : placeholderSrc;
 
-  const header = document.createElement("div");
-  header.className = "artist-detail-header";
-  header.innerHTML = `
-    <img src="${thumbnailSrc}" class="artist-detail-image" alt="${artist.name}" onerror="this.onerror=null;this.src='${placeholderSrc}';">
-    <div class="artist-detail-info">
-      <h1 class="artist-detail-name">${artist.name}</h1>
-      <p class="artist-detail-meta">${videoCountText}</p>
+  const headerWrapper = document.createElement("div");
+  headerWrapper.className = "artist-detail-header-wrapper";
+  headerWrapper.style.setProperty("--bg-image", `url('${thumbnailSrc}')`);
+
+  headerWrapper.innerHTML = `
+    <div class="artist-detail-header">
+        <img src="${thumbnailSrc}" class="artist-detail-image" alt="${
+          artist.name
+        }" onerror="this.onerror=null;this.src='${placeholderSrc}';">
+        <div class="artist-detail-info">
+            <h1 class="artist-detail-name">${artist.name}</h1>
+            <p class="artist-detail-meta">${videoCountText}</p>
+        </div>
     </div>`;
-  artistDetailPage.appendChild(header);
+  artistDetailPage.appendChild(headerWrapper);
 
   const content = document.createElement("div");
   content.className = "page-content";
@@ -148,9 +140,8 @@ export async function renderArtistDetailPage(artistId) {
 
     const fragment = document.createDocumentFragment();
     artist.videos.forEach((item) => {
-      const gridItemWrapper = document.createElement("div");
-      gridItemWrapper.innerHTML = renderGridItem(item);
-      fragment.appendChild(gridItemWrapper.firstElementChild);
+      const gridItem = createGridItem(item);
+      fragment.appendChild(gridItem);
     });
     grid.appendChild(fragment);
     grid
@@ -171,7 +162,6 @@ export async function renderArtistDetailPage(artistId) {
   hideLoader();
 }
 
-// --- Event Delegation ---
 artistsPage.addEventListener("click", async (e) => {
   const artistCard = e.target.closest(".artist-grid-item");
   if (artistCard) {
