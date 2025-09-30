@@ -17,15 +17,18 @@
      flex-direction: column;
      gap: 12px;
      position: relative;
+     transition: transform 0.2s ease-out;
+}
+
+.video-grid-item:hover {
+     transform: translateY(-4px);
 }
 
 .grid-thumbnail-container {
      position: relative;
      cursor: pointer;
      border-radius: 12px;
-     /* Add radius here for the overlay to clip correctly */
      overflow: hidden;
-     /* Ensures overlay icon respects the border radius */
 }
 
 .grid-thumbnail {
@@ -35,7 +38,6 @@
      background-color: var(--yt-dark-grey);
      transition: border-radius 0.2s ease, transform 0.2s ease;
      display: block;
-     /* Fixes small gap under image */
 }
 
 .video-grid-item:hover .grid-thumbnail {
@@ -58,7 +60,6 @@
      opacity: 0;
      transition: opacity 0.2s ease;
      pointer-events: none;
-     /* Allows clicks to go through to the image */
 }
 
 .video-grid-item:hover .thumbnail-overlay-icon {
@@ -76,7 +77,6 @@
      font-size: 0.8rem;
      font-weight: 500;
      z-index: 2;
-     /* Ensure it's above overlays */
 }
 
 .grid-item-details {
