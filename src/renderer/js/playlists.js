@@ -5,13 +5,13 @@ import {
   setCurrentPlaylistId,
   showLoader,
   hideLoader,
+  handleNav,
 } from "./renderer.js";
-import { renderGridItem } from "./ui.js";
+import { createGridItem } from "./ui.js";
 import { showConfirmationModal, showPromptModal } from "./modals.js";
 import { showNotification } from "./notifications.js";
 import { eventBus } from "./event-bus.js";
 
-// --- DOM Element Selectors ---
 const playlistsPage = document.getElementById("playlists-page");
 const playlistDetailPage = document.getElementById("playlist-detail-page");
 const addToPlaylistModal = document.getElementById("add-to-playlist-modal");
@@ -19,11 +19,9 @@ const playlistContextMenu = document.getElementById(
   "playlist-item-context-menu"
 );
 
-// --- State ---
 let videoIdToAddToPlaylist = null;
 let sortableInstance = null;
 
-// --- Lazy Loading Observer ---
 const lazyLoadObserver = new IntersectionObserver(
   (entries, observer) => {
     entries.forEach((entry) => {
@@ -41,18 +39,14 @@ const lazyLoadObserver = new IntersectionObserver(
   { rootMargin: "0px 0px 200px 0px" }
 );
 
-/**
- * Renders the main playlists page grid.
- * @param {Array} [playlistsToRender] - Optional array of playlists to render, used for filtering.
- */
 export async function renderPlaylistsPage(playlistsToRender) {
   if (!playlistsToRender) {
     const playlists = await window.electronAPI.playlistGetAll();
-    setAllPlaylists(playlists); // Update central state
+    setAllPlaylists(playlists);
     playlistsToRender = AppState.playlists;
   }
 
-  playlistsPage.innerHTML = ""; // Clear existing content
+  playlistsPage.innerHTML = "";
 
   const header = document.createElement("div");
   header.className = "page-header";
@@ -101,11 +95,6 @@ export async function renderPlaylistsPage(playlistsToRender) {
   hideLoader();
 }
 
-/**
- * Generates the DOM element for a single playlist card.
- * @param {object} playlist - The playlist data object.
- * @returns {HTMLElement} The playlist card element.
- */
 function renderPlaylistCard(playlist) {
   const videoCountText =
     playlist.videoCount === 1 ? "1 video" : `${playlist.videoCount} videos`;
@@ -137,15 +126,11 @@ function renderPlaylistCard(playlist) {
   return card;
 }
 
-/**
- * Renders the detailed view for a single playlist.
- * @param {number} playlistId - The ID of the playlist to render.
- */
 export async function renderPlaylistDetailPage(playlistId) {
   showLoader();
   const playlist = await window.electronAPI.playlistGetDetails(playlistId);
 
-  playlistDetailPage.innerHTML = ""; // Clear existing content
+  playlistDetailPage.innerHTML = "";
 
   if (!playlist) {
     showNotification(`Could not find playlist with ID ${playlistId}`, "error");
@@ -161,6 +146,7 @@ export async function renderPlaylistDetailPage(playlistId) {
   header.innerHTML = `
     <h1 class="page-header-title">${playlist.name}</h1>
     <div class="page-header-actions">
+        <button class="action-button" id="add-to-this-playlist-btn"><i class="fa-solid fa-plus"></i> Add Music</button>
         <button class="action-button" id="rename-playlist-btn" data-id="${playlist.id}" data-name="${playlist.name}"><i class="fa-solid fa-pencil"></i> Rename</button>
         <button class="action-button danger-btn" id="delete-playlist-btn" data-id="${playlist.id}" data-name="${playlist.name}"><i class="fa-solid fa-trash-can"></i> Delete</button>
     </div>`;
@@ -177,9 +163,8 @@ export async function renderPlaylistDetailPage(playlistId) {
 
     const fragment = document.createDocumentFragment();
     playlist.videos.forEach((item) => {
-      const gridItemWrapper = document.createElement("div");
-      gridItemWrapper.innerHTML = renderGridItem(item, true);
-      fragment.appendChild(gridItemWrapper.firstElementChild);
+      const gridItem = createGridItem(item, true);
+      fragment.appendChild(gridItem);
     });
     grid.appendChild(fragment);
     grid
@@ -210,10 +195,6 @@ export async function renderPlaylistDetailPage(playlistId) {
   hideLoader();
 }
 
-/**
- * Opens the "Add to Playlist" modal for a specific video.
- * @param {string} videoId - The ID of the video being added.
- */
 export async function openAddToPlaylistModal(videoId) {
   videoIdToAddToPlaylist = videoId;
   const listContainer = addToPlaylistModal.querySelector(".add-playlist-list");
@@ -243,7 +224,6 @@ export async function openAddToPlaylistModal(videoId) {
   document.getElementById("new-playlist-input").value = "";
 }
 
-// --- Event Delegation ---
 playlistsPage.addEventListener("click", async (e) => {
   const menuBtn = e.target.closest(".playlist-grid-item .menu-btn");
   if (menuBtn) {
@@ -306,7 +286,7 @@ addToPlaylistModal.addEventListener("click", async (e) => {
     const result = await window.electronAPI.playlistCreate(name);
     if (result.success) {
       showNotification(`Playlist "${name}" created.`, "success");
-      await openAddToPlaylistModal(videoIdToAddToPlaylist); // Refresh modal
+      await openAddToPlaylistModal(videoIdToAddToPlaylist);
       const newCheckbox = document.querySelector(
         `#add-to-playlist-modal input[data-id="${result.id}"]`
       );
@@ -334,6 +314,16 @@ addToPlaylistModal.addEventListener("click", async (e) => {
 });
 
 playlistDetailPage.addEventListener("click", async (e) => {
+  if (e.target.closest("#add-to-this-playlist-btn")) {
+    handleNav("downloads");
+    showNotification(
+      `Downloading to playlist: ${
+        e.target.closest(".page-header").querySelector("h1").textContent
+      }`,
+      "info"
+    );
+  }
+
   const renameBtn = e.target.closest("#rename-playlist-btn");
   if (renameBtn) {
     const playlistId = renameBtn.dataset.id;
