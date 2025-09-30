@@ -1,23 +1,20 @@
 // src/renderer/js/ui.js
 import { AppState } from "./state.js";
-import { showPage } from "./renderer.js";
+import { showPage, handleNav, showLoader, hideLoader } from "./renderer.js";
 import { formatTime, debounce } from "./utils.js";
 import { eventBus } from "./event-bus.js";
 import { openAddToPlaylistModal } from "./playlists.js";
 import { renderArtistsPage } from "./artists.js";
 import { renderPlaylistsPage } from "./playlists.js";
-import { showLoader, hideLoader } from "./renderer.js";
 
-// --- Element Selectors ---
-const sidebarToggle = document.getElementById("sidebar-toggle");
-const logoHomeButton = document.getElementById("logo-home-button");
 const homeSearchInput = document.getElementById("home-search-input");
 const videoContextMenu = document.getElementById("video-item-context-menu");
 const contextRemoveFromPlaylistBtn = document.getElementById(
   "context-remove-from-playlist-btn"
 );
+const gridItemTemplate = document.getElementById("video-grid-item-template");
+const sidebar = document.querySelector(".sidebar");
 
-// --- Lazy Loading ---
 const lazyLoadObserver = new IntersectionObserver(
   (entries, observer) => {
     entries.forEach((entry) => {
@@ -35,81 +32,61 @@ const lazyLoadObserver = new IntersectionObserver(
   { rootMargin: "0px 0px 200px 0px" }
 );
 
-// --- Event Listeners ---
-sidebarToggle.addEventListener("click", () => {
-  document.querySelector(".sidebar").classList.toggle("collapsed");
-  localStorage.setItem(
-    "sidebarCollapsed",
-    document.querySelector(".sidebar").classList.contains("collapsed")
-  );
-});
+export function createGridItem(item, isPlaylistItem = false) {
+  const clone = gridItemTemplate.content.cloneNode(true);
+  const element = clone.querySelector(".video-grid-item");
+  const thumbnail = element.querySelector(".grid-thumbnail");
+  const overlayIconContainer = element.querySelector(".thumbnail-overlay-icon");
+  const favoriteBtn = element.querySelector(".favorite-btn");
+  const favoriteIcon = favoriteBtn.querySelector("i");
 
-logoHomeButton.addEventListener("click", (e) => {
-  e.preventDefault();
-  showPage("home");
-  renderHomePageGrid();
-});
+  element.dataset.id = item.id;
+  if (isPlaylistItem) {
+    element.dataset.playlistItem = "true";
+  }
 
-// --- Grid Rendering ---
-export function renderGridItem(item, isPlaylistItem = false) {
-  const audioIconOverlay =
-    item.type === "audio"
-      ? '<div class="thumbnail-overlay-icon"><i class="fa-solid fa-music"></i></div>'
-      : "";
   const placeholderSrc = `${AppState.assetsPath}/logo.png`;
   const actualSrc = item.coverPath
     ? decodeURIComponent(item.coverPath)
     : placeholderSrc;
+  thumbnail.dataset.src = actualSrc;
+  thumbnail.src = placeholderSrc;
+  thumbnail.onerror = () => {
+    thumbnail.onerror = null;
+    thumbnail.src = placeholderSrc;
+  };
 
-  return `
-        <div class="video-grid-item" data-id="${item.id}" ${
-          isPlaylistItem ? `data-playlist-item="true"` : ""
-        }>
-            <div class="grid-thumbnail-container">
-                <img data-src="${actualSrc}" src="${placeholderSrc}" class="grid-thumbnail lazy" alt="thumbnail" onerror="this.onerror=null;this.src='${placeholderSrc}';">
-                ${audioIconOverlay}
-                <span class="thumbnail-duration">${formatTime(
-                  item.duration || 0
-                )}</span>
-            </div>
-            <div class="grid-item-details">
-                <div class="grid-item-info">
-                    <p class="grid-item-title">${item.title}</p>
-                    <p class="grid-item-meta">${
-                      item.creator || item.uploader || "Unknown"
-                    }</p>
-                </div>
-                <div class="grid-item-actions">
-                    <button class="grid-item-action-btn favorite-btn ${
-                      item.isFavorite ? "is-favorite" : ""
-                    }" title="${item.isFavorite ? "Unfavorite" : "Favorite"}">
-                        <i class="fa-${
-                          item.isFavorite ? "solid" : "regular"
-                        } fa-heart"></i>
-                    </button>
-                    <button class="grid-item-action-btn save-to-playlist-grid-btn" title="Save to Playlist"><i class="fa-solid fa-plus"></i></button>
-                    <button class="grid-item-action-btn menu-btn" title="More">
-                        <i class="fa-solid fa-ellipsis-vertical"></i>
-                    </button>
-                </div>
-            </div>
-        </div>`;
+  if (item.type === "audio") {
+    overlayIconContainer.innerHTML = '<i class="fa-solid fa-music"></i>';
+  }
+
+  element.querySelector(".thumbnail-duration").textContent = formatTime(
+    item.duration || 0
+  );
+  element.querySelector(".grid-item-title").textContent = item.title;
+  element.querySelector(".grid-item-meta").textContent =
+    item.creator || item.uploader || "Unknown";
+
+  favoriteBtn.classList.toggle("is-favorite", !!item.isFavorite);
+  favoriteBtn.title = item.isFavorite ? "Unfavorite" : "Favorite";
+  favoriteIcon.className = `fa-${
+    item.isFavorite ? "solid" : "regular"
+  } fa-heart`;
+
+  return element;
 }
 
 function renderGrid(container, library, isPlaylistItem = false) {
   if (!container) return;
 
+  container.innerHTML = "";
   const fragment = document.createDocumentFragment();
   if (library && library.length > 0) {
     library.forEach((item) => {
-      const gridItemWrapper = document.createElement("div");
-      gridItemWrapper.innerHTML = renderGridItem(item, isPlaylistItem);
-      const gridItem = gridItemWrapper.firstElementChild;
+      const gridItem = createGridItem(item, isPlaylistItem);
       fragment.appendChild(gridItem);
     });
   }
-
-  container.innerHTML = "";
   container.appendChild(fragment);
 
   container
@@ -120,7 +97,17 @@ function renderGrid(container, library, isPlaylistItem = false) {
 function ensureGridExists(pageElement, gridId) {
   let grid = document.getElementById(gridId);
   if (!grid) {
-    pageElement.innerHTML = `<div class="video-grid" id="${gridId}"></div>`;
+    const placeholder = pageElement.querySelector(".placeholder-page");
+    const newGridHtml = `<div class="video-grid" id="${gridId}"></div>`;
+    if (placeholder) {
+      placeholder.insertAdjacentHTML("afterend", newGridHtml);
+    } else if (pageElement.querySelector(".page-header")) {
+      pageElement
+        .querySelector(".page-header")
+        .insertAdjacentHTML("afterend", newGridHtml);
+    } else {
+      pageElement.innerHTML = newGridHtml;
+    }
     grid = document.getElementById(gridId);
   }
   return grid;
@@ -130,11 +117,8 @@ export function renderHomePageGrid(library = AppState.library) {
   const homePage = document.getElementById("home-page");
   if (AppState.library.length === 0) {
     homePage.innerHTML = `<div class="placeholder-page"><i class="fa-solid fa-house-chimney-crack placeholder-icon"></i><h2 class="placeholder-title">Your Library is Empty</h2><p class="placeholder-text">Go to the <span class="link-style" id="go-to-downloads-link">Downloads</span> page to get started.</p></div>`;
-    document
-      .getElementById("go-to-downloads-link")
-      ?.addEventListener("click", () => showPage("downloads"));
   } else {
-    const grid = ensureGridExists(homePage, "video-grid");
+    const grid = ensureGridExists(homePage, "video-grid-home");
     if (library.length === 0 && homeSearchInput.value) {
       grid.innerHTML = `<p class="empty-message">No results found for "<strong>${homeSearchInput.value}</strong>"</p>`;
     } else {
@@ -151,11 +135,11 @@ export function renderFavoritesPage(library) {
   const placeholder = favoritesPage.querySelector(".placeholder-page");
   const grid = ensureGridExists(favoritesPage, "video-grid-favorites");
 
-  if (favoritesLibrary.length === 0) {
-    if (placeholder) placeholder.style.display = "flex";
-    if (grid) grid.innerHTML = "";
-  } else {
-    if (placeholder) placeholder.style.display = "none";
+  const hasFavorites = favoritesLibrary.length > 0;
+  placeholder.style.display = hasFavorites ? "none" : "flex";
+  grid.style.display = hasFavorites ? "grid" : "none";
+
+  if (hasFavorites) {
     if (libraryToRender.length === 0 && homeSearchInput.value) {
       grid.innerHTML = `<p class="empty-message">No favorite items match "<strong>${homeSearchInput.value}</strong>"</p>`;
     } else {
@@ -164,57 +148,6 @@ export function renderFavoritesPage(library) {
   }
   hideLoader();
 }
-
-// --- Grid Interaction ---
-function handleGridClick(event) {
-  const itemEl = event.target.closest(".video-grid-item");
-  if (!itemEl) return;
-  const videoId = itemEl.dataset.id;
-  const sourceLib = event.target.closest("#video-grid-playlist")
-    ? AppState.playbackQueue
-    : AppState.library;
-
-  if (event.target.closest(".menu-btn")) {
-    event.stopPropagation();
-    const menuBtn = event.target.closest(".menu-btn");
-    const rect = menuBtn.getBoundingClientRect();
-    videoContextMenu.style.left = `${
-      rect.left - videoContextMenu.offsetWidth + rect.width
-    }px`;
-    videoContextMenu.style.top = `${rect.bottom + 5}px`;
-    videoContextMenu.dataset.videoId = videoId;
-    contextRemoveFromPlaylistBtn.style.display = itemEl.dataset.playlistItem
-      ? "flex"
-      : "none";
-    videoContextMenu.classList.add("visible");
-    return;
-  }
-  if (event.target.closest(".favorite-btn")) {
-    event.stopPropagation();
-    toggleFavoriteStatus(videoId);
-    return;
-  }
-  if (event.target.closest(".save-to-playlist-grid-btn")) {
-    event.stopPropagation();
-    openAddToPlaylistModal(videoId);
-    return;
-  }
-  const videoIndex = sourceLib.findIndex((v) => v.id === videoId);
-  if (videoIndex > -1) {
-    eventBus.emit("player:play_request", videoIndex, sourceLib);
-  }
-}
-
-document.getElementById("home-page").addEventListener("click", handleGridClick);
-document
-  .getElementById("favorites-page")
-  .addEventListener("click", handleGridClick);
-document
-  .getElementById("playlist-detail-page")
-  .addEventListener("click", handleGridClick);
-document
-  .getElementById("artist-detail-page")
-  .addEventListener("click", handleGridClick);
 
 export async function toggleFavoriteStatus(videoId) {
   const result = await window.electronAPI.toggleFavorite(videoId);
@@ -239,18 +172,18 @@ function updateFavoriteUI(videoId, isFavorite) {
     playerIcon.className = `fa-solid fa-heart`;
   }
 
-  const gridItems = document.querySelectorAll(
-    `.video-grid-item[data-id="${videoId}"]`
-  );
-  gridItems.forEach((item) => {
-    const gridBtn = item.querySelector(".favorite-btn");
-    if (gridBtn) {
-      gridBtn.classList.toggle("is-favorite", isFavorite);
-      gridBtn.title = isFavorite ? "Unfavorite" : "Favorite";
-      const gridIcon = gridBtn.querySelector("i");
-      gridIcon.className = `fa-${isFavorite ? "solid" : "regular"} fa-heart`;
-    }
-  });
+  document
+    .querySelectorAll(`.video-grid-item[data-id="${videoId}"]`)
+    .forEach((item) => {
+      const gridBtn = item.querySelector(".favorite-btn");
+      if (gridBtn) {
+        gridBtn.classList.toggle("is-favorite", isFavorite);
+        gridBtn.title = isFavorite ? "Unfavorite" : "Favorite";
+        gridBtn.querySelector("i").className = `fa-${
+          isFavorite ? "solid" : "regular"
+        } fa-heart`;
+      }
+    });
 
   const activePage = document.querySelector(".nav-item.active")?.dataset.page;
   if (activePage === "favorites") {
@@ -260,52 +193,141 @@ function updateFavoriteUI(videoId, isFavorite) {
 
 eventBus.on("ui:favorite_toggled", updateFavoriteUI);
 
-// --- Debounced Search ---
+export function updateSearchPlaceholder(pageId) {
+  let placeholderText = "Search...";
+  let isSearchable = true;
+  switch (pageId) {
+    case "home":
+    case "favorites":
+      placeholderText = "Search your library...";
+      break;
+    case "playlists":
+      placeholderText = "Search playlists...";
+      break;
+    case "artists":
+      placeholderText = "Search artists...";
+      break;
+    default:
+      placeholderText = "Search is unavailable";
+      isSearchable = false;
+  }
+  homeSearchInput.placeholder = placeholderText;
+  homeSearchInput.disabled = !isSearchable;
+}
+
 const debouncedSearchHandler = debounce((term, page) => {
   const lowerTerm = term.toLowerCase().trim();
   switch (page) {
-    case "home": {
-      const filtered = AppState.library.filter(
-        (v) =>
-          v.title.toLowerCase().includes(lowerTerm) ||
-          v.creator?.toLowerCase().includes(lowerTerm)
+    case "home":
+      renderHomePageGrid(
+        AppState.library.filter(
+          (v) =>
+            v.title.toLowerCase().includes(lowerTerm) ||
+            v.creator?.toLowerCase().includes(lowerTerm)
+        )
       );
-      renderHomePageGrid(filtered);
       break;
-    }
-    case "favorites": {
-      const favoritesLibrary = AppState.library.filter((v) => v.isFavorite);
-      const filtered = favoritesLibrary.filter(
-        (v) =>
-          v.title.toLowerCase().includes(lowerTerm) ||
-          v.creator?.toLowerCase().includes(lowerTerm)
+    case "favorites":
+      renderFavoritesPage(
+        AppState.library.filter(
+          (v) =>
+            v.isFavorite &&
+            (v.title.toLowerCase().includes(lowerTerm) ||
+              v.creator?.toLowerCase().includes(lowerTerm))
+        )
       );
-      renderFavoritesPage(filtered);
       break;
-    }
-    case "playlists": {
-      const filtered = AppState.playlists.filter((p) =>
-        p.name.toLowerCase().includes(lowerTerm)
+    case "playlists":
+      renderPlaylistsPage(
+        AppState.playlists.filter((p) =>
+          p.name.toLowerCase().includes(lowerTerm)
+        )
       );
-      renderPlaylistsPage(filtered);
       break;
-    }
-    case "artists": {
-      const filtered = AppState.artists.filter((a) =>
-        a.name.toLowerCase().includes(lowerTerm)
+    case "artists":
+      renderArtistsPage(
+        AppState.artists.filter((a) => a.name.toLowerCase().includes(lowerTerm))
       );
-      renderArtistsPage(filtered);
       break;
-    }
+    default:
+      hideLoader();
   }
-  hideLoader();
 }, 300);
 
-homeSearchInput.addEventListener("input", (e) => {
-  const searchTerm = e.target.value;
-  const activeNavItem = document.querySelector(".nav-item.active");
-  if (!activeNavItem) return;
-  const activePage = activeNavItem.dataset.page;
-  showLoader();
-  debouncedSearchHandler(searchTerm, activePage);
-});
+function initializeMainEventListeners() {
+  document.body.addEventListener("click", (e) => {
+    const itemEl = e.target.closest(".video-grid-item");
+    if (itemEl) {
+      const videoId = itemEl.dataset.id;
+      const sourceLib = e.target.closest("#video-grid-playlist")
+        ? AppState.playbackQueue
+        : AppState.library;
+
+      if (e.target.closest(".menu-btn")) {
+        e.stopPropagation();
+        const menuBtn = e.target.closest(".menu-btn");
+        const rect = menuBtn.getBoundingClientRect();
+        videoContextMenu.style.left = `${
+          rect.left - videoContextMenu.offsetWidth + rect.width
+        }px`;
+        videoContextMenu.style.top = `${rect.bottom + 5}px`;
+        videoContextMenu.dataset.videoId = videoId;
+        contextRemoveFromPlaylistBtn.style.display = itemEl.dataset.playlistItem
+          ? "flex"
+          : "none";
+        videoContextMenu.classList.add("visible");
+        return;
+      }
+      if (e.target.closest(".favorite-btn")) {
+        e.stopPropagation();
+        toggleFavoriteStatus(videoId);
+        return;
+      }
+      if (e.target.closest(".save-to-playlist-grid-btn")) {
+        e.stopPropagation();
+        openAddToPlaylistModal(videoId);
+        return;
+      }
+      const videoIndex = sourceLib.findIndex((v) => v.id === videoId);
+      if (videoIndex > -1) {
+        eventBus.emit("player:play_request", videoIndex, sourceLib);
+      }
+      return;
+    }
+
+    const navItem = e.target.closest(".nav-item");
+    if (navItem) {
+      handleNav(navItem.dataset.page);
+      return;
+    }
+
+    if (e.target.closest("#logo-home-button")) {
+      const isPinned = sidebar.classList.toggle("pinned");
+      localStorage.setItem("sidebarPinned", isPinned);
+      return;
+    }
+
+    if (e.target.closest("#go-to-downloads-link")) {
+      handleNav("downloads");
+    }
+  });
+
+  homeSearchInput.addEventListener("input", (e) => {
+    if (homeSearchInput.disabled) return;
+    const searchTerm = e.target.value;
+    const activeNavItem = document.querySelector(".nav-item.active");
+    if (!activeNavItem) {
+      hideLoader();
+      return;
+    }
+    showLoader();
+    debouncedSearchHandler(searchTerm, activeNavItem.dataset.page);
+  });
+}
+
+export function initializeUI() {
+  if (localStorage.getItem("sidebarPinned") === "true") {
+    sidebar.classList.add("pinned");
+  }
+  initializeMainEventListeners();
+}
