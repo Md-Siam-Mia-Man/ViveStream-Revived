@@ -5,9 +5,14 @@ import {
   setAllPlaylists,
   setAllArtists,
   resetPlaybackState,
-  setAssetsPath, // Import the new state setter
+  setAssetsPath,
 } from "./state.js";
-import { renderHomePageGrid, renderFavoritesPage } from "./ui.js";
+import {
+  renderHomePageGrid,
+  renderFavoritesPage,
+  updateSearchPlaceholder,
+  initializeUI,
+} from "./ui.js";
 import {
   renderPlaylistsPage,
   initializePlaylistContextMenus,
@@ -32,16 +37,8 @@ import {
 import { showConfirmationModal } from "./modals.js";
 import { showNotification } from "./notifications.js";
 import { eventBus } from "./event-bus.js";
-import { formatTime } from "./utils.js";
 
-// --- Element Selectors ---
-const sidebar = document.querySelector(".sidebar");
-const sidebarToggle = document.getElementById("sidebar-toggle");
-const logoHomeButton = document.getElementById("logo-home-button");
-const sidebarNav = document.querySelector(".sidebar-nav");
-const sidebarNavBottom = document.querySelector(".sidebar-nav-bottom");
 const pages = document.querySelectorAll(".page");
-const searchContainer = document.querySelector(".search-container");
 const homeSearchInput = document.getElementById("home-search-input");
 const playerPage = document.getElementById("player-page");
 const videoPlayer = document.getElementById("video-player");
@@ -61,7 +58,6 @@ const loaderOverlay = document.getElementById("loader-overlay");
 
 let currentPlaylistId = null;
 
-// --- Loader & Page Management ---
 export function showLoader() {
   loaderOverlay.classList.remove("hidden");
 }
@@ -83,38 +79,14 @@ export function showPage(pageId, isSubPage = false) {
     page.classList.toggle("hidden", page.id !== targetPageId)
   );
 
-  let placeholderText = "Search...";
-  let isSearchable = true;
-
   if (!isSubPage) {
     document
       .querySelectorAll(".nav-item")
       .forEach((item) =>
         item.classList.toggle("active", item.dataset.page === pageId)
       );
-    switch (pageId) {
-      case "home":
-      case "favorites":
-        placeholderText = "Search your library...";
-        break;
-      case "playlists":
-        placeholderText = "Search playlists...";
-        break;
-      case "artists":
-        placeholderText = "Search artists...";
-        break;
-      case "downloads":
-      case "settings":
-        placeholderText = "Search is unavailable on this page";
-        isSearchable = false;
-        break;
-    }
+    updateSearchPlaceholder(pageId);
   }
-
-  // Update search bar state
-  homeSearchInput.placeholder = placeholderText;
-  homeSearchInput.disabled = !isSearchable;
-  searchContainer.classList.toggle("disabled", !isSearchable);
 
   if (homeSearchInput.value) {
     homeSearchInput.value = "";
@@ -132,34 +104,30 @@ export function showPage(pageId, isSubPage = false) {
   }
 }
 
-async function handleNav(e) {
-  const navItem = e.target.closest(".nav-item");
-  if (navItem) {
-    const pageId = navItem.dataset.page;
-    showLoader();
-    showPage(pageId);
-    try {
-      switch (pageId) {
-        case "home":
-          await renderHomePageGrid();
-          break;
-        case "favorites":
-          await renderFavoritesPage();
-          break;
-        case "playlists":
-          await renderPlaylistsPage();
-          break;
-        case "artists":
-          await renderArtistsPage();
-          break;
-        default:
-          hideLoader();
-          break;
-      }
-    } catch (error) {
-      console.error(`Error rendering page ${pageId}:`, error);
-      hideLoader();
+export async function handleNav(pageId) {
+  showLoader();
+  showPage(pageId);
+  try {
+    switch (pageId) {
+      case "home":
+        await renderHomePageGrid();
+        break;
+      case "favorites":
+        await renderFavoritesPage();
+        break;
+      case "playlists":
+        await renderPlaylistsPage();
+        break;
+      case "artists":
+        await renderArtistsPage();
+        break;
+      default:
+        hideLoader();
+        break;
     }
+  } catch (error) {
+    console.error(`Error rendering page ${pageId}:`, error);
+    hideLoader();
   }
 }
 
@@ -262,14 +230,10 @@ function initializeContextMenu() {
   });
 }
 
-/**
- * Initializes the behavior for all custom dropdowns in the app.
- */
 function initializeCustomSelects() {
   document.addEventListener("click", (e) => {
     const selectContainer = e.target.closest(".custom-select-container");
 
-    // Close all other selects when one is clicked
     document
       .querySelectorAll(".custom-select-container.open")
       .forEach((openSelect) => {
@@ -279,12 +243,10 @@ function initializeCustomSelects() {
       });
 
     if (selectContainer) {
-      // Toggle the 'open' class on the container
       if (e.target.closest(".selected-option")) {
         selectContainer.classList.toggle("open");
       }
 
-      // Handle clicking on an option item
       const optionItem = e.target.closest(".option-item");
       if (optionItem) {
         const selectedOption =
@@ -297,12 +259,10 @@ function initializeCustomSelects() {
         optionItem.classList.add("selected");
 
         selectedOption.dataset.value = optionItem.dataset.value;
-        // For quality dropdowns, use just the main text, not the chevron
         selectedOption.querySelector("span:first-child").textContent =
           optionItem.textContent;
         selectContainer.classList.remove("open");
 
-        // Manually dispatch a 'change' event for any other modules listening
         selectContainer.dispatchEvent(
           new CustomEvent("change", { bubbles: true })
         );
@@ -320,7 +280,6 @@ function initializeMediaKeyListeners() {
 }
 
 function initializeAppEventListeners() {
-  // Listen for player closure requests from any module
   eventBus.on("controls:close_player", () => {
     videoPlayer.pause();
     videoPlayer.src = "";
@@ -330,10 +289,8 @@ function initializeAppEventListeners() {
   });
 }
 
-// --- App Initialization ---
 document.addEventListener("DOMContentLoaded", async () => {
   showLoader();
-  // Fetch and set the assets path first thing.
   const assetsPath = await window.electronAPI.getAssetsPath();
   setAssetsPath(assetsPath);
 
@@ -342,9 +299,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   showPage("home");
   hideLoader();
 
+  initializeUI();
   initializeMiniplayer();
   initializeWindowControls();
-  initializeCustomSelects(); // Initialize dropdowns
+  initializeCustomSelects();
   initializeContextMenu();
   initializePlaylistContextMenus();
   initializeSettingsPage();
@@ -352,9 +310,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   loadPlayerSettings();
   loadAppSettings();
   initializeMediaKeyListeners();
-
-  sidebarNav.addEventListener("click", handleNav);
-  sidebarNavBottom.addEventListener("click", handleNav);
 });
 
 export function setCurrentPlaylistId(id) {
