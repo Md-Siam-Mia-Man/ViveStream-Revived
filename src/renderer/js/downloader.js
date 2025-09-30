@@ -3,7 +3,6 @@ import { loadLibrary } from "./renderer.js";
 import { showNotification } from "./notifications.js";
 import { AppState } from "./state.js";
 
-// --- DOM Element Selectors ---
 const downloadForm = document.getElementById("download-form");
 const urlInput = document.getElementById("url-input");
 const downloadQueueArea = document.getElementById("download-queue-area");
@@ -26,11 +25,9 @@ const advancedOptionsToggle = document.getElementById(
 );
 const advancedOptionsPanel = document.getElementById("advanced-options-panel");
 
-// --- State ---
 const downloadJobs = new Map();
 const pendingInfoJobs = new Map();
 
-// --- Lazy Loading ---
 const lazyLoadObserver = new IntersectionObserver(
   (entries, observer) => {
     entries.forEach((entry) => {
@@ -48,9 +45,6 @@ const lazyLoadObserver = new IntersectionObserver(
   { rootMargin: "0px 0px 100px 0px" }
 );
 
-/**
- * Updates the visibility of the "queue is empty" placeholder.
- */
 function updateQueuePlaceholder() {
   const placeholder = document.getElementById("empty-queue-placeholder");
   const hasItems = downloadQueueArea.children.length > 0;
@@ -60,7 +54,11 @@ function updateQueuePlaceholder() {
 function createFetchingPlaceholder(url, jobId) {
   const itemHTML = `
         <div class="download-item" data-job-id="${jobId}" data-status="fetching">
-            <div class="download-item-thumb"><div class="spinner"></div></div>
+            <div class="download-item-thumb">
+                <div class="thumb-overlay">
+                    <div class="spinner"></div>
+                </div>
+            </div>
             <div class="download-item-info">
                 <p class="download-item-title">${url}</p>
                 <p class="download-item-uploader">Requesting from YouTube...</p>
@@ -75,7 +73,6 @@ function createFetchingPlaceholder(url, jobId) {
   updateQueuePlaceholder();
 }
 
-// --- Event Listeners ---
 downloadForm.addEventListener("submit", (e) => {
   e.preventDefault();
   const url = urlInput.value.trim();
@@ -190,7 +187,6 @@ function updateItemActions(item, status) {
   actionsContainer.innerHTML = actionsHTML;
 }
 
-// --- IPC Event Handlers ---
 window.electronAPI.onDownloadQueueStart(({ infos, jobId }) => {
   const placeholder = downloadQueueArea.querySelector(
     `.download-item[data-job-id="${jobId}"]`
@@ -213,7 +209,14 @@ window.electronAPI.onDownloadQueueStart(({ infos, jobId }) => {
     itemEl.dataset.id = video.id;
     itemEl.dataset.status = "queued";
     itemEl.innerHTML = `
-        <img data-src="${thumb}" src="${placeholderSrc}" class="download-item-thumb lazy" alt="thumbnail" onerror="this.onerror=null;this.src='${placeholderSrc}';">
+        <div class="download-item-thumb">
+            <img data-src="${thumb}" src="${placeholderSrc}" class="lazy" alt="thumbnail" onerror="this.onerror=null;this.src='${placeholderSrc}';">
+            <div class="thumb-overlay">
+                <div class="spinner"></div>
+                <div class="thumb-overlay-icon complete"><i class="fa-solid fa-check-circle"></i></div>
+                <div class="thumb-overlay-icon error"><i class="fa-solid fa-triangle-exclamation"></i></div>
+            </div>
+        </div>
         <div class="download-item-info">
             <p class="download-item-title">${video.title}</p>
             <p class="download-item-uploader">${video.uploader || "Unknown"}</p>
@@ -266,9 +269,9 @@ window.electronAPI.onDownloadComplete((data) => {
     item.dataset.status = "completed";
     item.querySelector(".download-item-status").innerHTML =
       `<i class="fa-solid fa-check-circle"></i> Completed`;
-    const thumb = item.querySelector(".download-item-thumb");
-    if (thumb && data.videoData.coverPath) {
-      thumb.src = decodeURIComponent(data.videoData.coverPath);
+    const thumbImg = item.querySelector(".download-item-thumb img");
+    if (thumbImg && data.videoData.coverPath) {
+      thumbImg.src = decodeURIComponent(data.videoData.coverPath);
     }
     item.querySelector(".download-item-speed").textContent = "";
     item.querySelector(".download-item-eta").textContent = "";
@@ -303,8 +306,7 @@ window.electronAPI.onDownloadInfoError(({ jobId, error }) => {
   );
   if (placeholder) {
     placeholder.dataset.status = "info-error";
-    placeholder.querySelector(".download-item-thumb .spinner").style.display =
-      "none";
+    placeholder.querySelector(".spinner").style.display = "none";
     placeholder.querySelector(".download-item-title").textContent = error;
     placeholder.querySelector(".download-item-uploader").textContent =
       "Failed to fetch details";
@@ -314,5 +316,4 @@ window.electronAPI.onDownloadInfoError(({ jobId, error }) => {
   }
 });
 
-// --- Initial State ---
 updateQueuePlaceholder();
