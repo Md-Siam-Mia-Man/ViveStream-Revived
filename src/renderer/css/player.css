@@ -32,7 +32,8 @@
      flex-direction: column;
      padding: 0;
      gap: 0;
-     max-width: 1280px;
+     margin: 0 auto;
+     width: 100%;
 }
 
 #player-page.theater-mode .primary-column {
@@ -47,7 +48,7 @@
 }
 
 #player-page.theater-mode .video-info-section {
-     padding: 16px 0;
+     padding: 16px 24px;
      max-width: 100%;
 }
 
