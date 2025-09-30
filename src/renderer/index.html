@@ -34,9 +34,8 @@
     </div>
     <div class="header-bar">
         <div class="header-left">
-            <button class="header-button" id="sidebar-toggle"><i class="fa-solid fa-bars"></i></button>
-            <a href="#" class="logo-container" id="logo-home-button">
-                <svg width="30" height="30" viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg">
+            <div class="logo-container" id="logo-home-button">
+                <svg width="30" height="30" viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg" class="logo-svg">
                     <style>
                         @keyframes pulse-glow {
                             0% {
@@ -68,7 +67,7 @@
                         style="stroke-dasharray:1000;stroke-dashoffset:1000;animation:pulse-glow 5s ease-in-out infinite" />
                 </svg>
                 <span class="app-title">ViveStream</span>
-            </a>
+            </div>
         </div>
         <div class="header-center">
             <div class="search-container">
@@ -296,6 +295,9 @@
             <div id="artists-page" class="page hidden"></div>
             <div id="artist-detail-page" class="page hidden"></div>
             <div id="favorites-page" class="page hidden">
+                <div class="page-header">
+                    <h1 class="page-header-title">Favorites</h1>
+                </div>
                 <div class="placeholder-page">
                     <i class="fa-solid fa-heart-crack placeholder-icon"></i>
                     <h2 class="placeholder-title">No Favorites Yet</h2>
@@ -560,6 +562,32 @@
             </div>
         </div>
     </div>
+
+    <template id="video-grid-item-template">
+        <div class="video-grid-item">
+            <div class="grid-thumbnail-container">
+                <img class="grid-thumbnail lazy" alt="thumbnail">
+                <div class="thumbnail-overlay-icon"></div>
+                <span class="thumbnail-duration"></span>
+            </div>
+            <div class="grid-item-details">
+                <div class="grid-item-info">
+                    <p class="grid-item-title"></p>
+                    <p class="grid-item-meta"></p>
+                </div>
+                <div class="grid-item-actions">
+                    <button class="grid-item-action-btn favorite-btn">
+                        <i class="fa-regular fa-heart"></i>
+                    </button>
+                    <button class="grid-item-action-btn save-to-playlist-grid-btn" title="Save to Playlist"><i
+                            class="fa-solid fa-plus"></i></button>
+                    <button class="grid-item-action-btn menu-btn" title="More">
+                        <i class="fa-solid fa-ellipsis-vertical"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </template>
 
     <!-- Paths are now relative to src/renderer/ -->
     <script src="../../node_modules/sortablejs/Sortable.min.js"></script>
