@@ -652,3 +652,64 @@ input:checked+.slider {
 input:checked+.slider:before {
      transform: translateX(14px);
 }
+
+/* Edit Mode Styles */
+.editable-input,
+.editable-textarea {
+     width: 100%;
+     background: transparent;
+     border: none;
+     color: var(--yt-white);
+     padding: 2px 4px;
+     border-radius: 4px;
+     transition: background-color 0.2s, box-shadow 0.2s;
+}
+
+.editable-input:focus,
+.editable-textarea:focus {
+     outline: none;
+     background-color: var(--yt-black);
+     box-shadow: 0 0 0 2px var(--yt-red);
+}
+
+#editable-title-input {
+     font-size: 1.25rem;
+     font-weight: 600;
+     font-family: var(--font-body);
+     margin-bottom: 12px;
+}
+
+#editable-creator-input {
+     font-size: 1rem;
+     font-weight: 500;
+     font-family: var(--font-body);
+}
+
+#editable-description-textarea {
+     font-size: 0.9rem;
+     line-height: 1.6;
+     font-family: var(--font-body);
+     resize: vertical;
+     min-height: 80px;
+}
+
+#player-page:not(.edit-mode) .editable-input,
+#player-page:not(.edit-mode) .editable-textarea,
+#player-page:not(.edit-mode) .edit-action {
+     display: none;
+}
+
+#player-page.edit-mode #video-info-title,
+#player-page.edit-mode .uploader-text>span,
+#player-page.edit-mode #description-content,
+#player-page.edit-mode .action-button:not(.edit-action) {
+     display: none;
+}
+
+#save-edit-btn {
+     background-color: var(--yt-red);
+}
+
+#save-edit-btn:hover {
+     background-color: var(--yt-red-dark);
+}
