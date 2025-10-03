@@ -163,7 +163,25 @@ async function updateVideoMetadata(videoId, metadata) {
 
 async function deleteVideo(id) {
   try {
+    const artistLinks = await db("video_artists")
+      .where({ videoId: id })
+      .select("artistId");
+    const artistIds = artistLinks.map((link) => link.artistId);
+
     await db("videos").where({ id }).del();
+
+    if (artistIds.length > 0) {
+      for (const artistId of artistIds) {
+        const remainingVideos = await db("video_artists")
+          .where({ artistId })
+          .first(db.raw("count(*) as count"));
+
+        if (remainingVideos && remainingVideos.count === 0) {
+          await db("artists").where({ id: artistId }).del();
+        }
+      }
+    }
+
     return { success: true };
   } catch (error) {
     console.error(`Error deleting video ${id} from DB:`, error);
