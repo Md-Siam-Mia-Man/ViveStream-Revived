@@ -284,3 +284,19 @@
 .github-star-btn:hover {
      filter: brightness(1.1);
 }
+
+@media (max-width: 600px) {
+     .setting-item {
+          flex-wrap: wrap;
+          gap: 12px;
+     }
+
+     .setting-control {
+          width: 100%;
+          justify-content: flex-end;
+     }
+
+     .text-input-control {
+          width: 100%;
+     }
+}
