@@ -316,12 +316,6 @@ addToPlaylistModal.addEventListener("click", async (e) => {
 playlistDetailPage.addEventListener("click", async (e) => {
   if (e.target.closest("#add-to-this-playlist-btn")) {
     handleNav("downloads");
-    showNotification(
-      `Downloading to playlist: ${
-        e.target.closest(".page-header").querySelector("h1").textContent
-      }`,
-      "info"
-    );
   }
 
   const renameBtn = e.target.closest("#rename-playlist-btn");
