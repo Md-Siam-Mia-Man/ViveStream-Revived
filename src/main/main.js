@@ -580,6 +580,10 @@ ipcMain.handle("delete-video", async (e, id) => {
   return await db.deleteVideo(id);
 });
 
+ipcMain.handle("video:update-metadata", (e, videoId, metadata) =>
+  db.updateVideoMetadata(videoId, metadata)
+);
+
 // Downloader
 ipcMain.on("download-video", (e, { downloadOptions, jobId }) => {
   const args = [
