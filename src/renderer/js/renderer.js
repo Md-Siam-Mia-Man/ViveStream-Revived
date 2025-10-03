@@ -34,7 +34,7 @@ import {
   initializeSettingsPage,
   loadSettings as loadAppSettings,
 } from "./settings.js";
-import { showConfirmationModal } from "./modals.js";
+import { showConfirmationModal, showEditModal } from "./modals.js";
 import { showNotification } from "./notifications.js";
 import { eventBus } from "./event-bus.js";
 
@@ -47,6 +47,7 @@ const minimizeBtn = document.getElementById("minimize-btn");
 const maximizeBtn = document.getElementById("maximize-btn");
 const closeBtn = document.getElementById("close-btn");
 const videoContextMenu = document.getElementById("video-item-context-menu");
+const contextEditBtn = document.getElementById("context-edit-btn");
 const contextDeleteBtn = document.getElementById("context-delete-btn");
 const contextRemoveFromPlaylistBtn = document.getElementById(
   "context-remove-from-playlist-btn"
@@ -183,6 +184,45 @@ function initializeContextMenu() {
   });
   videoContextMenu.addEventListener("click", (e) => e.stopPropagation());
   playlistContextMenu.addEventListener("click", (e) => e.stopPropagation());
+
+  contextEditBtn.addEventListener("click", async () => {
+    videoContextMenu.classList.remove("visible");
+    const videoId = videoContextMenu.dataset.videoId;
+    const video = AppState.library.find((v) => v.id === videoId);
+    if (!video) return;
+
+    const updatedData = await showEditModal(video);
+    if (updatedData) {
+      const result = await window.electronAPI.videoUpdateMetadata(
+        videoId,
+        updatedData
+      );
+      if (result.success) {
+        showNotification("Metadata updated successfully.", "success");
+        Object.assign(video, updatedData);
+
+        const playbackQueueIndex = AppState.playbackQueue.findIndex(
+          (v) => v.id === videoId
+        );
+        if (playbackQueueIndex > -1) {
+          Object.assign(
+            AppState.playbackQueue[playbackQueueIndex],
+            updatedData
+          );
+        }
+
+        const activePage =
+          document.querySelector(".nav-item.active")?.dataset.page || "home";
+        handleNav(activePage);
+
+        if (AppState.currentlyPlayingIndex === playbackQueueIndex) {
+          updateVideoDetails(AppState.playbackQueue[playbackQueueIndex]);
+        }
+      } else {
+        showNotification(`Error: ${result.error}`, "error");
+      }
+    }
+  });
 
   contextDeleteBtn.addEventListener("click", () => {
     const videoId = videoContextMenu.dataset.videoId;
