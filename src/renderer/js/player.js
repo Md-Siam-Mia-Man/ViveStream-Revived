@@ -49,6 +49,13 @@ const videoMenuBtn = document.getElementById("video-menu-btn");
 const miniplayerBtn = document.getElementById("miniplayer-btn");
 const videoContextMenu = document.getElementById("video-item-context-menu");
 const miniplayer = document.getElementById("miniplayer");
+const editableTitleInput = document.getElementById("editable-title-input");
+const editableCreatorInput = document.getElementById("editable-creator-input");
+const editableDescriptionTextarea = document.getElementById(
+  "editable-description-textarea"
+);
+const saveEditBtn = document.getElementById("save-edit-btn");
+const cancelEditBtn = document.getElementById("cancel-edit-btn");
 
 // --- Player State ---
 let sleepTimerId = null;
@@ -136,6 +143,10 @@ function playLibraryItem(index, sourceLibrary, options = {}) {
     activateMiniplayer();
   } else if (playerPage.classList.contains("hidden")) {
     showPage("player");
+  }
+
+  if (options.startInEditMode) {
+    enterEditMode();
   }
 }
 
@@ -341,6 +352,50 @@ function handleSubmenu(mainSel, subMenuEl, values, type, labelFormatter) {
   mainItem.addEventListener("click", openSubmenu);
 }
 
+// --- Edit Mode Functions ---
+export function enterEditMode() {
+  const item = AppState.playbackQueue[AppState.currentlyPlayingIndex];
+  if (!item) return;
+
+  playerPage.classList.add("edit-mode");
+  editableTitleInput.value = item.title;
+  editableCreatorInput.value = item.creator || item.uploader || "";
+  editableDescriptionTextarea.value = item.description || "";
+  editableTitleInput.focus();
+}
+
+function exitEditMode() {
+  playerPage.classList.remove("edit-mode");
+}
+
+async function saveMetadataChanges() {
+  const item = AppState.playbackQueue[AppState.currentlyPlayingIndex];
+  if (!item) return;
+
+  const updatedData = {
+    title: editableTitleInput.value.trim(),
+    creator: editableCreatorInput.value.trim(),
+    description: editableDescriptionTextarea.value.trim(),
+  };
+
+  const result = await window.electronAPI.videoUpdateMetadata(
+    item.id,
+    updatedData
+  );
+
+  if (result.success) {
+    showNotification("Metadata updated successfully.", "success");
+    Object.assign(item, updatedData); // Update the item in the playback queue
+    const libraryItem = AppState.library.find((v) => v.id === item.id);
+    if (libraryItem) Object.assign(libraryItem, updatedData); // Update in main library
+
+    updateVideoDetails(item);
+    exitEditMode();
+  } else {
+    showNotification(`Error: ${result.error}`, "error");
+  }
+}
+
 // --- Event Listeners & Emitters ---
 [videoPlayer, videoPlayerPreload].forEach((player) => {
   player.addEventListener("play", () => {
@@ -493,6 +548,7 @@ playerSection.addEventListener("mouseleave", () => {
 document.addEventListener("keydown", (e) => {
   if (
     document.activeElement.tagName.toLowerCase() === "input" ||
+    document.activeElement.tagName.toLowerCase() === "textarea" ||
     document.querySelector(".modal-overlay:not(.hidden)")
   )
     return;
@@ -655,6 +711,8 @@ document.addEventListener("click", (e) => {
     sleepSubmenu.classList.remove("active");
   }
 });
+cancelEditBtn.addEventListener("click", exitEditMode);
+saveEditBtn.addEventListener("click", saveMetadataChanges);
 
 // Subscribe to player control events
 eventBus.on("player:play_request", playLibraryItem);
