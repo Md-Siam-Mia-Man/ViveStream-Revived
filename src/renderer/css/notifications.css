@@ -2,46 +2,48 @@
 #notification-container {
      position: fixed;
      bottom: 20px;
-     left: 20px;
+     left: 50%;
+     transform: translateX(-50%);
      z-index: 10001;
      display: flex;
      flex-direction: column-reverse;
      gap: 12px;
+     align-items: center;
 }
 
 .notification {
-     width: 380px;
+     min-width: 320px;
+     max-width: 450px;
      background-color: var(--yt-dark-grey);
      border-radius: 12px;
-     padding: 16px;
+     padding: 14px 20px;
      border: 1px solid var(--yt-border);
-     box-shadow: 0 5px 20px rgba(0, 0, 0, 0.4);
+     box-shadow: 0 5px 20px rgba(0, 0, 0, 0.5);
      display: flex;
-     align-items: flex-start;
+     align-items: center;
      gap: 16px;
-     animation: slide-in 0.3s ease-out forwards;
+     animation: bounce-in 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
 }
 
 .notification.fade-out {
-     animation: slide-out 0.4s ease-in forwards;
+     animation: bounce-out 0.4s cubic-bezier(0.6, -0.28, 0.735, 0.045) forwards;
 }
 
 .notification.info .notification-icon {
-     color: #3498db;
+     color: aquamarine;
 }
 
 .notification.success .notification-icon {
-     color: #4caf50;
+     color: limegreen;
 }
 
 .notification.error .notification-icon {
-     color: #f44336;
+     color: crimson;
 }
 
 .notification .notification-icon {
-     font-size: 22px;
+     font-size: 20px;
      flex-shrink: 0;
-     margin-top: 2px;
 }
 
 .notification .notification-content {
@@ -70,32 +72,34 @@
      padding: 0;
      line-height: 1;
      transition: color 0.2s;
+     align-self: flex-start;
+     margin-left: auto;
 }
 
 .close-notification:hover {
      color: var(--yt-white);
 }
 
-@keyframes slide-in {
+@keyframes bounce-in {
      from {
           opacity: 0;
-          transform: translateX(-100%);
+          transform: translateY(100px) scale(0.8);
      }
 
      to {
           opacity: 1;
-          transform: translateX(0);
+          transform: translateY(0) scale(1);
      }
 }
 
-@keyframes slide-out {
+@keyframes bounce-out {
      from {
           opacity: 1;
-          transform: translateX(0);
+          transform: translateY(0) scale(1);
      }
 
      to {
           opacity: 0;
-          transform: translateX(-100%);
+          transform: translateY(50px) scale(0.9);
      }
 }
