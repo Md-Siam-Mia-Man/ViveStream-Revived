@@ -275,10 +275,7 @@ window.electronAPI.onDownloadComplete((data) => {
     }
     item.querySelector(".download-item-speed").textContent = "";
     item.querySelector(".download-item-eta").textContent = "";
-    showNotification(
-      `'${data.videoData.title}' downloaded successfully.`,
-      "success"
-    );
+    showNotification("Download Complete", "success", data.videoData.title);
     updateItemActions(item, "completed");
   }
   loadLibrary();
