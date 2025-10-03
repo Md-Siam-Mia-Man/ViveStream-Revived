@@ -24,6 +24,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   getLibrary: () => ipcRenderer.invoke("get-library"),
   deleteVideo: (id) => ipcRenderer.invoke("delete-video", id),
   toggleFavorite: (id) => ipcRenderer.invoke("toggle-favorite", id),
+  videoUpdateMetadata: (videoId, metadata) =>
+    ipcRenderer.invoke("video:update-metadata", videoId, metadata),
 
   // External Links
   openExternal: (url) => ipcRenderer.send("open-external", url),
