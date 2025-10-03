@@ -23,6 +23,7 @@ import {
   updateVideoDetails,
   renderUpNextList,
   loadSettings as loadPlayerSettings,
+  enterEditMode,
 } from "./player.js";
 import {
   activateMiniplayer,
@@ -34,7 +35,7 @@ import {
   initializeSettingsPage,
   loadSettings as loadAppSettings,
 } from "./settings.js";
-import { showConfirmationModal, showEditModal } from "./modals.js";
+import { showConfirmationModal } from "./modals.js";
 import { showNotification } from "./notifications.js";
 import { eventBus } from "./event-bus.js";
 
@@ -185,41 +186,23 @@ function initializeContextMenu() {
   videoContextMenu.addEventListener("click", (e) => e.stopPropagation());
   playlistContextMenu.addEventListener("click", (e) => e.stopPropagation());
 
-  contextEditBtn.addEventListener("click", async () => {
+  contextEditBtn.addEventListener("click", () => {
     videoContextMenu.classList.remove("visible");
     const videoId = videoContextMenu.dataset.videoId;
-    const video = AppState.library.find((v) => v.id === videoId);
-    if (!video) return;
+    if (!videoId) return;
 
-    const updatedData = await showEditModal(video);
-    if (updatedData) {
-      const result = await window.electronAPI.videoUpdateMetadata(
-        videoId,
-        updatedData
-      );
-      if (result.success) {
-        showNotification("Metadata updated successfully.", "success");
-        Object.assign(video, updatedData);
-
-        const playbackQueueIndex = AppState.playbackQueue.findIndex(
-          (v) => v.id === videoId
-        );
-        if (playbackQueueIndex > -1) {
-          Object.assign(
-            AppState.playbackQueue[playbackQueueIndex],
-            updatedData
-          );
-        }
-
-        const activePage =
-          document.querySelector(".nav-item.active")?.dataset.page || "home";
-        handleNav(activePage);
-
-        if (AppState.currentlyPlayingIndex === playbackQueueIndex) {
-          updateVideoDetails(AppState.playbackQueue[playbackQueueIndex]);
-        }
-      } else {
-        showNotification(`Error: ${result.error}`, "error");
+    if (
+      AppState.currentlyPlayingIndex > -1 &&
+      AppState.playbackQueue[AppState.currentlyPlayingIndex].id === videoId
+    ) {
+      showPage("player");
+      enterEditMode();
+    } else {
+      const videoIndex = AppState.library.findIndex((v) => v.id === videoId);
+      if (videoIndex > -1) {
+        eventBus.emit("player:play_request", videoIndex, AppState.library, {
+          startInEditMode: true,
+        });
       }
     }
   });
