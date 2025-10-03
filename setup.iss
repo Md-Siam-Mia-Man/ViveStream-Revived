@@ -4,7 +4,7 @@
 
 #define MyAppName "ViveStream"
 #define MyAppPublisher "Md. Siam Mia"
-#define MyAppURL "https://github.com/Md-Siam-Mia-Code/ViveStream-Revived"
+#define MyAppURL "https://github.com/Md-Siam-Mia-Main/ViveStream-Revived"
 #define MyAppExeName "vivestream.exe"
 
 ; --- IMPORTANT ---
@@ -15,7 +15,7 @@
 ; Step 4: Inno Setup checks if 'MyAppVersion' was defined by the compiler command.
 ; If it was, this block is skipped. If not, it uses the fallback.
 #ifndef MyAppVersion
-#define MyAppVersion "3.8.6"
+#define MyAppVersion "3.9.5"
 #endif
 
 #ifndef SourceAppPath
