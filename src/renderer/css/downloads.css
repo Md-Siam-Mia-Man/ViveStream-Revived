@@ -418,13 +418,13 @@
 
 .download-item[data-status="completed"] .thumb-overlay-icon.complete {
      display: flex;
-     color: #4caf50;
+     color: var(--yt-white);
 }
 
 .download-item[data-status="error"] .thumb-overlay-icon.error,
 .download-item[data-status="info-error"] .thumb-overlay-icon.error {
      display: flex;
-     color: #f44336;
+     color: var(--yt-red);
 }
 
 .download-item-info {
@@ -489,16 +489,16 @@
 }
 
 .download-item[data-status="completed"] .download-item-status {
-     color: #4caf50;
+     color: var(--yt-light-grey);
 }
 
 .download-item[data-status="error"] .download-item-status,
 .download-item[data-status="info-error"] .download-item-status {
-     color: #f44336;
+     color: var(--yt-red);
 }
 
 .download-item[data-status="fetching"] .download-item-status {
-     color: #3498db;
+     color: var(--yt-light-grey);
 }
 
 .download-item-actions {
@@ -541,7 +541,7 @@
 }
 
 .download-action-btn.retry-btn:hover {
-     background-color: #4caf50;
+     background-color: #4a4a4a;
 }
 
 #empty-queue-placeholder {
@@ -567,4 +567,15 @@
      font-size: 1.2rem;
      font-weight: 500;
      color: var(--yt-white);
+}
+
+@media (max-width: 768px) {
+     #download-form .download-options {
+          flex-wrap: wrap;
+     }
+
+     .download-button {
+          width: 100%;
+          margin-top: 8px;
+     }
 }
