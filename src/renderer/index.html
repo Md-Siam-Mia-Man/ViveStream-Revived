@@ -491,6 +491,7 @@
                 </div>
             </div>
             <div class="context-menu" id="video-item-context-menu">
+                <div class="context-menu-item" id="context-edit-btn"><i class="fa-solid fa-pencil"></i> Edit</div>
                 <div class="context-menu-item" id="context-delete-btn"><i class="fa-solid fa-trash-can"></i> Delete
                 </div>
                 <div class="context-menu-item" id="context-remove-from-playlist-btn"><i class="fa-solid fa-times"></i>
@@ -559,6 +560,30 @@
             <div class="modal-actions">
                 <button id="prompt-cancel-btn" class="modal-btn">Cancel</button>
                 <button id="prompt-confirm-btn" class="modal-btn">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="edit-metadata-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h3>Edit Metadata</h3>
+            <form id="edit-modal-form" class="edit-modal-form">
+                <div class="form-group">
+                    <label for="edit-modal-title">Title</label>
+                    <input type="text" id="edit-modal-title" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit-modal-creator">Artist / Creator</label>
+                    <input type="text" id="edit-modal-creator">
+                </div>
+                <div class="form-group">
+                    <label for="edit-modal-description">Description</label>
+                    <textarea id="edit-modal-description"></textarea>
+                </div>
+            </form>
+            <div class="modal-actions">
+                <button id="edit-modal-cancel-btn" class="modal-btn">Cancel</button>
+                <button id="edit-modal-save-btn" class="modal-btn">Save</button>
             </div>
         </div>
     </div>
