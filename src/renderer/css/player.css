@@ -1,7 +1,7 @@
 /* src/css/player.css */
 #player-page .main-content {
      display: flex;
-     padding: 24px;
+     padding: 24px 10px;
      gap: 24px;
      height: 100%;
      max-height: 100%;
