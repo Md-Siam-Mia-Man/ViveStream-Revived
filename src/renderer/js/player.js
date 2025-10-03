@@ -184,7 +184,8 @@ export function updateVideoDetails(item) {
     descriptionContent.textContent = item.description;
     setTimeout(() => {
       showMoreDescBtn.style.display =
-        descriptionContent.scrollHeight > descriptionContent.clientHeight
+        descriptionContent.scrollHeight > descriptionContent.clientHeight &&
+        !playerPage.classList.contains("edit-mode")
           ? "block"
           : "none";
     }, 100);
@@ -358,6 +359,8 @@ export function enterEditMode() {
   if (!item) return;
 
   playerPage.classList.add("edit-mode");
+  videoDescriptionBox.classList.add("expanded");
+  showMoreDescBtn.style.display = "none";
   editableTitleInput.value = item.title;
   editableCreatorInput.value = item.creator || item.uploader || "";
   editableDescriptionTextarea.value = item.description || "";
@@ -366,6 +369,10 @@ export function enterEditMode() {
 
 function exitEditMode() {
   playerPage.classList.remove("edit-mode");
+  const item = AppState.playbackQueue[AppState.currentlyPlayingIndex];
+  if (item) {
+    updateVideoDetails(item);
+  }
 }
 
 async function saveMetadataChanges() {
