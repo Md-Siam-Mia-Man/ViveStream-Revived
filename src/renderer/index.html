@@ -5,7 +5,6 @@
     <meta charset="UTF-8">
     <meta http-equiv="Content-Security-Policy" content="font-src 'self' data:; script-src 'self' 'unsafe-inline';">
     <title>ViveStream</title>
-    <!-- Paths are now relative to src/renderer/ -->
     <link rel="stylesheet" href="../../node_modules/@fortawesome/fontawesome-free/css/all.min.css">
     <link rel="stylesheet" href="./css/style.css">
     <link rel="stylesheet" href="./css/home.css">
@@ -258,6 +257,7 @@
                         </div>
                         <div class="video-info-section">
                             <h1 id="video-info-title"></h1>
+                            <input type="text" id="editable-title-input" class="editable-input">
                             <div class="video-actions-meta">
                                 <div class="uploader-info">
                                     <div class="channel-thumb-container"><img id="channel-thumb" src=""
@@ -265,6 +265,7 @@
                                     <div class="uploader-text">
                                         <span id="video-info-uploader"></span>
                                         <span id="video-info-date"></span>
+                                        <input type="text" id="editable-creator-input" class="editable-input">
                                     </div>
                                 </div>
                                 <div class="action-buttons">
@@ -274,10 +275,13 @@
                                             class="fa-solid fa-plus"></i><span>Save</span></button>
                                     <button class="action-button" id="video-menu-btn"><i
                                             class="fa-solid fa-ellipsis-vertical"></i></button>
+                                    <button class="action-button edit-action" id="cancel-edit-btn">Cancel</button>
+                                    <button class="action-button edit-action" id="save-edit-btn">Save</button>
                                 </div>
                             </div>
                             <div class="video-description-box" id="video-description-box">
                                 <div class="description-content" id="description-content"></div>
+                                <textarea id="editable-description-textarea" class="editable-textarea"></textarea>
                                 <button class="show-more-btn" id="show-more-desc-btn">Show more</button>
                             </div>
                         </div>
@@ -560,30 +564,6 @@
             <div class="modal-actions">
                 <button id="prompt-cancel-btn" class="modal-btn">Cancel</button>
                 <button id="prompt-confirm-btn" class="modal-btn">Confirm</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="edit-metadata-modal" class="modal-overlay hidden">
-        <div class="modal-content">
-            <h3>Edit Metadata</h3>
-            <form id="edit-modal-form" class="edit-modal-form">
-                <div class="form-group">
-                    <label for="edit-modal-title">Title</label>
-                    <input type="text" id="edit-modal-title" required>
-                </div>
-                <div class="form-group">
-                    <label for="edit-modal-creator">Artist / Creator</label>
-                    <input type="text" id="edit-modal-creator">
-                </div>
-                <div class="form-group">
-                    <label for="edit-modal-description">Description</label>
-                    <textarea id="edit-modal-description"></textarea>
-                </div>
-            </form>
-            <div class="modal-actions">
-                <button id="edit-modal-cancel-btn" class="modal-btn">Cancel</button>
-                <button id="edit-modal-save-btn" class="modal-btn">Save</button>
             </div>
         </div>
     </div>
