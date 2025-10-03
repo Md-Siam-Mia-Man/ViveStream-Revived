@@ -277,19 +277,16 @@ input,
      justify-content: flex-start;
 }
 
-.sidebar .app-title,
 .sidebar .nav-item span {
-     display: none;
+     white-space: nowrap;
      opacity: 0;
-     transition: opacity 0.2s ease;
+     transition: opacity 0.15s ease;
 }
 
-.sidebar:hover .app-title,
 .sidebar:hover .nav-item span,
-.sidebar.pinned .app-title,
 .sidebar.pinned .nav-item span {
-     display: inline;
      opacity: 1;
+     transition-delay: 0.1s;
 }
 
 .sidebar-nav {
