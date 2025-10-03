@@ -1,6 +1,6 @@
 {
   "name": "vivestream",
-  "version": "3.8.6",
+  "version": "3.9.5",
   "description": "A beautiful YouTube downloader and player.",
   "main": "src/main/main.js",
   "author": "Md. Siam Mia",
