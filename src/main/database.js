@@ -388,7 +388,7 @@ async function linkVideoToArtist(videoId, artistId) {
 async function getAllArtistsWithStats() {
   try {
     const artists = await db("artists")
-      .leftJoin("video_artists", "artists.id", "video_artists.artistId")
+      .innerJoin("video_artists", "artists.id", "video_artists.artistId")
       .select(
         "artists.id",
         "artists.name",
