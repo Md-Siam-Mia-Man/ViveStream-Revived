@@ -10,7 +10,7 @@
   </p>
 </div>
 
-Welcome! **ViveStream** is a modern, offline-first media player and downloader built for those who want to curate their own collection of videos and music. It downloads content using `yt-dlp`, organizes it into a robust local database, and provides a polished, high-performance interface for you to enjoy your media without ads, buffering, or an internet connection.
+Welcome! **ViveStream** is a modern, offline-first media player built for those who want to curate their own collection of videos and music. It downloads content using `yt-dlp`, organizes it into a robust local database, and provides a polished, high-performance interface for you to enjoy your media without ads, buffering, or an internet connection.
 
 <div align="center">
 <img src="./assets/UI.png" alt="ViveStream UI">
@@ -25,9 +25,10 @@ Welcome! **ViveStream** is a modern, offline-first media player and downloader b
 - ✂️ **Advanced Download Controls:**
   - Clip specific sections using start/end times.
   - Automatically split videos by their chapters into individual files.
-  - Remove sponsored segments, intros, and outros using SponsorBlock integration.
+  - Remove sponsored segments, intros, and outros with SponsorBlock integration.
   - Use cookies from your browser to access members-only or age-restricted content.
 - 📚 **Robust Library Management:**
+  - **✍️ Full Metadata Control:** Edit titles, artists, and descriptions with a seamless inline editor directly on the player page.
   - **Playlists:** Create custom playlists, add media, and reorder with intuitive drag-and-drop.
   - **Artists:** Media is automatically sorted by artist, creating dedicated pages for your favorite creators.
   - **Favorites:** A dedicated section for your most-loved content.
@@ -52,12 +53,14 @@ Welcome! **ViveStream** is a modern, offline-first media player and downloader b
 ### For Developers
 
 1.  **Clone the repository:**
+
     ```bash
     git clone https://github.com/Md-Siam-Mia-Man/ViveStream-Revived.git
     cd ViveStream-Revived
     ```
 
 2.  **Install dependencies:**
+
     ```bash
     npm install
     ```
@@ -72,33 +75,33 @@ Welcome! **ViveStream** is a modern, offline-first media player and downloader b
 ## 🎮 How to Use
 
 1.  **Download Content**
-    -   Navigate to the **Downloads** page via the sidebar.
-    -   Paste a video or playlist URL into the input box.
-    -   Select your desired format (Video/Audio) and quality.
-    -   Use the "Advanced Options" for clipping or chapter splitting.
-    -   Click `Download` and monitor progress in the queue below.
+    - Navigate to the **Downloads** page via the sidebar.
+    - Paste a video or playlist URL into the input box.
+    - Select your desired format (Video/Audio) and quality.
+    - Use the "Advanced Options" for clipping or chapter splitting.
+    - Click `Download` and monitor progress in the queue below.
 
 2.  **Enjoy Your Library**
-    -   The **Home** page displays all your downloaded media, sorted by most recent.
-    -   The **Playlists** and **Artists** pages provide curated views of your library.
-    -   Mark videos as ❤️ **Favorites** to find them in their own dedicated section.
-    -   Click any thumbnail to begin playback.
+    - The **Home** page displays all your downloaded media, sorted by most recent.
+    - The **Playlists** and **Artists** pages provide curated views of your library.
+    - Mark videos as ❤️ **Favorites** to find them in their own dedicated section.
+    - Click any thumbnail to begin playback.
 
 ---
 
 ## ⌨️ Keyboard Shortcuts (Player)
 
-| Key            | Action                    |
-| -------------- | ------------------------- |
-| `Space` or `K` | Play / Pause              |
-| `M`            | Mute / Unmute             |
-| `F`            | Toggle Fullscreen         |
-| `T`            | Toggle Theater Mode       |
-| `I`            | Toggle Miniplayer         |
-| `←` / `→`      | Seek Back / Forward 5s    |
-| `↑` / `↓`      | Volume Up / Down          |
-| `N`            | Play Next Media           |
-| `P`            | Play Previous Media       |
+| Key            | Action                 |
+| -------------- | ---------------------- |
+| `Space` or `K` | Play / Pause           |
+| `M`            | Mute / Unmute          |
+| `F`            | Toggle Fullscreen      |
+| `T`            | Toggle Theater Mode    |
+| `I`            | Toggle Miniplayer      |
+| `←` / `→`      | Seek Back / Forward 5s |
+| `↑` / `↓`      | Volume Up / Down       |
+| `N`            | Play Next Media        |
+| `P`            | Play Previous Media    |
 
 ---
 
@@ -110,6 +113,7 @@ If you've made changes and want to create your own installer:
 # This command will package the app and generate a setup executable
 npm run build
 ```
+
 The final installer will be located in the `release/` directory.
 
 ---
