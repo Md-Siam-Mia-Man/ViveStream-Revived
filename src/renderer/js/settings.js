@@ -110,10 +110,6 @@ export function initializeSettingsPage() {
   cookieBrowserSelect.addEventListener("click", (e) => {
     if (e.target.classList.contains("option-item")) {
       saveSetting("cookieBrowser", e.target.dataset.value);
-      showNotification(
-        `Cookie setting saved to: ${e.target.textContent}`,
-        "success"
-      );
       loadSettings(); // Reload UI to reflect change
     }
     if (e.target.closest(".selected-option"))
@@ -191,14 +187,14 @@ export function initializeSettingsPage() {
     .getElementById("github-view-link")
     ?.addEventListener("click", () =>
       window.electronAPI.openExternal(
-        "https://github.com/Md-Siam-Mia-Code/ViveStream-Revived"
+        "https://github.com/Md-Siam-Mia-Main/ViveStream-Revived"
       )
     );
   document
     .getElementById("github-star-link")
     ?.addEventListener("click", () =>
       window.electronAPI.openExternal(
-        "https://github.com/Md-Siam-Mia-Code/ViveStream-Revived/stargazers"
+        "https://github.com/Md-Siam-Mia-Main/ViveStream-Revived/stargazers"
       )
     );
 }
