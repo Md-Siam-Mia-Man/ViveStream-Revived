@@ -151,6 +151,16 @@ async function getVideoById(id) {
   }
 }
 
+async function updateVideoMetadata(videoId, metadata) {
+  try {
+    await db("videos").where({ id: videoId }).update(metadata);
+    return { success: true };
+  } catch (error) {
+    console.error(`Error updating metadata for video ${videoId}:`, error);
+    return { success: false, error: error.message };
+  }
+}
+
 async function deleteVideo(id) {
   try {
     await db("videos").where({ id }).del();
@@ -205,7 +215,7 @@ async function createPlaylist(name) {
 async function getAllPlaylistsWithStats() {
   try {
     const playlists = await db.raw(`
-      SELECT 
+      SELECT
         p.*,
         (SELECT COUNT(*) FROM playlist_videos pv WHERE pv.playlistId = p.id) as videoCount,
         (SELECT v.coverPath FROM playlist_videos pv JOIN videos v ON v.id = pv.videoId WHERE pv.playlistId = p.id ORDER BY pv.sortOrder ASC LIMIT 1) as thumbnail
@@ -410,6 +420,7 @@ module.exports = {
   getLibrary,
   addOrUpdateVideo,
   getVideoById,
+  updateVideoMetadata,
   deleteVideo,
   toggleFavorite,
   clearAllMedia,
