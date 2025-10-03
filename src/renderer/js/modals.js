@@ -1,3 +1,4 @@
+// src/js/modals.js
 const confirmationModal = document.getElementById("confirmation-modal");
 const confirmModalTitle = document.getElementById("modal-title");
 const confirmModalText = document.getElementById("modal-text");
@@ -11,15 +12,6 @@ const promptModalText = document.getElementById("prompt-text");
 const promptModalInput = document.getElementById("prompt-input");
 const promptModalConfirmBtn = document.getElementById("prompt-confirm-btn");
 const promptModalCancelBtn = document.getElementById("prompt-cancel-btn");
-
-const editMetadataModal = document.getElementById("edit-metadata-modal");
-const editModalTitleInput = document.getElementById("edit-modal-title");
-const editModalCreatorInput = document.getElementById("edit-modal-creator");
-const editModalDescriptionInput = document.getElementById(
-  "edit-modal-description"
-);
-const editModalSaveBtn = document.getElementById("edit-modal-save-btn");
-const editModalCancelBtn = document.getElementById("edit-modal-cancel-btn");
 
 /**
  * Shows a confirmation dialog.
@@ -90,47 +82,5 @@ export function showPromptModal(title, text, defaultValue = "") {
     promptModalConfirmBtn.addEventListener("click", confirmHandler);
     promptModalCancelBtn.addEventListener("click", cancelHandler);
     promptModalInput.addEventListener("keydown", keydownHandler);
-  });
-}
-
-export function showEditModal(videoData) {
-  return new Promise((resolve) => {
-    editModalTitleInput.value = videoData.title || "";
-    editModalCreatorInput.value = videoData.creator || "";
-    editModalDescriptionInput.value = videoData.description || "";
-    editMetadataModal.classList.remove("hidden");
-    editModalTitleInput.focus();
-
-    const saveHandler = () => {
-      const updatedData = {
-        title: editModalTitleInput.value.trim(),
-        creator: editModalCreatorInput.value.trim(),
-        description: editModalDescriptionInput.value.trim(),
-      };
-      resolve(updatedData);
-      cleanup();
-    };
-
-    const cancelHandler = () => {
-      resolve(null);
-      cleanup();
-    };
-
-    const keydownHandler = (e) => {
-      if (e.key === "Escape") {
-        cancelHandler();
-      }
-    };
-
-    const cleanup = () => {
-      editMetadataModal.classList.add("hidden");
-      editModalSaveBtn.removeEventListener("click", saveHandler);
-      editModalCancelBtn.removeEventListener("click", cancelHandler);
-      document.removeEventListener("keydown", keydownHandler);
-    };
-
-    editModalSaveBtn.addEventListener("click", saveHandler);
-    editModalCancelBtn.addEventListener("click", cancelHandler);
-    document.addEventListener("keydown", keydownHandler);
   });
 }
