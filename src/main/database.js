@@ -436,6 +436,25 @@ async function getArtistDetails(artistId) {
   }
 }
 
+async function cleanupOrphanArtists() {
+  try {
+    const orphanArtists = await db("artists")
+      .leftJoin("video_artists", "artists.id", "video_artists.artistId")
+      .whereNull("video_artists.videoId")
+      .select("artists.id");
+
+    const idsToDelete = orphanArtists.map((a) => a.id);
+
+    if (idsToDelete.length > 0) {
+      await db("artists").whereIn("id", idsToDelete).del();
+    }
+    return { success: true, count: idsToDelete.length };
+  } catch (error) {
+    console.error("Error cleaning up orphan artists:", error);
+    return { success: false, error: error.message };
+  }
+}
+
 async function shutdown() {
   if (db) {
     await db.destroy();
@@ -465,4 +484,5 @@ module.exports = {
   linkVideoToArtist,
   getAllArtistsWithStats,
   getArtistDetails,
+  cleanupOrphanArtists,
 };
