@@ -15,6 +15,8 @@ const contextRemoveFromPlaylistBtn = document.getElementById(
 const gridItemTemplate = document.getElementById("video-grid-item-template");
 const sidebar = document.querySelector(".sidebar");
 
+let currentSort = localStorage.getItem("librarySort") || "downloadedAt-desc";
+
 const lazyLoadObserver = new IntersectionObserver(
   (entries, observer) => {
     entries.forEach((entry) => {
@@ -76,13 +78,30 @@ export function createGridItem(item, isPlaylistItem = false) {
   return element;
 }
 
+function sortLibrary(library, sortKey) {
+  const [key, direction] = sortKey.split("-");
+  return [...library].sort((a, b) => {
+    let valA = a[key];
+    let valB = b[key];
+
+    if (key === "title") {
+      valA = valA.toLowerCase();
+      valB = valB.toLowerCase();
+    }
+
+    if (valA < valB) return direction === "asc" ? -1 : 1;
+    if (valA > valB) return direction === "asc" ? 1 : -1;
+    return 0;
+  });
+}
+
 function renderGrid(container, library, isPlaylistItem = false) {
   if (!container) return;
-
   container.innerHTML = "";
   const fragment = document.createDocumentFragment();
   if (library && library.length > 0) {
-    library.forEach((item) => {
+    const sortedLibrary = sortLibrary(library, currentSort);
+    sortedLibrary.forEach((item) => {
       const gridItem = createGridItem(item, isPlaylistItem);
       fragment.appendChild(gridItem);
     });
@@ -94,58 +113,87 @@ function renderGrid(container, library, isPlaylistItem = false) {
     .forEach((img) => lazyLoadObserver.observe(img));
 }
 
-function ensureGridExists(pageElement, gridId) {
-  let grid = document.getElementById(gridId);
-  if (!grid) {
-    const placeholder = pageElement.querySelector(".placeholder-page");
-    const newGridHtml = `<div class="video-grid" id="${gridId}"></div>`;
-    if (placeholder) {
-      placeholder.insertAdjacentHTML("afterend", newGridHtml);
-    } else if (pageElement.querySelector(".page-header")) {
-      pageElement
-        .querySelector(".page-header")
-        .insertAdjacentHTML("afterend", newGridHtml);
-    } else {
-      pageElement.innerHTML = newGridHtml;
+function createPageHeader(title) {
+  const header = document.createElement("div");
+  header.className = "page-header";
+  header.innerHTML = `
+        <h1 class="page-header-title">${title}</h1>
+        <div class="page-header-actions">
+            <div class="sort-dropdown-container" id="sort-dropdown">
+                <button class="sort-dropdown-btn">
+                    <i class="fa-solid fa-sort"></i>
+                    <span id="sort-dropdown-label">Sort By</span>
+                    <i class="fa-solid fa-chevron-down chevron"></i>
+                </button>
+                <div class="sort-options-list">
+                    <div class="sort-option-item" data-value="downloadedAt-desc"><span class="check"><i class="fa-solid fa-check"></i></span>Date Added (Newest)</div>
+                    <div class="sort-option-item" data-value="downloadedAt-asc"><span class="check"><i class="fa-solid fa-check"></i></span>Date Added (Oldest)</div>
+                    <div class="sort-option-item" data-value="title-asc"><span class="check"><i class="fa-solid fa-check"></i></span>Title (A-Z)</div>
+                    <div class="sort-option-item" data-value="title-desc"><span class="check"><i class="fa-solid fa-check"></i></span>Title (Z-A)</div>
+                    <div class="sort-option-item" data-value="duration-asc"><span class="check"><i class="fa-solid fa-check"></i></span>Duration (Shortest)</div>
+                    <div class="sort-option-item" data-value="duration-desc"><span class="check"><i class="fa-solid fa-check"></i></span>Duration (Longest)</div>
+                </div>
+            </div>
+        </div>`;
+  return header;
+}
+
+function updateSortUI() {
+  const dropdown = document.querySelector("#sort-dropdown");
+  if (!dropdown) return;
+  const label = dropdown.querySelector("#sort-dropdown-label");
+  const options = dropdown.querySelectorAll(".sort-option-item");
+  options.forEach((opt) => {
+    const isActive = opt.dataset.value === currentSort;
+    opt.classList.toggle("active", isActive);
+    if (isActive) {
+      label.textContent = opt.textContent.trim();
     }
-    grid = document.getElementById(gridId);
-  }
-  return grid;
+  });
 }
 
 export function renderHomePageGrid(library = AppState.library) {
   const homePage = document.getElementById("home-page");
+  homePage.innerHTML = "";
   if (AppState.library.length === 0) {
     homePage.innerHTML = `<div class="placeholder-page"><i class="fa-solid fa-house-chimney-crack placeholder-icon"></i><h2 class="placeholder-title">Your Library is Empty</h2><p class="placeholder-text">Go to the <span class="link-style" id="go-to-downloads-link">Downloads</span> page to get started.</p></div>`;
   } else {
-    const grid = ensureGridExists(homePage, "video-grid-home");
+    homePage.appendChild(createPageHeader("Home"));
+    const grid = document.createElement("div");
+    grid.className = "video-grid";
+    grid.id = "video-grid-home";
+    homePage.appendChild(grid);
     if (library.length === 0 && homeSearchInput.value) {
       grid.innerHTML = `<p class="empty-message">No results found for "<strong>${homeSearchInput.value}</strong>"</p>`;
     } else {
       renderGrid(grid, library);
     }
   }
+  updateSortUI();
   hideLoader();
 }
 
 export function renderFavoritesPage(library) {
   const favoritesPage = document.getElementById("favorites-page");
+  favoritesPage.innerHTML = "";
   const favoritesLibrary = AppState.library.filter((video) => video.isFavorite);
   const libraryToRender = library || favoritesLibrary;
-  const placeholder = favoritesPage.querySelector(".placeholder-page");
-  const grid = ensureGridExists(favoritesPage, "video-grid-favorites");
 
-  const hasFavorites = favoritesLibrary.length > 0;
-  placeholder.style.display = hasFavorites ? "none" : "flex";
-  grid.style.display = hasFavorites ? "grid" : "none";
-
-  if (hasFavorites) {
+  if (favoritesLibrary.length > 0) {
+    favoritesPage.appendChild(createPageHeader("Favorites"));
+    const grid = document.createElement("div");
+    grid.className = "video-grid";
+    grid.id = "video-grid-favorites";
+    favoritesPage.appendChild(grid);
     if (libraryToRender.length === 0 && homeSearchInput.value) {
       grid.innerHTML = `<p class="empty-message">No favorite items match "<strong>${homeSearchInput.value}</strong>"</p>`;
     } else {
       renderGrid(grid, libraryToRender);
     }
+  } else {
+    favoritesPage.innerHTML = `<div class="page-header"><h1 class="page-header-title">Favorites</h1></div><div class="placeholder-page"><i class="fa-solid fa-heart-crack placeholder-icon"></i><h2 class="placeholder-title">No Favorites Yet</h2><p class="placeholder-text">Click the heart icon on any video to add it to your favorites.</p></div>`;
   }
+  updateSortUI();
   hideLoader();
 }
 
@@ -283,7 +331,7 @@ function initializeMainEventListeners() {
         toggleFavoriteStatus(videoId);
         return;
       }
-      if (e.target.closest(".save-to-playlist-grid-btn")) {
+      if (e.target.closest(".add-to-playlist-grid-btn")) {
         e.stopPropagation();
         openAddToPlaylistModal(videoId);
         return;
@@ -293,6 +341,28 @@ function initializeMainEventListeners() {
         eventBus.emit("player:play_request", videoIndex, sourceLib);
       }
       return;
+    }
+
+    const sortDropdown = e.target.closest("#sort-dropdown");
+    if (sortDropdown) {
+      if (e.target.closest(".sort-dropdown-btn")) {
+        sortDropdown.classList.toggle("open");
+      }
+      const option = e.target.closest(".sort-option-item");
+      if (option) {
+        currentSort = option.dataset.value;
+        localStorage.setItem("librarySort", currentSort);
+        updateSortUI();
+        const activePage =
+          document.querySelector(".nav-item.active").dataset.page;
+        if (activePage === "home") renderHomePageGrid();
+        if (activePage === "favorites") renderFavoritesPage();
+        sortDropdown.classList.remove("open");
+      }
+    } else {
+      document
+        .querySelectorAll(".sort-dropdown-container.open")
+        .forEach((d) => d.classList.remove("open"));
     }
 
     const navItem = e.target.closest(".nav-item");
