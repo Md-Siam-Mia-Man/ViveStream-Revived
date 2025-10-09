@@ -8,7 +8,6 @@ import { showNotification } from "./notifications.js";
 import { eventBus } from "./event-bus.js";
 import { formatTime } from "./utils.js";
 
-// --- DOM Element Selectors ---
 const playerPage = document.getElementById("player-page");
 const playerSection = document.getElementById("player-section");
 const videoPlayer = document.getElementById("video-player");
@@ -27,7 +26,7 @@ const videoInfoUploader = document.getElementById("video-info-uploader");
 const videoInfoDate = document.getElementById("video-info-date");
 const upNextList = document.getElementById("up-next-list");
 const favoriteBtn = document.getElementById("favorite-btn");
-const saveToPlaylistBtn = document.getElementById("save-to-playlist-btn");
+const addToPlaylistBtn = document.getElementById("add-to-playlist-btn");
 const theaterBtn = document.getElementById("theater-btn");
 const fullscreenBtn = document.getElementById("fullscreen-btn");
 const playPauseBtn = document.querySelector(".play-pause-btn");
@@ -57,11 +56,9 @@ const editableDescriptionTextarea = document.getElementById(
 const saveEditBtn = document.getElementById("save-edit-btn");
 const cancelEditBtn = document.getElementById("cancel-edit-btn");
 
-// --- Player State ---
 let sleepTimerId = null;
 let hideControlsTimeout;
 
-// --- Lazy Loading for Up Next ---
 const lazyLoadObserver = new IntersectionObserver(
   (entries, observer) => {
     entries.forEach((entry) => {
@@ -72,12 +69,9 @@ const lazyLoadObserver = new IntersectionObserver(
       }
     });
   },
-  { root: upNextList } // Observe within the list itself
+  { root: upNextList }
 );
 
-/**
- * Preloads the next item in the playback queue.
- */
 function preloadNextItem() {
   const queue = AppState.playbackQueue;
   if (
@@ -91,9 +85,6 @@ function preloadNextItem() {
   }
 }
 
-/**
- * Handles the end of a track.
- */
 function handleTrackEnd() {
   if (autoplayToggle.checked) {
     playNext();
@@ -103,7 +94,6 @@ function handleTrackEnd() {
   }
 }
 
-// --- Core Player Functions ---
 function playLibraryItem(index, sourceLibrary, options = {}) {
   if (!sourceLibrary || index < 0 || index >= sourceLibrary.length) return;
 
@@ -111,7 +101,7 @@ function playLibraryItem(index, sourceLibrary, options = {}) {
   const item = AppState.playbackQueue[AppState.currentlyPlayingIndex];
 
   videoPlayer.src = decodeURIComponent(item.filePath);
-  subtitleTrack.src = ""; // Reset subtitle track
+  subtitleTrack.src = "";
 
   if (item.type === "audio") {
     playerSection.classList.add("audio-mode");
@@ -227,7 +217,6 @@ export function renderUpNextList() {
     .forEach((img) => lazyLoadObserver.observe(img));
 }
 
-// --- Player Controls & Utilities ---
 function togglePlay() {
   if (videoPlayer.src) {
     videoPlayer.paused ? videoPlayer.play() : videoPlayer.pause();
@@ -257,6 +246,8 @@ function updateVolume(newVolume) {
   videoPlayerPreload.volume = vol;
   videoPlayer.muted = vol === 0;
   videoPlayerPreload.muted = vol === 0;
+  localStorage.setItem("playerVolume", vol);
+  localStorage.setItem("playerMuted", vol === 0);
 }
 
 export function updateVolumeUI() {
@@ -353,7 +344,6 @@ function handleSubmenu(mainSel, subMenuEl, values, type, labelFormatter) {
   mainItem.addEventListener("click", openSubmenu);
 }
 
-// --- Edit Mode Functions ---
 export function enterEditMode() {
   const item = AppState.playbackQueue[AppState.currentlyPlayingIndex];
   if (!item) return;
@@ -392,9 +382,9 @@ async function saveMetadataChanges() {
 
   if (result.success) {
     showNotification("Metadata updated successfully.", "success");
-    Object.assign(item, updatedData); // Update the item in the playback queue
+    Object.assign(item, updatedData);
     const libraryItem = AppState.library.find((v) => v.id === item.id);
-    if (libraryItem) Object.assign(libraryItem, updatedData); // Update in main library
+    if (libraryItem) Object.assign(libraryItem, updatedData);
 
     updateVideoDetails(item);
     exitEditMode();
@@ -403,7 +393,6 @@ async function saveMetadataChanges() {
   }
 }
 
-// --- Event Listeners & Emitters ---
 [videoPlayer, videoPlayerPreload].forEach((player) => {
   player.addEventListener("play", () => {
     playerSection.classList.remove("paused");
@@ -446,9 +435,9 @@ playPauseBtn.addEventListener("click", togglePlay);
 nextBtn.addEventListener("click", playNext);
 prevBtn.addEventListener("click", playPrevious);
 muteBtn.addEventListener("click", () => {
-  const muted = !videoPlayer.muted;
-  videoPlayer.muted = muted;
-  videoPlayerPreload.muted = muted;
+  updateVolume(
+    videoPlayer.muted ? localStorage.getItem("playerVolume") || 1 : 0
+  );
 });
 volumeSlider.addEventListener("input", (e) =>
   updateVolume(parseFloat(e.target.value))
@@ -509,7 +498,7 @@ favoriteBtn.addEventListener("click", () => {
       AppState.playbackQueue[AppState.currentlyPlayingIndex].id
     );
 });
-saveToPlaylistBtn.addEventListener("click", () => {
+addToPlaylistBtn.addEventListener("click", () => {
   if (AppState.currentlyPlayingIndex > -1)
     openAddToPlaylistModal(
       AppState.playbackQueue[AppState.currentlyPlayingIndex].id
@@ -571,8 +560,7 @@ document.addEventListener("keydown", (e) => {
       togglePlay();
       break;
     case "m":
-      videoPlayer.muted = !videoPlayer.muted;
-      videoPlayerPreload.muted = videoPlayer.muted;
+      muteBtn.click();
       break;
     case "f":
       if (miniplayer.classList.contains("hidden")) fullscreenBtn.click();
@@ -638,7 +626,6 @@ settingsMenu.addEventListener("click", (e) => {
     if (subtitleTrack.track.src) subtitleTrack.track.mode = newMode;
     settingsMenu.querySelector("#subtitles-value").textContent =
       newMode === "showing" ? "On" : "Off";
-    localStorage.setItem("subtitlesEnabled", newMode === "showing");
     settingsMenu.classList.remove("active");
   } else if (setting === "speed") {
     handleSubmenu(
@@ -721,7 +708,6 @@ document.addEventListener("click", (e) => {
 cancelEditBtn.addEventListener("click", exitEditMode);
 saveEditBtn.addEventListener("click", saveMetadataChanges);
 
-// Subscribe to player control events
 eventBus.on("player:play_request", playLibraryItem);
 eventBus.on("controls:toggle_play", togglePlay);
 eventBus.on("controls:next", playNext);
