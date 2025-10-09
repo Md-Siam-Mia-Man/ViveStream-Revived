@@ -49,6 +49,7 @@ const maximizeBtn = document.getElementById("maximize-btn");
 const closeBtn = document.getElementById("close-btn");
 const videoContextMenu = document.getElementById("video-item-context-menu");
 const contextEditBtn = document.getElementById("context-edit-btn");
+const contextExportBtn = document.getElementById("context-export-btn");
 const contextDeleteBtn = document.getElementById("context-delete-btn");
 const contextRemoveFromPlaylistBtn = document.getElementById(
   "context-remove-from-playlist-btn"
@@ -207,6 +208,19 @@ function initializeContextMenu() {
     }
   });
 
+  contextExportBtn.addEventListener("click", async () => {
+    const videoId = videoContextMenu.dataset.videoId;
+    if (videoId) {
+      const result = await window.electronAPI.mediaExportFile(videoId);
+      if (result.success) {
+        showNotification("File exported successfully.", "success");
+      } else if (result.error !== "Export cancelled.") {
+        showNotification(`Export failed: ${result.error}`, "error");
+      }
+    }
+    videoContextMenu.classList.remove("visible");
+  });
+
   contextDeleteBtn.addEventListener("click", () => {
     const videoId = videoContextMenu.dataset.videoId;
     if (videoId) {
@@ -222,6 +236,7 @@ function initializeContextMenu() {
                 videoId
             ) {
               closeMiniplayer();
+              handleNav("home");
             }
             showNotification("Video deleted successfully.", "success");
             await loadLibrary();
