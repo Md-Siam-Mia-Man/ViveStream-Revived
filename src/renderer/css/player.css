@@ -729,6 +729,7 @@ input:checked+.slider:before {
           gap: 16px;
           overflow-x: auto;
           padding-bottom: 10px;
+          flex-wrap: wrap;
      }
 
      #player-page:not(.theater-mode) .up-next-item {
