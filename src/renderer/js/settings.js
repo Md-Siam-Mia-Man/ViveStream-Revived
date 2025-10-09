@@ -5,10 +5,8 @@ import { loadLibrary, showPage } from "./renderer.js";
 import { resetPlaybackState } from "./state.js";
 import { closeMiniplayer } from "./miniplayer.js";
 
-// --- State ---
 let currentSettings = {};
 
-// --- DOM Element Selectors ---
 const appVersionEl = document.getElementById("app-version");
 const concurrentDownloadsSlider = document.getElementById(
   "concurrent-downloads-slider"
@@ -22,7 +20,7 @@ const concurrentFragmentsSlider = document.getElementById(
 const concurrentFragmentsValue = document.getElementById(
   "concurrent-fragments-value"
 );
-const speedLimitInput = document.getElementById("speed-limit-input"); // New element
+const speedLimitInput = document.getElementById("speed-limit-input");
 const outputTemplateInput = document.getElementById("output-template-input");
 const templateHelpLink = document.getElementById("template-help-link");
 const cookieBrowserSelect = document.getElementById(
@@ -30,6 +28,7 @@ const cookieBrowserSelect = document.getElementById(
 );
 const autoSubsToggle = document.getElementById("auto-subs-toggle");
 const sponsorblockToggle = document.getElementById("sponsorblock-toggle");
+const importFilesBtn = document.getElementById("import-files-btn");
 const updateYtdlpBtn = document.getElementById("update-ytdlp-btn");
 const updaterConsoleContainer = document.getElementById(
   "updater-console-container"
@@ -48,7 +47,7 @@ function updateSettingsUI(settings) {
   concurrentFragmentsSlider.value = settings.concurrentFragments;
   concurrentFragmentsValue.textContent = settings.concurrentFragments;
   outputTemplateInput.value = settings.outputTemplate || "";
-  speedLimitInput.value = settings.speedLimit || ""; // Update speed limit input
+  speedLimitInput.value = settings.speedLimit || "";
 
   const selectedBrowser = settings.cookieBrowser || "none";
   const selectedOptionEl =
@@ -107,18 +106,28 @@ export function initializeSettingsPage() {
     saveSetting("removeSponsors", e.target.checked)
   );
 
-  cookieBrowserSelect.addEventListener("click", (e) => {
-    if (e.target.classList.contains("option-item")) {
-      saveSetting("cookieBrowser", e.target.dataset.value);
-      loadSettings(); // Reload UI to reflect change
-    }
-    if (e.target.closest(".selected-option"))
-      cookieBrowserSelect.classList.toggle("open");
+  cookieBrowserSelect.addEventListener("change", (e) => {
+    const value = e.target
+      .closest(".custom-select-container")
+      .querySelector(".selected-option").dataset.value;
+    saveSetting("cookieBrowser", value);
   });
 
-  document.addEventListener("click", (e) => {
-    if (!cookieBrowserSelect.contains(e.target))
-      cookieBrowserSelect.classList.remove("open");
+  importFilesBtn.addEventListener("click", async () => {
+    importFilesBtn.disabled = true;
+    importFilesBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Importing...`;
+    const result = await window.electronAPI.mediaImportFiles();
+    if (result.success) {
+      showNotification(
+        `Successfully imported ${result.count} file(s).`,
+        "success"
+      );
+      await loadLibrary();
+    } else {
+      showNotification(`Import failed: ${result.error}`, "error");
+    }
+    importFilesBtn.disabled = false;
+    importFilesBtn.innerHTML = `<i class="fa-solid fa-file-import"></i> Import Files`;
   });
 
   updateYtdlpBtn.addEventListener("click", async () => {
@@ -148,7 +157,6 @@ export function initializeSettingsPage() {
         const newSettings = await window.electronAPI.resetApp();
         updateSettingsUI(newSettings);
         const playerModule = await import("./player.js");
-        // We need to reload settings from localStorage for the player.
         playerModule.loadSettings();
         showNotification(
           "ViveStream has been reset to default settings.",
@@ -187,14 +195,14 @@ export function initializeSettingsPage() {
     .getElementById("github-view-link")
     ?.addEventListener("click", () =>
       window.electronAPI.openExternal(
-        "https://github.com/Md-Siam-Mia-Main/ViveStream-Revived"
+        "https://github.com/Md-Siam-Mia-Man/ViveStream-Revived"
       )
     );
   document
     .getElementById("github-star-link")
     ?.addEventListener("click", () =>
       window.electronAPI.openExternal(
-        "https://github.com/Md-Siam-Mia-Main/ViveStream-Revived/stargazers"
+        "https://github.com/Md-Siam-Mia-Man/ViveStream-Revived/stargazers"
       )
     );
 }
@@ -202,6 +210,10 @@ export function initializeSettingsPage() {
 window.electronAPI.onYtDlpUpdateProgress((message) => {
   updaterConsole.textContent += message;
   updaterConsole.scrollTop = updaterConsole.scrollHeight;
+});
+
+window.electronAPI.onImportError(({ fileName, error }) => {
+  showNotification(`Failed to import ${fileName}`, "error", error);
 });
 
 window.electronAPI.onClearLocalStorage(() => {
