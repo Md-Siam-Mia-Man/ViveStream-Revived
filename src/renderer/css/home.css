@@ -1,8 +1,13 @@
 /* src/renderer/css/home.css */
-#home-page {
-     padding: 24px;
-     align-items: center;
+#home-page,
+#favorites-page {
+     padding: 0;
      justify-content: flex-start;
+}
+
+#home-page .video-grid,
+#favorites-page .video-grid {
+     padding: 0 24px 24px 24px;
 }
 
 .video-grid {
