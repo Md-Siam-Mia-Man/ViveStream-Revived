@@ -35,6 +35,7 @@ function initialize(app) {
           table.string("type").defaultTo("video");
           table.timestamp("downloadedAt").defaultTo(db.fn.now());
           table.boolean("isFavorite").defaultTo(false);
+          table.string("source").defaultTo("youtube");
         });
       }
 
@@ -90,7 +91,6 @@ function initialize(app) {
         });
       }
 
-      // Ensure all columns exist on existing databases for smooth updates
       if (!(await db.schema.hasColumn("videos", "creator"))) {
         await db.schema.alterTable("videos", (table) => {
           table.string("creator");
@@ -108,9 +108,13 @@ function initialize(app) {
           table.text("description");
         });
       }
+      if (!(await db.schema.hasColumn("videos", "source"))) {
+        await db.schema.alterTable("videos", (table) => {
+          table.string("source").defaultTo("youtube");
+        });
+      }
     } catch (error) {
       console.error("Database initialization failed:", error);
-      // In case of a fatal db error, it's better to show a dialog and quit.
       const { dialog } = require("electron");
       dialog.showErrorBox(
         "Database Error",
@@ -121,8 +125,6 @@ function initialize(app) {
     }
   })();
 }
-
-// --- Video Functions ---
 
 async function getLibrary() {
   try {
@@ -177,6 +179,20 @@ async function deleteVideo(id) {
           .first(db.raw("count(*) as count"));
 
         if (remainingVideos && remainingVideos.count === 0) {
+          const artist = await db("artists").where({ id: artistId }).first();
+          if (artist && artist.thumbnailPath) {
+            try {
+              const p = path.normalize(
+                decodeURIComponent(artist.thumbnailPath.replace("file://", ""))
+              );
+              if (fs.existsSync(p)) fs.unlinkSync(p);
+            } catch (err) {
+              console.error(
+                `Failed to delete artist thumbnail ${artist.thumbnailPath}:`,
+                err
+              );
+            }
+          }
           await db("artists").where({ id: artistId }).del();
         }
       }
@@ -217,8 +233,6 @@ async function clearAllMedia() {
     return { success: false, error: error.message };
   }
 }
-
-// --- Playlist Functions ---
 
 async function createPlaylist(name) {
   try {
@@ -346,8 +360,6 @@ async function getPlaylistsForVideo(videoId) {
   }
 }
 
-// --- Artist Functions ---
-
 async function findOrCreateArtist(name, thumbnailPath) {
   try {
     let artist = await db("artists").where({ name }).first();
@@ -423,8 +435,6 @@ async function getArtistDetails(artistId) {
     return null;
   }
 }
-
-// --- System Functions ---
 
 async function shutdown() {
   if (db) {
