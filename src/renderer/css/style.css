@@ -242,7 +242,6 @@ input,
      border-color: var(--yt-red);
 }
 
-
 .app-body {
      display: flex;
      flex-grow: 1;
@@ -430,6 +429,86 @@ input,
      background-color: var(--yt-border);
 }
 
+.sort-dropdown-container {
+     position: relative;
+}
+
+.sort-dropdown-btn {
+     display: flex;
+     align-items: center;
+     gap: 8px;
+     background-color: var(--yt-dark-grey);
+     border: 1px solid var(--yt-border);
+     color: var(--yt-white);
+     padding: 8px 16px;
+     border-radius: 20px;
+     cursor: pointer;
+     font-family: 'Poppins';
+     font-size: 0.9rem;
+     font-weight: 500;
+     transition: all 0.2s ease;
+}
+
+.sort-dropdown-btn:hover {
+     background-color: var(--yt-border);
+}
+
+.sort-dropdown-btn .chevron {
+     transition: transform 0.2s ease;
+}
+
+.sort-dropdown-container.open .sort-dropdown-btn .chevron {
+     transform: rotate(180deg);
+}
+
+.sort-options-list {
+     position: absolute;
+     top: calc(100% + 8px);
+     right: 0;
+     width: 240px;
+     background-color: var(--yt-dark-grey);
+     border: 1px solid var(--yt-border);
+     border-radius: 8px;
+     padding: 6px;
+     z-index: 1000;
+     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+     opacity: 0;
+     transform: translateY(-10px);
+     pointer-events: none;
+     transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.sort-dropdown-container.open .sort-options-list {
+     opacity: 1;
+     transform: translateY(0);
+     pointer-events: auto;
+}
+
+.sort-option-item {
+     display: flex;
+     align-items: center;
+     gap: 10px;
+     padding: 10px;
+     font-size: 0.9rem;
+     border-radius: 6px;
+     cursor: pointer;
+     transition: background-color 0.2s;
+}
+
+.sort-option-item:hover {
+     background-color: var(--yt-border);
+}
+
+.sort-option-item .check {
+     width: 16px;
+     visibility: hidden;
+     color: var(--yt-red);
+}
+
+.sort-option-item.active .check {
+     visibility: visible;
+}
+
 .placeholder-page {
      justify-content: center;
      align-items: center;
@@ -491,7 +570,7 @@ input,
 .context-menu {
      position: fixed;
      z-index: 10000;
-     width: 200px;
+     width: 220px;
      background-color: #252525;
      border-radius: 8px;
      padding: 8px;
@@ -519,6 +598,12 @@ input,
      border-radius: 6px;
      cursor: pointer;
      transition: background-color 0.2s;
+}
+
+.context-menu-divider {
+     height: 1px;
+     background-color: var(--yt-border);
+     margin: 6px 0;
 }
 
 #context-remove-from-playlist-btn {
