@@ -2,10 +2,8 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("electronAPI", {
-  // Path API
   getAssetsPath: () => ipcRenderer.invoke("get-assets-path"),
 
-  // Downloader API
   downloadVideo: (options, jobId) =>
     ipcRenderer.send("download-video", { downloadOptions: options, jobId }),
   cancelDownload: (videoId) => ipcRenderer.send("cancel-download", videoId),
@@ -20,17 +18,14 @@ contextBridge.exposeInMainWorld("electronAPI", {
   onDownloadInfoError: (cb) =>
     ipcRenderer.on("download-info-error", (e, v) => cb(v)),
 
-  // Library API
   getLibrary: () => ipcRenderer.invoke("get-library"),
   deleteVideo: (id) => ipcRenderer.invoke("delete-video", id),
   toggleFavorite: (id) => ipcRenderer.invoke("toggle-favorite", id),
   videoUpdateMetadata: (videoId, metadata) =>
     ipcRenderer.invoke("video:update-metadata", videoId, metadata),
 
-  // External Links
   openExternal: (url) => ipcRenderer.send("open-external", url),
 
-  // Settings & App Info API
   getSettings: () => ipcRenderer.invoke("get-settings"),
   getAppVersion: () => ipcRenderer.invoke("get-app-version"),
   saveSettings: (s) => ipcRenderer.send("save-settings", s),
@@ -38,7 +33,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
   clearAllMedia: () => ipcRenderer.invoke("clear-all-media"),
   onClearLocalStorage: (cb) => ipcRenderer.on("clear-local-storage", cb),
 
-  // Window Controls API
   minimizeWindow: () => ipcRenderer.send("minimize-window"),
   maximizeWindow: () => ipcRenderer.send("maximize-window"),
   closeWindow: () => ipcRenderer.send("close-window"),
@@ -46,12 +40,15 @@ contextBridge.exposeInMainWorld("electronAPI", {
   onWindowMaximized: (cb) =>
     ipcRenderer.on("window-maximized", (e, v) => cb(v)),
 
-  // Updater API
   checkYtDlpUpdate: () => ipcRenderer.invoke("updater:check-yt-dlp"),
   onYtDlpUpdateProgress: (cb) =>
     ipcRenderer.on("updater:yt-dlp-progress", (e, v) => cb(v)),
 
-  // Playlist API
+  mediaImportFiles: () => ipcRenderer.invoke("media:import-files"),
+  onImportError: (cb) => ipcRenderer.on("import-error", (e, v) => cb(v)),
+  mediaExportFile: (videoId) =>
+    ipcRenderer.invoke("media:export-file", videoId),
+
   playlistCreate: (name) => ipcRenderer.invoke("playlist:create", name),
   playlistGetAll: () => ipcRenderer.invoke("playlist:get-all"),
   playlistGetDetails: (id) => ipcRenderer.invoke("playlist:get-details", id),
@@ -67,11 +64,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
   playlistGetForVideo: (videoId) =>
     ipcRenderer.invoke("playlist:get-for-video", videoId),
 
-  // Artist API
   artistGetAll: () => ipcRenderer.invoke("artist:get-all"),
   artistGetDetails: (id) => ipcRenderer.invoke("artist:get-details", id),
 
-  // Media Key API
   onMediaKeyPlayPause: (cb) => ipcRenderer.on("media-key-play-pause", cb),
   onMediaKeyNextTrack: (cb) => ipcRenderer.on("media-key-next-track", cb),
   onMediaKeyPrevTrack: (cb) => ipcRenderer.on("media-key-prev-track", cb),
