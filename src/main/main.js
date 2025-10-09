@@ -650,21 +650,21 @@ ipcMain.handle("media:import-files", async () => {
         "-show_streams",
         filePath,
       ];
-      const { stdout } = await new Promise((resolve, reject) => {
-        execFile(
-          ffprobePath,
-          ffprobeArgs,
-          { maxBuffer: 1024 * 1024 * 10 },
-          (err, stdout, stderr) => {
-            if (err) return reject(new Error(stderr || err.message));
-            resolve({ stdout });
-          }
+      const { stdout: metaJson } = await new Promise((resolve, reject) => {
+        const ffprobeProc = spawn(ffprobePath, ffprobeArgs);
+        let stdout = "";
+        let stderr = "";
+        ffprobeProc.stdout.on("data", (data) => (stdout += data));
+        ffprobeProc.stderr.on("data", (data) => (stderr += data));
+        ffprobeProc.on("close", (code) =>
+          code === 0 ? resolve({ stdout, stderr }) : reject(new Error(stderr))
         );
+        ffprobeProc.on("error", (err) => reject(err));
       });
-      const meta = JSON.parse(stdout);
+
+      const meta = JSON.parse(metaJson);
       const format = meta.format.tags || {};
       const videoStream = meta.streams.find((s) => s.codec_type === "video");
-      const audioStream = meta.streams.find((s) => s.codec_type === "audio");
 
       const newId = crypto.randomUUID();
       const newFileName = `${newId}${path.extname(filePath)}`;
@@ -686,19 +686,15 @@ ipcMain.handle("media:import-files", async () => {
           "copy",
           finalCoverPath,
         ];
-        await new Promise((resolve, reject) => {
-          execFile(ffmpegPath, ffmpegCoverArgs, (err) => {
-            if (err) {
-              console.error(
-                "Cover extraction failed, continuing without it.",
-                err
-              );
-              resolve();
-            } else {
+        await new Promise((resolve) => {
+          const ffmpegProc = spawn(ffmpegPath, ffmpegCoverArgs);
+          ffmpegProc.on("close", (code) => {
+            if (code === 0)
               coverUri = `file://${finalCoverPath.replace(/\\/g, "/")}`;
-              resolve();
-            }
+            else console.error("Cover extraction failed for", newFileName);
+            resolve();
           });
+          ffmpegProc.on("error", () => resolve());
         });
       }
 
