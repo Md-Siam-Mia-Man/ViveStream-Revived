@@ -9,17 +9,7 @@ const downloadQueueArea = document.getElementById("download-queue-area");
 const videoQualitySelect = document.getElementById(
   "video-quality-select-container"
 );
-const audioQualitySelect = document.getElementById(
-  "audio-quality-select-container"
-);
-const downloadTypeVideo = document.getElementById("download-type-video");
-const downloadTypeAudio = document.getElementById("download-type-audio");
-const videoOptionsContainer = document.getElementById(
-  "video-options-container"
-);
-const audioOptionsContainer = document.getElementById(
-  "audio-options-container"
-);
+const downloadSubsToggle = document.getElementById("download-subs-toggle");
 const advancedOptionsToggle = document.getElementById(
   "advanced-options-toggle"
 );
@@ -78,13 +68,10 @@ downloadForm.addEventListener("submit", (e) => {
   const url = urlInput.value.trim();
   if (!url) return;
 
-  const isVideo = downloadTypeVideo.checked;
-  const qualityContainer = isVideo ? videoQualitySelect : audioQualitySelect;
-
   const downloadOptions = {
     url,
-    quality: qualityContainer.querySelector(".selected-option").dataset.value,
-    type: document.querySelector('input[name="download-type"]:checked').value,
+    quality: videoQualitySelect.querySelector(".selected-option").dataset.value,
+    downloadSubs: downloadSubsToggle.checked,
     startTime: document.getElementById("start-time-input").value.trim(),
     endTime: document.getElementById("end-time-input").value.trim(),
     splitChapters: document.getElementById("split-chapters-toggle").checked,
@@ -155,20 +142,6 @@ document.getElementById("clear-all-btn").addEventListener("click", () => {
 
 advancedOptionsToggle.addEventListener("click", () => {
   advancedOptionsPanel.classList.toggle("hidden");
-});
-
-downloadTypeVideo.addEventListener("change", () => {
-  if (downloadTypeVideo.checked) {
-    videoOptionsContainer.classList.remove("hidden");
-    audioOptionsContainer.classList.add("hidden");
-  }
-});
-
-downloadTypeAudio.addEventListener("change", () => {
-  if (downloadTypeAudio.checked) {
-    videoOptionsContainer.classList.add("hidden");
-    audioOptionsContainer.classList.remove("hidden");
-  }
 });
 
 function updateItemActions(item, status) {
