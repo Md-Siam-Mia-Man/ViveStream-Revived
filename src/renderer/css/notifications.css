@@ -14,10 +14,12 @@
 .notification {
      min-width: 320px;
      max-width: 450px;
-     background-color: var(--yt-dark-grey);
+     background-color: rgba(44, 44, 44, 0.6);
+     backdrop-filter: blur(10px);
+     -webkit-backdrop-filter: blur(10px);
      border-radius: 12px;
      padding: 14px 20px;
-     border: 1px solid var(--yt-border);
+     border: 1px solid rgba(255, 255, 255, 0.1);
      box-shadow: 0 5px 20px rgba(0, 0, 0, 0.5);
      display: flex;
      align-items: center;
