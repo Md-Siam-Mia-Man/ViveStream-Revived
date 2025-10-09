@@ -48,6 +48,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   onImportError: (cb) => ipcRenderer.on("import-error", (e, v) => cb(v)),
   mediaExportFile: (videoId) =>
     ipcRenderer.invoke("media:export-file", videoId),
+  mediaExportAll: () => ipcRenderer.invoke("media:export-all"),
+  dbCleanupOrphans: () => ipcRenderer.invoke("db:cleanup-orphans"),
 
   playlistCreate: (name) => ipcRenderer.invoke("playlist:create", name),
   playlistGetAll: () => ipcRenderer.invoke("playlist:get-all"),
