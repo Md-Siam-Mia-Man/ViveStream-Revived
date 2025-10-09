@@ -12,28 +12,26 @@ const {
 const path = require("path");
 const fs = require("fs");
 const fse = require("fs-extra");
-const { spawn } = require("child_process");
+const { spawn, execFile } = require("child_process");
+const crypto = require("crypto");
 const db = require("./database");
 
-// --- Constants and Paths ---
 const isDev = !app.isPackaged;
 const platform = process.platform;
 const exeSuffix = platform === "win32" ? ".exe" : "";
 
-// Function to get the correct path to a resource, handling 'asar' packaging.
 const getResourcePath = (subfolder, fileName) => {
   const basePath = isDev
-    ? path.join(__dirname, "..", "..", subfolder) // In dev, it's relative to the project root
-    : path.join(process.resourcesPath, subfolder); // In prod, it's in the resources directory
+    ? path.join(__dirname, "..", "..", subfolder)
+    : path.join(process.resourcesPath, subfolder);
   return path.join(basePath, fileName);
 };
 
-// Cross-platform binary and asset paths
 const ytDlpPath = getResourcePath("vendor", `yt-dlp${exeSuffix}`);
 const ffmpegPath = getResourcePath("vendor", `ffmpeg${exeSuffix}`);
+const ffprobePath = getResourcePath("vendor", `ffprobe${exeSuffix}`);
 const iconPath = getResourcePath("assets", "icon.ico");
 
-// User-specific data paths
 const userHomePath = app.getPath("home");
 const viveStreamPath = path.join(userHomePath, "ViveStream");
 const videoPath = path.join(viveStreamPath, "videos");
@@ -45,15 +43,14 @@ const mediaPaths = [videoPath, coverPath, subtitlePath];
 let tray = null;
 let win = null;
 
-// Ensure media directories exist on startup
 mediaPaths.forEach((dir) => {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 });
 
-// --- Settings Management ---
 const defaultSettings = {
   concurrentDownloads: 3,
   cookieBrowser: "none",
+  downloadSubs: false,
   downloadAutoSubs: false,
   removeSponsors: false,
   concurrentFragments: 1,
@@ -65,9 +62,6 @@ function getSettings() {
   if (fs.existsSync(settingsPath)) {
     try {
       const saved = JSON.parse(fs.readFileSync(settingsPath, "utf-8"));
-      if (!saved.outputTemplate) {
-        saved.outputTemplate = defaultSettings.outputTemplate;
-      }
       return { ...defaultSettings, ...saved };
     } catch (e) {
       console.error("Error reading settings.json, using defaults.", e);
@@ -89,11 +83,6 @@ function saveSettings(settings) {
 }
 if (!fs.existsSync(settingsPath)) saveSettings(defaultSettings);
 
-/**
- * Parses yt-dlp stderr for common user-facing errors.
- * @param {string} stderr - The stderr output from the yt-dlp process.
- * @returns {string} A user-friendly error message.
- */
 function parseYtDlpError(stderr) {
   if (stderr.includes("Private video"))
     return "This video is private and cannot be downloaded.";
@@ -111,7 +100,6 @@ function parseYtDlpError(stderr) {
   return "An unknown download error occurred. Check the console for details.";
 }
 
-// --- Downloader Class ---
 class Downloader {
   constructor() {
     this.queue = [];
@@ -151,7 +139,14 @@ class Downloader {
   }
 
   startDownload(job) {
-    const { videoInfo, type, quality, startTime, endTime, splitChapters } = job;
+    const {
+      videoInfo,
+      quality,
+      startTime,
+      endTime,
+      splitChapters,
+      downloadSubs,
+    } = job;
     const url =
       videoInfo.webpage_url ||
       `https://www.youtube.com/watch?v=${videoInfo.id}`;
@@ -188,18 +183,12 @@ class Downloader {
       args.push("-o", path.join(videoPath, outputTemplate));
     }
 
-    if (type === "audio") {
-      const [format, audioQuality] = quality.split("-");
-      args.push("-x", "--audio-format", format, "-f", "bestaudio/best");
-      if (audioQuality) args.push("--audio-quality", audioQuality);
-    } else {
-      const qualityFilter = quality === "best" ? "" : `[height<=${quality}]`;
-      const formatString = `bestvideo[ext=mp4]${qualityFilter}+bestaudio[ext=m4a]/bestvideo[vcodec^=avc]${qualityFilter}+bestaudio/best[ext=mp4]/best`;
+    const qualityFilter = quality === "best" ? "" : `[height<=${quality}]`;
+    const formatString = `bestvideo[ext=mp4]${qualityFilter}+bestaudio[ext=m4a]/bestvideo[vcodec^=avc]${qualityFilter}+bestaudio/best[ext=mp4]/best`;
+    args.push("-f", formatString, "--merge-output-format", "mp4");
+
+    if (downloadSubs) {
       args.push(
-        "-f",
-        formatString,
-        "--merge-output-format",
-        "mp4",
         "--write-subs",
         "--sub-langs",
         "en.*,-live_chat",
@@ -296,7 +285,6 @@ class Downloader {
     }
     try {
       const files = fs.readdirSync(videoPath);
-
       const infoJsonFile = files.find((file) => {
         if (!file.endsWith(".info.json")) return false;
         try {
@@ -309,11 +297,10 @@ class Downloader {
         }
       });
 
-      if (!infoJsonFile) {
+      if (!infoJsonFile)
         throw new Error(
           `Post-processing failed: Could not find .info.json for video ID ${videoInfo.id}`
         );
-      }
 
       const infoJsonPath = path.join(videoPath, infoJsonFile);
       const info = JSON.parse(fs.readFileSync(infoJsonPath, "utf-8"));
@@ -335,14 +322,12 @@ class Downloader {
           ].some((ext) => f.endsWith(ext))
       );
 
-      if (!mediaFile) {
+      if (!mediaFile)
         throw new Error(
           `Post-processing failed: Could not find media file for basename ${baseName}`
         );
-      }
 
       const mediaFilePath = path.join(videoPath, mediaFile);
-
       fs.unlinkSync(infoJsonPath);
 
       let finalCoverPath = null;
@@ -367,9 +352,7 @@ class Downloader {
       }
 
       const descriptionPath = path.join(videoPath, `${baseName}.description`);
-      if (fs.existsSync(descriptionPath)) {
-        fs.unlinkSync(descriptionPath);
-      }
+      if (fs.existsSync(descriptionPath)) fs.unlinkSync(descriptionPath);
 
       const artistString = info.artist || info.creator || info.uploader;
       const artistNames = artistString
@@ -396,10 +379,12 @@ class Downloader {
         filePath: `file://${mediaFilePath.replace(/\\/g, "/")}`,
         coverPath: finalCoverUri,
         subtitlePath: subFileUri,
-        hasEmbeddedSubs: job.type === "video" && !!subFileUri,
-        type: job.type,
+        hasEmbeddedSubs: !!subFileUri,
+        type:
+          info.acodec !== "none" && info.vcodec === "none" ? "audio" : "video",
         downloadedAt: new Date().toISOString(),
         isFavorite: false,
+        source: "youtube",
       };
       await db.addOrUpdateVideo(videoData);
       if (win)
@@ -420,7 +405,6 @@ class Downloader {
 }
 const downloader = new Downloader();
 
-// --- Window Management ---
 function createWindow() {
   win = new BrowserWindow({
     width: 1280,
@@ -462,16 +446,13 @@ function createTray() {
   tray.on("click", () => win.show());
 }
 
-// --- App Lifecycle & Media Keys ---
 app.on("before-quit", async () => {
   globalShortcut.unregisterAll();
   downloader.shutdown();
   await db.shutdown();
 });
 
-app.on("will-quit", () => {
-  globalShortcut.unregisterAll();
-});
+app.on("will-quit", () => globalShortcut.unregisterAll());
 
 app
   .whenReady()
@@ -515,15 +496,11 @@ app.on(
   () => BrowserWindow.getAllWindows().length === 0 && createWindow()
 );
 
-// --- IPC Handlers ---
-
-// Path API
 ipcMain.handle("get-assets-path", () => {
   const assetsPath = getResourcePath("assets", "");
   return assetsPath.replace(/\\/g, "/");
 });
 
-// Window Controls
 ipcMain.on("minimize-window", () => win.minimize());
 ipcMain.on("maximize-window", () =>
   win.isMaximized() ? win.unmaximize() : win.maximize()
@@ -532,7 +509,6 @@ ipcMain.on("close-window", () => win.close());
 ipcMain.on("tray-window", () => win.hide());
 ipcMain.on("open-external", (e, url) => shell.openExternal(url));
 
-// Settings & App Info
 ipcMain.handle("get-settings", getSettings);
 ipcMain.handle("get-app-version", () => app.getVersion());
 ipcMain.on("save-settings", (e, s) => {
@@ -561,7 +537,6 @@ ipcMain.handle("clear-all-media", async () => {
   }
 });
 
-// Media Management
 ipcMain.handle("delete-video", async (e, id) => {
   const video = await db.getVideoById(id);
   if (!video) return { success: false, message: "Video not found in DB." };
@@ -584,7 +559,6 @@ ipcMain.handle("video:update-metadata", (e, videoId, metadata) =>
   db.updateVideoMetadata(videoId, metadata)
 );
 
-// Downloader
 ipcMain.on("download-video", (e, { downloadOptions, jobId }) => {
   const args = [
     downloadOptions.url,
@@ -605,7 +579,7 @@ ipcMain.on("download-video", (e, { downloadOptions, jobId }) => {
   const timeout = setTimeout(() => {
     proc.kill();
     errorOutput = "Network timeout: The request took too long to complete.";
-  }, 30000); // 30-second timeout
+  }, 30000);
 
   proc.stdout.on("data", (d) => (j += d));
   proc.stderr.on("data", (d) => (errorOutput += d));
@@ -623,9 +597,6 @@ ipcMain.on("download-video", (e, { downloadOptions, jobId }) => {
           infos.map((i) => ({ ...downloadOptions, videoInfo: i }))
         );
       } catch (parseError) {
-        console.error(
-          `Failed to parse JSON for ${downloadOptions.url}. Stderr: ${errorOutput}, Output: ${j}`
-        );
         if (win)
           win.webContents.send("download-info-error", {
             jobId,
@@ -633,9 +604,6 @@ ipcMain.on("download-video", (e, { downloadOptions, jobId }) => {
           });
       }
     } else {
-      console.error(
-        `Failed to get video info for ${downloadOptions.url}. Stderr: ${errorOutput}`
-      );
       if (win)
         win.webContents.send("download-info-error", {
           jobId,
@@ -649,22 +617,134 @@ ipcMain.on("retry-download", (e, job) => downloader.retryDownload(job));
 ipcMain.handle("updater:check-yt-dlp", () => {
   return new Promise((resolve) => {
     const proc = spawn(ytDlpPath, ["-U"]);
-    proc.stdout.on("data", (data) => {
-      win.webContents.send("updater:yt-dlp-progress", data.toString());
-    });
-    proc.stderr.on("data", (data) => {
-      win.webContents.send(
-        "updater:yt-dlp-progress",
-        `ERROR: ${data.toString()}`
-      );
-    });
-    proc.on("close", (code) => {
-      resolve({ success: code === 0 });
-    });
+    proc.stdout.on("data", (data) =>
+      win.webContents.send("updater:yt-dlp-progress", data.toString())
+    );
+    proc.stderr.on("data", (data) =>
+      win.webContents.send("updater:yt-dlp-progress", `ERROR: ${data}`)
+    );
+    proc.on("close", (code) => resolve({ success: code === 0 }));
   });
 });
 
-// Playlists
+ipcMain.handle("media:import-files", async () => {
+  const { canceled, filePaths } = await dialog.showOpenDialog(win, {
+    properties: ["openFile", "multiSelections"],
+    filters: [
+      {
+        name: "Media Files",
+        extensions: ["mp4", "mkv", "webm", "mp3", "m4a", "flac", "opus", "wav"],
+      },
+    ],
+  });
+  if (canceled || filePaths.length === 0) return { success: true, count: 0 };
+  let importedCount = 0;
+  for (const filePath of filePaths) {
+    try {
+      const ffprobeArgs = [
+        "-v",
+        "quiet",
+        "-print_format",
+        "json",
+        "-show_format",
+        "-show_streams",
+        filePath,
+      ];
+      const { stdout } = await new Promise((resolve, reject) => {
+        execFile(ffprobePath, ffprobeArgs, (err, stdout, stderr) => {
+          if (err) return reject(new Error(stderr || err.message));
+          resolve({ stdout });
+        });
+      });
+      const meta = JSON.parse(stdout);
+      const format = meta.format.tags || {};
+      const videoStream = meta.streams.find((s) => s.codec_type === "video");
+
+      const newId = crypto.randomUUID();
+      const newFileName = `${newId}${path.extname(filePath)}`;
+      const newFilePath = path.join(videoPath, newFileName);
+      await fse.copy(filePath, newFilePath);
+
+      let coverUri = null;
+      if (videoStream && videoStream.disposition.attached_pic) {
+        const tempCoverPath = path.join(coverPath, `${newId}_temp.jpg`);
+        const finalCoverPath = path.join(coverPath, `${newId}.jpg`);
+        const ffmpegCoverArgs = [
+          "-i",
+          newFilePath,
+          "-map",
+          `0:v`,
+          "-map",
+          "-0:V",
+          "-c",
+          "copy",
+          tempCoverPath,
+        ];
+        await new Promise((resolve, reject) => {
+          execFile(ffmpegPath, ffmpegCoverArgs, (err) => {
+            if (err) return reject(err);
+            fs.renameSync(tempCoverPath, finalCoverPath);
+            resolve();
+          });
+        });
+        coverUri = `file://${finalCoverPath.replace(/\\/g, "/")}`;
+      }
+
+      const artistString =
+        format.artist || format.ARTIST || format.composer || "Unknown Artist";
+
+      const videoData = {
+        id: newId,
+        title: format.title || format.TITLE || path.parse(filePath).name,
+        creator: artistString,
+        description: format.comment || format.COMMENT || "",
+        duration: parseFloat(meta.format.duration),
+        filePath: `file://${newFilePath.replace(/\\/g, "/")}`,
+        coverPath: coverUri,
+        type: videoStream ? "video" : "audio",
+        downloadedAt: new Date().toISOString(),
+        source: "local",
+      };
+
+      await db.addOrUpdateVideo(videoData);
+      const artist = await db.findOrCreateArtist(artistString, coverUri);
+      if (artist) await db.linkVideoToArtist(newId, artist.id);
+
+      importedCount++;
+    } catch (error) {
+      console.error(`Failed to import ${filePath}:`, error);
+      win.webContents.send("import-error", {
+        fileName: path.basename(filePath),
+        error: error.message,
+      });
+    }
+  }
+  return { success: true, count: importedCount };
+});
+
+ipcMain.handle("media:export-file", async (e, videoId) => {
+  const video = await db.getVideoById(videoId);
+  if (!video) return { success: false, error: "Video not found." };
+
+  const sourcePath = path.normalize(
+    decodeURIComponent(video.filePath.replace("file://", ""))
+  );
+  const { canceled, filePath: destPath } = await dialog.showSaveDialog(win, {
+    defaultPath: path.basename(sourcePath),
+    title: "Export Media File",
+  });
+
+  if (canceled || !destPath)
+    return { success: false, error: "Export cancelled." };
+
+  try {
+    await fse.copy(sourcePath, destPath);
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
 ipcMain.handle("playlist:create", (e, name) => db.createPlaylist(name));
 ipcMain.handle("playlist:get-all", () => db.getAllPlaylistsWithStats());
 ipcMain.handle("playlist:get-details", (e, id) => db.getPlaylistDetails(id));
@@ -685,6 +765,5 @@ ipcMain.handle("playlist:get-for-video", (e, videoId) =>
   db.getPlaylistsForVideo(videoId)
 );
 
-// Artists
 ipcMain.handle("artist:get-all", () => db.getAllArtistsWithStats());
 ipcMain.handle("artist:get-details", (e, id) => db.getArtistDetails(id));
