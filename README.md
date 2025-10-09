@@ -21,14 +21,19 @@ Welcome! **ViveStream** is a modern, offline-first media player built for those 
 
 ## 🚀 Core Features
 
-- 📥 **Versatile Downloader:** Download videos or audio-only from YouTube and other supported sites. Choose from a wide range of quality and format options, from 480p up to 4K.
+- 📥 **Versatile Downloader:** Download videos from YouTube and other supported sites. Choose from a wide range of quality options, from 480p up to 4K.
+- 📂 **Import & Export:**
+  - **Import Local Files:** Add your existing video and audio files from your computer directly into the ViveStream library. Metadata and cover art are automatically extracted.
+  - **Export:** Save a copy of any media from your library to another location on your computer.
 - ✂️ **Advanced Download Controls:**
   - Clip specific sections using start/end times.
   - Automatically split videos by their chapters into individual files.
   - Remove sponsored segments, intros, and outros with SponsorBlock integration.
+  - Download subtitles for videos.
   - Use cookies from your browser to access members-only or age-restricted content.
 - 📚 **Robust Library Management:**
   - **✍️ Full Metadata Control:** Edit titles, artists, and descriptions with a seamless inline editor directly on the player page.
+  - **Advanced Sorting:** Sort your library by date added, title, or duration.
   - **Playlists:** Create custom playlists, add media, and reorder with intuitive drag-and-drop.
   - **Artists:** Media is automatically sorted by artist, creating dedicated pages for your favorite creators.
   - **Favorites:** A dedicated section for your most-loved content.
@@ -77,12 +82,17 @@ Welcome! **ViveStream** is a modern, offline-first media player built for those 
 1.  **Download Content**
     - Navigate to the **Downloads** page via the sidebar.
     - Paste a video or playlist URL into the input box.
-    - Select your desired format (Video/Audio) and quality.
+    - Select your desired quality and whether to include subtitles.
     - Use the "Advanced Options" for clipping or chapter splitting.
     - Click `Download` and monitor progress in the queue below.
 
-2.  **Enjoy Your Library**
-    - The **Home** page displays all your downloaded media, sorted by most recent.
+2.  **Import Local Files**
+    - Navigate to the **Settings** page.
+    - Under "Maintenance", click "Import Files".
+    - Select the video or audio files you want to add to your library.
+
+3.  **Enjoy Your Library**
+    - The **Home** page displays all your media. Use the sort button to change the order.
     - The **Playlists** and **Artists** pages provide curated views of your library.
     - Mark videos as ❤️ **Favorites** to find them in their own dedicated section.
     - Click any thumbnail to begin playback.
