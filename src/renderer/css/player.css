@@ -254,7 +254,7 @@
 }
 
 .video-description-box:hover {
-     background-color: #3f3f3f;
+     background-color: #292929;
 }
 
 .description-content {
@@ -653,7 +653,6 @@ input:checked+.slider:before {
      transform: translateX(14px);
 }
 
-/* Edit Mode Styles */
 .editable-input,
 .editable-textarea {
      width: 100%;
