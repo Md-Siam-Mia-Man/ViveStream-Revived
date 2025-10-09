@@ -651,14 +651,20 @@ ipcMain.handle("media:import-files", async () => {
         filePath,
       ];
       const { stdout } = await new Promise((resolve, reject) => {
-        execFile(ffprobePath, ffprobeArgs, (err, stdout, stderr) => {
-          if (err) return reject(new Error(stderr || err.message));
-          resolve({ stdout });
-        });
+        execFile(
+          ffprobePath,
+          ffprobeArgs,
+          { maxBuffer: 1024 * 1024 * 10 },
+          (err, stdout, stderr) => {
+            if (err) return reject(new Error(stderr || err.message));
+            resolve({ stdout });
+          }
+        );
       });
       const meta = JSON.parse(stdout);
       const format = meta.format.tags || {};
       const videoStream = meta.streams.find((s) => s.codec_type === "video");
+      const audioStream = meta.streams.find((s) => s.codec_type === "audio");
 
       const newId = crypto.randomUUID();
       const newFileName = `${newId}${path.extname(filePath)}`;
@@ -666,36 +672,43 @@ ipcMain.handle("media:import-files", async () => {
       await fse.copy(filePath, newFilePath);
 
       let coverUri = null;
-      if (videoStream && videoStream.disposition.attached_pic) {
-        const tempCoverPath = path.join(coverPath, `${newId}_temp.jpg`);
+      if (
+        videoStream &&
+        videoStream.disposition &&
+        videoStream.disposition.attached_pic
+      ) {
         const finalCoverPath = path.join(coverPath, `${newId}.jpg`);
         const ffmpegCoverArgs = [
           "-i",
           newFilePath,
-          "-map",
-          `0:v`,
-          "-map",
-          "-0:V",
-          "-c",
+          "-an",
+          "-vcodec",
           "copy",
-          tempCoverPath,
+          finalCoverPath,
         ];
         await new Promise((resolve, reject) => {
           execFile(ffmpegPath, ffmpegCoverArgs, (err) => {
-            if (err) return reject(err);
-            fs.renameSync(tempCoverPath, finalCoverPath);
-            resolve();
+            if (err) {
+              console.error(
+                "Cover extraction failed, continuing without it.",
+                err
+              );
+              resolve();
+            } else {
+              coverUri = `file://${finalCoverPath.replace(/\\/g, "/")}`;
+              resolve();
+            }
           });
         });
-        coverUri = `file://${finalCoverPath.replace(/\\/g, "/")}`;
       }
 
       const artistString =
         format.artist || format.ARTIST || format.composer || "Unknown Artist";
+      const title = format.title || format.TITLE || path.parse(filePath).name;
 
       const videoData = {
         id: newId,
-        title: format.title || format.TITLE || path.parse(filePath).name,
+        title: title,
         creator: artistString,
         description: format.comment || format.COMMENT || "",
         duration: parseFloat(meta.format.duration),
@@ -738,12 +751,39 @@ ipcMain.handle("media:export-file", async (e, videoId) => {
     return { success: false, error: "Export cancelled." };
 
   try {
-    await fse.copy(sourcePath, destPath);
+    await fse.copy(sourcePath, destPath, { overwrite: true });
     return { success: true };
   } catch (error) {
     return { success: false, error: error.message };
   }
 });
+
+ipcMain.handle("media:export-all", async () => {
+  const { canceled, filePaths } = await dialog.showOpenDialog(win, {
+    properties: ["openDirectory", "createDirectory"],
+    title: "Select Export Folder",
+  });
+  if (canceled || filePaths.length === 0)
+    return { success: false, error: "Export cancelled." };
+  const destFolder = filePaths[0];
+  const library = await db.getLibrary();
+  let exportedCount = 0;
+  for (const video of library) {
+    try {
+      const sourcePath = path.normalize(
+        decodeURIComponent(video.filePath.replace("file://", ""))
+      );
+      const destPath = path.join(destFolder, path.basename(sourcePath));
+      await fse.copy(sourcePath, destPath);
+      exportedCount++;
+    } catch (error) {
+      console.error(`Failed to export ${video.title}:`, error);
+    }
+  }
+  return { success: true, count: exportedCount };
+});
+
+ipcMain.handle("db:cleanup-orphans", () => db.cleanupOrphanArtists());
 
 ipcMain.handle("playlist:create", (e, name) => db.createPlaylist(name));
 ipcMain.handle("playlist:get-all", () => db.getAllPlaylistsWithStats());
