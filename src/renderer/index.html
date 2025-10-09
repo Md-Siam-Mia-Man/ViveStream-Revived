@@ -110,16 +110,6 @@
                                 <input type="text" id="url-input" placeholder="Enter YouTube URL..." required>
                             </div>
                             <div class="download-options">
-                                <div class="option-group">
-                                    <label>Type</label>
-                                    <div class="radio-group">
-                                        <label class="radio-label"><input type="radio" name="download-type"
-                                                id="download-type-video" value="video"
-                                                checked><span>Video</span></label>
-                                        <label class="radio-label"><input type="radio" name="download-type"
-                                                id="download-type-audio" value="audio"><span>Audio</span></label>
-                                    </div>
-                                </div>
                                 <div id="video-options-container" class="option-group select-group">
                                     <label>Video Quality</label>
                                     <div class="custom-select-container" id="video-quality-select-container">
@@ -137,23 +127,12 @@
                                         </div>
                                     </div>
                                 </div>
-                                <div id="audio-options-container" class="option-group select-group hidden">
-                                    <label>Audio Quality</label>
-                                    <div class="custom-select-container" id="audio-quality-select-container">
-                                        <div class="selected-option" data-value="mp3-0">
-                                            <span>MP3 (Best)</span>
-                                            <span class="chevron"><i class="fa-solid fa-chevron-down"></i></span>
-                                        </div>
-                                        <div class="options-list">
-                                            <div class="option-item selected" data-value="mp3-0">MP3 (Best Quality)
-                                            </div>
-                                            <div class="option-item" data-value="mp3-5">MP3 (Standard)</div>
-                                            <div class="option-item" data-value="flac">FLAC (Lossless)</div>
-                                            <div class="option-item" data-value="wav">WAV (Uncompressed)</div>
-                                            <div class="option-item" data-value="m4a">M4A (AAC)</div>
-                                            <div class="option-item" data-value="opus">Opus</div>
-                                        </div>
-                                    </div>
+                                <div class="option-group">
+                                    <label for="download-subs-toggle">Subtitles</label>
+                                    <label class="switch">
+                                        <input type="checkbox" id="download-subs-toggle">
+                                        <span class="slider round"></span>
+                                    </label>
                                 </div>
                                 <button type="submit" class="download-button"><i
                                         class="fa-solid fa-download"></i><span>Download</span></button>
@@ -271,8 +250,8 @@
                                 <div class="action-buttons">
                                     <button class="action-button favorite-btn" id="favorite-btn"><i
                                             class="fa-solid fa-heart"></i><span>Favorite</span></button>
-                                    <button class="action-button" id="save-to-playlist-btn"><i
-                                            class="fa-solid fa-plus"></i><span>Save</span></button>
+                                    <button class="action-button" id="add-to-playlist-btn"><i
+                                            class="fa-solid fa-plus"></i><span>Add to Playlist</span></button>
                                     <button class="action-button" id="video-menu-btn"><i
                                             class="fa-solid fa-ellipsis-vertical"></i></button>
                                     <button class="action-button edit-action" id="cancel-edit-btn">Cancel</button>
@@ -298,17 +277,7 @@
             <div id="playlist-detail-page" class="page hidden"></div>
             <div id="artists-page" class="page hidden"></div>
             <div id="artist-detail-page" class="page hidden"></div>
-            <div id="favorites-page" class="page hidden">
-                <div class="page-header">
-                    <h1 class="page-header-title">Favorites</h1>
-                </div>
-                <div class="placeholder-page">
-                    <i class="fa-solid fa-heart-crack placeholder-icon"></i>
-                    <h2 class="placeholder-title">No Favorites Yet</h2>
-                    <p class="placeholder-text">Click the heart icon on any video to add it to your favorites.</p>
-                </div>
-                <div class="video-grid" id="video-grid-favorites"></div>
-            </div>
+            <div id="favorites-page" class="page hidden"></div>
             <div id="settings-page" class="page hidden">
                 <div class="settings-container">
                     <h1 class="settings-header">Settings</h1>
@@ -413,6 +382,16 @@
                         <h2 class="settings-section-title">Maintenance</h2>
                         <div class="setting-item">
                             <div class="setting-text">
+                                <label>Import Local Files</label>
+                                <p>Add existing video or audio files from your computer to the ViveStream library.</p>
+                            </div>
+                            <div class="setting-control">
+                                <button class="setting-btn" id="import-files-btn"><i
+                                        class="fa-solid fa-file-import"></i> Import Files</button>
+                            </div>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-text">
                                 <label>Update Downloader</label>
                                 <p>Keep the internal downloader (yt-dlp) up-to-date to prevent download errors.</p>
                             </div>
@@ -495,11 +474,15 @@
                 </div>
             </div>
             <div class="context-menu" id="video-item-context-menu">
-                <div class="context-menu-item" id="context-edit-btn"><i class="fa-solid fa-pencil"></i> Edit</div>
-                <div class="context-menu-item" id="context-delete-btn"><i class="fa-solid fa-trash-can"></i> Delete
+                <div class="context-menu-item" id="context-edit-btn"><i class="fa-solid fa-pencil"></i> Edit Metadata
                 </div>
+                <div class="context-menu-item" id="context-export-btn"><i class="fa-solid fa-file-export"></i> Export
+                    File</div>
+                <div class="context-menu-divider"></div>
                 <div class="context-menu-item" id="context-remove-from-playlist-btn"><i class="fa-solid fa-times"></i>
                     Remove from Playlist</div>
+                <div class="context-menu-item" id="context-delete-btn"><i class="fa-solid fa-trash-can"></i> Delete
+                    from Library</div>
             </div>
             <div class="context-menu" id="playlist-item-context-menu">
                 <div class="context-menu-item" id="context-playlist-rename-btn"><i class="fa-solid fa-pencil"></i>
@@ -584,7 +567,7 @@
                     <button class="grid-item-action-btn favorite-btn">
                         <i class="fa-regular fa-heart"></i>
                     </button>
-                    <button class="grid-item-action-btn save-to-playlist-grid-btn" title="Save to Playlist"><i
+                    <button class="grid-item-action-btn add-to-playlist-grid-btn" title="Add to Playlist"><i
                             class="fa-solid fa-plus"></i></button>
                     <button class="grid-item-action-btn menu-btn" title="More">
                         <i class="fa-solid fa-ellipsis-vertical"></i>
@@ -594,7 +577,6 @@
         </div>
     </template>
 
-    <!-- Paths are now relative to src/renderer/ -->
     <script src="../../node_modules/sortablejs/Sortable.min.js"></script>
     <script src="./js/state.js" type="module"></script>
     <script src="./js/modals.js" type="module"></script>
