@@ -102,7 +102,6 @@
 .setting-control span {
      font-weight: 600;
      font-size: 1rem;
-     width: 24px;
      text-align: center;
      color: var(--yt-red);
 }
