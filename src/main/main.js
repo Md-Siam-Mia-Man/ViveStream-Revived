@@ -12,7 +12,7 @@ const {
 const path = require("path");
 const fs = require("fs");
 const fse = require("fs-extra");
-const { spawn, execFile } = require("child_process");
+const { spawn } = require("child_process");
 const crypto = require("crypto");
 const db = require("./database");
 
