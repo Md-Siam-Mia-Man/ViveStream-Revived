@@ -146,7 +146,6 @@ export async function renderPlaylistDetailPage(playlistId) {
   header.innerHTML = `
     <h1 class="page-header-title">${playlist.name}</h1>
     <div class="page-header-actions">
-        <button class="action-button" id="add-to-this-playlist-btn"><i class="fa-solid fa-plus"></i> Add Music</button>
         <button class="action-button" id="rename-playlist-btn" data-id="${playlist.id}" data-name="${playlist.name}"><i class="fa-solid fa-pencil"></i> Rename</button>
         <button class="action-button danger-btn" id="delete-playlist-btn" data-id="${playlist.id}" data-name="${playlist.name}"><i class="fa-solid fa-trash-can"></i> Delete</button>
     </div>`;
@@ -198,6 +197,7 @@ export async function renderPlaylistDetailPage(playlistId) {
 export async function openAddToPlaylistModal(videoId) {
   videoIdToAddToPlaylist = videoId;
   const listContainer = addToPlaylistModal.querySelector(".add-playlist-list");
+  const inputField = document.getElementById("add-to-playlist-input");
 
   const [playlists, checkedPlaylists] = await Promise.all([
     window.electronAPI.playlistGetAll(),
@@ -207,21 +207,21 @@ export async function openAddToPlaylistModal(videoId) {
 
   listContainer.innerHTML =
     playlists.length === 0
-      ? `<p class="placeholder-text" style="text-align:center; padding: 20px 0;">No playlists exist. Create one below.</p>`
+      ? `<p class="placeholder-text" style="text-align:center; padding: 20px 0;">No playlists exist. Create one above.</p>`
       : playlists
           .map(
             (p) => `
-            <div class="add-playlist-item">
-                <input type="checkbox" id="playlist-check-${p.id}" data-id="${
-                  p.id
-                }" ${checkedIds.has(p.id) ? "checked" : ""}>
+            <div class="add-playlist-item" data-id="${p.id}">
+                <input type="checkbox" id="playlist-check-${p.id}" ${checkedIds.has(p.id) ? "checked" : ""}>
+                <span class="custom-checkbox"><i class="fa-solid fa-check"></i></span>
                 <label for="playlist-check-${p.id}">${p.name}</label>
             </div>`
           )
           .join("");
 
   addToPlaylistModal.classList.remove("hidden");
-  document.getElementById("new-playlist-input").value = "";
+  inputField.value = "";
+  inputField.focus();
 }
 
 playlistsPage.addEventListener("click", async (e) => {
@@ -278,46 +278,73 @@ playlistsPage.addEventListener("click", async (e) => {
   }
 });
 
-addToPlaylistModal.addEventListener("click", async (e) => {
-  if (e.target.id === "create-playlist-confirm-btn") {
-    const inputField = document.getElementById("new-playlist-input");
-    const name = inputField.value.trim();
-    if (!name) return;
-    const result = await window.electronAPI.playlistCreate(name);
-    if (result.success) {
-      showNotification(`Playlist "${name}" created.`, "success");
-      await openAddToPlaylistModal(videoIdToAddToPlaylist);
-      const newCheckbox = document.querySelector(
-        `#add-to-playlist-modal input[data-id="${result.id}"]`
-      );
-      if (newCheckbox) newCheckbox.checked = true;
-    } else {
-      showNotification(`Error: ${result.error}`, "error");
-    }
-  }
-  if (e.target.id === "modal-done-btn") {
-    const videoId = videoIdToAddToPlaylist;
-    const checkboxes = addToPlaylistModal.querySelectorAll(
-      '.add-playlist-list input[type="checkbox"]'
-    );
-    for (const box of checkboxes) {
-      const playlistId = box.dataset.id;
-      if (box.checked) {
-        await window.electronAPI.playlistAddVideo(playlistId, videoId);
-      } else {
-        await window.electronAPI.playlistRemoveVideo(playlistId, videoId);
-      }
-    }
+addToPlaylistModal.addEventListener("click", (e) => {
+  if (
+    e.target.id === "add-to-playlist-close-btn" ||
+    (e.target.closest(".modal-overlay") === addToPlaylistModal &&
+      !e.target.closest(".modal-content"))
+  ) {
     addToPlaylistModal.classList.add("hidden");
     videoIdToAddToPlaylist = null;
   }
 });
 
-playlistDetailPage.addEventListener("click", async (e) => {
-  if (e.target.closest("#add-to-this-playlist-btn")) {
-    handleNav("downloads");
-  }
+addToPlaylistModal
+  .querySelector(".add-playlist-list")
+  .addEventListener("click", async (e) => {
+    const item = e.target.closest(".add-playlist-item");
+    if (item) {
+      const checkbox = item.querySelector('input[type="checkbox"]');
+      const playlistId = item.dataset.id;
+      checkbox.checked = !checkbox.checked; // Manually toggle state
 
+      if (checkbox.checked) {
+        await window.electronAPI.playlistAddVideo(
+          playlistId,
+          videoIdToAddToPlaylist
+        );
+      } else {
+        await window.electronAPI.playlistRemoveVideo(
+          playlistId,
+          videoIdToAddToPlaylist
+        );
+      }
+    }
+  });
+
+document
+  .getElementById("add-to-playlist-input")
+  .addEventListener("input", (e) => {
+    const searchTerm = e.target.value.toLowerCase();
+    const items = addToPlaylistModal.querySelectorAll(".add-playlist-item");
+    items.forEach((item) => {
+      const label = item.querySelector("label").textContent.toLowerCase();
+      item.classList.toggle("hidden", !label.includes(searchTerm));
+    });
+  });
+
+document
+  .getElementById("add-to-playlist-input")
+  .addEventListener("keydown", async (e) => {
+    if (e.key === "Enter") {
+      const name = e.target.value.trim();
+      if (!name) return;
+
+      const result = await window.electronAPI.playlistCreate(name);
+      if (result.success) {
+        showNotification(`Playlist "${name}" created.`, "success");
+        await window.electronAPI.playlistAddVideo(
+          result.id,
+          videoIdToAddToPlaylist
+        );
+        await openAddToPlaylistModal(videoIdToAddToPlaylist);
+      } else {
+        showNotification(`Error: ${result.error}`, "error");
+      }
+    }
+  });
+
+playlistDetailPage.addEventListener("click", async (e) => {
   const renameBtn = e.target.closest("#rename-playlist-btn");
   if (renameBtn) {
     const playlistId = renameBtn.dataset.id;
