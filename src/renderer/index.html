@@ -382,12 +382,24 @@
                         <h2 class="settings-section-title">Maintenance</h2>
                         <div class="setting-item">
                             <div class="setting-text">
-                                <label>Import Local Files</label>
-                                <p>Add existing video or audio files from your computer to the ViveStream library.</p>
+                                <label>Import & Export</label>
+                                <p>Add local files to your library or export your entire library to a folder.</p>
                             </div>
                             <div class="setting-control">
                                 <button class="setting-btn" id="import-files-btn"><i
                                         class="fa-solid fa-file-import"></i> Import Files</button>
+                                <button class="setting-btn" id="export-all-btn"><i class="fa-solid fa-folder-open"></i>
+                                    Export Library</button>
+                            </div>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-text">
+                                <label>Clean Up Library</label>
+                                <p>Remove any artists that no longer have videos in your library.</p>
+                            </div>
+                            <div class="setting-control">
+                                <button class="setting-btn" id="cleanup-btn"><i class="fa-solid fa-broom"></i> Clean
+                                    Up</button>
                             </div>
                         </div>
                         <div class="setting-item">
@@ -517,15 +529,16 @@
     <div id="notification-container"></div>
     <div id="add-to-playlist-modal" class="modal-overlay hidden">
         <div class="modal-content">
-            <h3>Add to playlist</h3>
-            <div class="add-playlist-list"></div>
-            <div class="add-playlist-new">
-                <input type="text" id="new-playlist-input" placeholder="...or create new playlist">
-                <button id="create-playlist-confirm-btn" class="modal-btn"><i class="fa-solid fa-plus"></i>
-                    Create</button>
+            <div class="modal-header">
+                <h3>Add to Playlist</h3>
+                <div class="modal-header-input-container">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" id="add-to-playlist-input" placeholder="Find or create playlist...">
+                </div>
             </div>
+            <div class="add-playlist-list"></div>
             <div class="modal-actions">
-                <button id="modal-done-btn" class="modal-btn">Done</button>
+                <button id="add-to-playlist-close-btn" class="modal-btn">Close</button>
             </div>
         </div>
     </div>
