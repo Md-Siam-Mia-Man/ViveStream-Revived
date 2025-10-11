@@ -29,6 +29,8 @@ const cookieBrowserSelect = document.getElementById(
 const autoSubsToggle = document.getElementById("auto-subs-toggle");
 const sponsorblockToggle = document.getElementById("sponsorblock-toggle");
 const importFilesBtn = document.getElementById("import-files-btn");
+const exportAllBtn = document.getElementById("export-all-btn");
+const cleanupBtn = document.getElementById("cleanup-btn");
 const updateYtdlpBtn = document.getElementById("update-ytdlp-btn");
 const updaterConsoleContainer = document.getElementById(
   "updater-console-container"
@@ -128,6 +130,36 @@ export function initializeSettingsPage() {
     }
     importFilesBtn.disabled = false;
     importFilesBtn.innerHTML = `<i class="fa-solid fa-file-import"></i> Import Files`;
+  });
+
+  exportAllBtn.addEventListener("click", async () => {
+    exportAllBtn.disabled = true;
+    exportAllBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Exporting...`;
+    const result = await window.electronAPI.mediaExportAll();
+    if (result.success) {
+      showNotification(
+        `Successfully exported ${result.count} files.`,
+        "success"
+      );
+    } else if (result.error !== "Export cancelled.") {
+      showNotification(`Export failed: ${result.error}`, "error");
+    }
+    exportAllBtn.disabled = false;
+    exportAllBtn.innerHTML = `<i class="fa-solid fa-folder-open"></i> Export Library`;
+  });
+
+  cleanupBtn.addEventListener("click", async () => {
+    cleanupBtn.disabled = true;
+    cleanupBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Cleaning...`;
+    const result = await window.electronAPI.dbCleanupOrphans();
+    if (result.success) {
+      showNotification(`Removed ${result.count} unused artist(s).`, "success");
+      await loadLibrary();
+    } else {
+      showNotification(`Cleanup failed: ${result.error}`, "error");
+    }
+    cleanupBtn.disabled = false;
+    cleanupBtn.innerHTML = `<i class="fa-solid fa-broom"></i> Clean Up`;
   });
 
   updateYtdlpBtn.addEventListener("click", async () => {
