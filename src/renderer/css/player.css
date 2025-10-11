@@ -520,14 +520,16 @@
 
 .settings-menu,
 .settings-submenu {
-     background: rgba(40, 40, 40, 0.95);
+     background: rgba(40, 40, 40, 0.6);
+     backdrop-filter: blur(10px);
+     -webkit-backdrop-filter: blur(10px);
+     border: 1px solid rgba(255, 255, 255, 0.1);
      border-radius: 12px;
      padding: 8px;
      position: absolute;
      right: 10px;
      bottom: 60px;
      width: 280px;
-     backdrop-filter: blur(5px);
      display: none;
      opacity: 0;
      transform: translateY(10px);
@@ -599,60 +601,6 @@
      visibility: visible;
 }
 
-.autoplay-container {
-     display: flex;
-     align-items: center;
-     gap: 8px;
-}
-
-.switch {
-     position: relative;
-     display: inline-block;
-     width: 34px;
-     height: 20px;
-}
-
-.switch input {
-     opacity: 0;
-     width: 0;
-     height: 0;
-}
-
-.slider {
-     position: absolute;
-     cursor: pointer;
-     top: 0;
-     left: 0;
-     right: 0;
-     bottom: 0;
-     background-color: var(--yt-dark-grey);
-     transition: .4s;
-}
-
-.slider.round {
-     border-radius: 20px;
-}
-
-.slider:before {
-     position: absolute;
-     content: "";
-     height: 12px;
-     width: 12px;
-     left: 4px;
-     bottom: 4px;
-     background-color: white;
-     transition: .4s;
-     border-radius: 50%;
-}
-
-input:checked+.slider {
-     background-color: var(--yt-red);
-}
-
-input:checked+.slider:before {
-     transform: translateX(14px);
-}
-
 .editable-input,
 .editable-textarea {
      width: 100%;
@@ -690,6 +638,10 @@ input:checked+.slider:before {
      font-family: var(--font-body);
      resize: vertical;
      min-height: 80px;
+}
+
+#player-page.edit-mode #editable-description-textarea {
+     min-height: 350px;
 }
 
 #player-page:not(.edit-mode) .editable-input,
