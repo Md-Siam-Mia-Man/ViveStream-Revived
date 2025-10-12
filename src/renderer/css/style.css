@@ -1,4 +1,3 @@
-/* src/renderer/css/style.css */
 @font-face {
      font-family: 'Poppins';
      src: url('../../../assets/fonts/Poppins.ttf') format('truetype');
@@ -175,8 +174,11 @@ button,
 }
 
 .header-right {
-     width: 140px;
+     width: 200px;
      flex-shrink: 0;
+     display: flex;
+     justify-content: flex-end;
+     align-items: center;
 }
 
 .logo-container {
@@ -241,6 +243,29 @@ button,
      width: 480px;
      outline: none;
      border-color: var(--yt-red);
+}
+
+.sleep-timer-status {
+     display: flex;
+     align-items: center;
+     gap: 8px;
+     background-color: var(--yt-dark-grey);
+     padding: 6px 12px;
+     border-radius: 16px;
+     font-size: 0.8rem;
+     font-weight: 500;
+     color: var(--yt-light-grey);
+     cursor: pointer;
+     transition: background-color 0.2s;
+}
+
+.sleep-timer-status:hover {
+     background-color: var(--yt-border);
+     color: var(--yt-white);
+}
+
+.sleep-timer-status.hidden {
+     display: none;
 }
 
 .app-body {
@@ -407,6 +432,8 @@ button,
      display: flex;
      justify-content: space-between;
      align-items: center;
+     flex-wrap: wrap;
+     gap: 16px;
 }
 
 .page-header-title {
