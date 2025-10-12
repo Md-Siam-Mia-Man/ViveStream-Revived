@@ -1,4 +1,3 @@
-/* src/css/player.css */
 #player-page .main-content {
      display: flex;
      padding: 24px 10px;
@@ -291,15 +290,35 @@
      flex-grow: 1;
 }
 
-.playlist-area h4 {
-     font-family: var(--font-display);
-     font-size: 1.1rem;
-     padding: 0 0 12px 0;
-     font-weight: 500;
-}
-
 #up-next-list {
      list-style-type: none;
+     overflow-y: auto;
+}
+
+.up-next-context-header {
+     padding: 12px 16px;
+     margin-bottom: 4px;
+     background: var(--glass-bg);
+     backdrop-filter: blur(10px);
+     -webkit-backdrop-filter: blur(10px);
+     border: 1px solid var(--glass-border);
+     border-radius: 12px;
+     font-weight: 500;
+     position: sticky;
+     top: 0;
+     z-index: 5;
+}
+
+.up-next-context-header i {
+     margin-right: 8px;
+     color: var(--yt-red);
+}
+
+.up-next-context-box {
+     background: rgba(255, 255, 255, 0.05);
+     border-radius: 12px;
+     margin: 8px 0 16px;
+     max-height: 300px;
      overflow-y: auto;
 }
 
@@ -520,10 +539,10 @@
 
 .settings-menu,
 .settings-submenu {
-     background: rgba(40, 40, 40, 0.6);
+     background: var(--glass-bg);
      backdrop-filter: blur(10px);
      -webkit-backdrop-filter: blur(10px);
-     border: 1px solid rgba(255, 255, 255, 0.1);
+     border: 1px solid var(--glass-border);
      border-radius: 12px;
      padding: 8px;
      position: absolute;
@@ -600,6 +619,38 @@
 .submenu-item.active .check {
      visibility: visible;
 }
+
+.sleep-timer-input-group {
+     display: flex;
+     align-items: center;
+     gap: 8px;
+     width: 100%;
+}
+
+.sleep-timer-input-group input {
+     flex-grow: 1;
+     background: rgba(0, 0, 0, 0.3);
+     border: 1px solid var(--yt-border);
+     color: var(--yt-white);
+     padding: 6px 10px;
+     border-radius: 6px;
+     text-align: center;
+}
+
+.sleep-timer-input-group input:focus {
+     outline: none;
+     border-color: var(--yt-red);
+}
+
+.sleep-timer-input-group button {
+     background-color: var(--yt-red);
+     border: none;
+     color: white;
+     padding: 6px 12px;
+     border-radius: 6px;
+     cursor: pointer;
+}
+
 
 .editable-input,
 .editable-textarea {
