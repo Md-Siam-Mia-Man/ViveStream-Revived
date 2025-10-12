@@ -1,4 +1,3 @@
-/* playlists.css */
 #playlists-page .page-content,
 #playlist-detail-page .page-content {
      padding: 24px;
@@ -115,4 +114,73 @@
 .playlist-grid-item:hover .playlist-item-actions {
      opacity: 1;
      pointer-events: auto;
+}
+
+.playlist-detail-header-container {
+     display: flex;
+     gap: 24px;
+     align-items: center;
+     margin: 10px;
+     padding: 24px;
+     background: var(--yt-dark-grey);
+     border-bottom: 1px solid var(--yt-border);
+     border-radius: 24px;
+}
+
+.playlist-detail-cover-container {
+     position: relative;
+     width: 200px;
+     height: 200px;
+     flex-shrink: 0;
+     border-radius: 50%;
+     overflow: hidden;
+}
+
+.playlist-detail-cover {
+     width: 100%;
+     height: 100%;
+     object-fit: cover;
+}
+
+.edit-cover-btn {
+     position: absolute;
+     bottom: 10px;
+     right: 10px;
+     background-color: rgba(0, 0, 0, 0.6);
+     border: none;
+     color: white;
+     width: 36px;
+     height: 36px;
+     border-radius: 50%;
+     display: flex;
+     align-items: center;
+     justify-content: center;
+     cursor: pointer;
+     opacity: 0;
+     transition: opacity 0.2s;
+}
+
+.playlist-detail-cover-container:hover .edit-cover-btn {
+     opacity: 1;
+}
+
+.playlist-detail-info {
+     display: flex;
+     flex-direction: column;
+     gap: 8px;
+}
+
+.playlist-detail-title {
+     font-family: var(--font-display);
+     font-size: 2.5rem;
+}
+
+.playlist-detail-meta {
+     color: var(--yt-light-grey);
+}
+
+.playlist-detail-actions {
+     margin-top: 16px;
+     display: flex;
+     gap: 12px;
 }
