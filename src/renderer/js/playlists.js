@@ -5,7 +5,6 @@ import {
   setCurrentPlaylistId,
   showLoader,
   hideLoader,
-  handleNav,
 } from "./renderer.js";
 import { createGridItem } from "./ui.js";
 import { showConfirmationModal, showPromptModal } from "./modals.js";
@@ -95,7 +94,7 @@ export async function renderPlaylistsPage(playlistsToRender) {
   hideLoader();
 }
 
-function renderPlaylistCard(playlist) {
+export function renderPlaylistCard(playlist) {
   const videoCountText =
     playlist.videoCount === 1 ? "1 video" : `${playlist.videoCount} videos`;
   const placeholderSrc = `${AppState.assetsPath}/logo.png`;
@@ -141,14 +140,33 @@ export async function renderPlaylistDetailPage(playlistId) {
 
   setCurrentPlaylistId(playlistId);
 
+  const videoCountText =
+    playlist.videos.length === 1
+      ? "1 video"
+      : `${playlist.videos.length} videos`;
+  const placeholderSrc = `${AppState.assetsPath}/logo.png`;
+  const coverSrc = playlist.coverPath
+    ? decodeURIComponent(playlist.coverPath)
+    : playlist.videos[0]?.coverPath
+      ? decodeURIComponent(playlist.videos[0].coverPath)
+      : placeholderSrc;
+
   const header = document.createElement("div");
-  header.className = "page-header";
+  header.className = "playlist-detail-header-container";
   header.innerHTML = `
-    <h1 class="page-header-title">${playlist.name}</h1>
-    <div class="page-header-actions">
-        <button class="action-button" id="rename-playlist-btn" data-id="${playlist.id}" data-name="${playlist.name}"><i class="fa-solid fa-pencil"></i> Rename</button>
-        <button class="action-button danger-btn" id="delete-playlist-btn" data-id="${playlist.id}" data-name="${playlist.name}"><i class="fa-solid fa-trash-can"></i> Delete</button>
-    </div>`;
+    <div class="playlist-detail-cover-container">
+        <img src="${coverSrc}" class="playlist-detail-cover" alt="playlist cover" onerror="this.onerror=null;this.src='${placeholderSrc}';">
+        <button class="edit-cover-btn" id="edit-playlist-cover-btn" title="Change cover"><i class="fa-solid fa-camera"></i></button>
+    </div>
+    <div class="playlist-detail-info">
+        <h1 class="playlist-detail-title">${playlist.name}</h1>
+        <p class="playlist-detail-meta">${videoCountText}</p>
+        <div class="playlist-detail-actions">
+             <button class="action-button" id="rename-playlist-btn" data-id="${playlist.id}" data-name="${playlist.name}"><i class="fa-solid fa-pencil"></i> Rename</button>
+             <button class="action-button danger-btn" id="delete-playlist-btn" data-id="${playlist.id}" data-name="${playlist.name}"><i class="fa-solid fa-trash-can"></i> Delete</button>
+        </div>
+    </div>
+    `;
   playlistDetailPage.appendChild(header);
 
   const content = document.createElement("div");
@@ -159,6 +177,8 @@ export async function renderPlaylistDetailPage(playlistId) {
     const grid = document.createElement("div");
     grid.className = "video-grid";
     grid.id = "video-grid-playlist";
+    grid.dataset.playlistId = playlist.id;
+    grid.dataset.playlistName = playlist.name;
 
     const fragment = document.createDocumentFragment();
     playlist.videos.forEach((item) => {
@@ -212,7 +232,9 @@ export async function openAddToPlaylistModal(videoId) {
           .map(
             (p) => `
             <div class="add-playlist-item" data-id="${p.id}">
-                <input type="checkbox" id="playlist-check-${p.id}" ${checkedIds.has(p.id) ? "checked" : ""}>
+                <input type="checkbox" id="playlist-check-${p.id}" ${
+                  checkedIds.has(p.id) ? "checked" : ""
+                }>
                 <span class="custom-checkbox"><i class="fa-solid fa-check"></i></span>
                 <label for="playlist-check-${p.id}">${p.name}</label>
             </div>`
@@ -247,7 +269,15 @@ playlistsPage.addEventListener("click", async (e) => {
       const playlistData =
         await window.electronAPI.playlistGetDetails(playlistId);
       if (playlistData && playlistData.videos.length > 0) {
-        eventBus.emit("player:play_request", 0, playlistData.videos);
+        eventBus.emit("player:play_request", {
+          index: 0,
+          queue: playlistData.videos,
+          context: {
+            type: "playlist",
+            id: playlistId,
+            name: playlistData.name,
+          },
+        });
       } else {
         showNotification("Playlist is empty.", "info");
       }
@@ -296,7 +326,7 @@ addToPlaylistModal
     if (item) {
       const checkbox = item.querySelector('input[type="checkbox"]');
       const playlistId = item.dataset.id;
-      checkbox.checked = !checkbox.checked; // Manually toggle state
+      checkbox.checked = !checkbox.checked;
 
       if (checkbox.checked) {
         await window.electronAPI.playlistAddVideo(
@@ -345,6 +375,19 @@ document
   });
 
 playlistDetailPage.addEventListener("click", async (e) => {
+  const editCoverBtn = e.target.closest("#edit-playlist-cover-btn");
+  if (editCoverBtn) {
+    const playlistId = document.getElementById("rename-playlist-btn").dataset
+      .id;
+    const result = await window.electronAPI.playlistUpdateCover(playlistId);
+    if (result.success) {
+      showNotification("Playlist cover updated.", "success");
+      await renderPlaylistDetailPage(playlistId);
+    } else if (result.error !== "File selection cancelled.") {
+      showNotification(`Error: ${result.error}`, "error");
+    }
+  }
+
   const renameBtn = e.target.closest("#rename-playlist-btn");
   if (renameBtn) {
     const playlistId = renameBtn.dataset.id;
