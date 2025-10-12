@@ -1,4 +1,3 @@
-// src/renderer/js/artists.js
 import { AppState, setAllArtists } from "./state.js";
 import { showPage, showLoader, hideLoader } from "./renderer.js";
 import { createGridItem } from "./ui.js";
@@ -70,7 +69,7 @@ export async function renderArtistsPage(artistsToRender) {
   hideLoader();
 }
 
-function renderArtistCard(artist) {
+export function renderArtistCard(artist) {
   const videoCountText =
     artist.videoCount === 1 ? "1 video" : `${artist.videoCount} videos`;
   const placeholderSrc = `${AppState.assetsPath}/logo.png`;
@@ -119,9 +118,10 @@ export async function renderArtistDetailPage(artistId) {
 
   headerWrapper.innerHTML = `
     <div class="artist-detail-header">
-        <img src="${thumbnailSrc}" class="artist-detail-image" alt="${
-          artist.name
-        }" onerror="this.onerror=null;this.src='${placeholderSrc}';">
+        <div class="artist-detail-image-container">
+            <img src="${thumbnailSrc}" class="artist-detail-image" alt="${artist.name}" onerror="this.onerror=null;this.src='${placeholderSrc}';">
+            <button class="edit-cover-btn" id="edit-artist-thumbnail-btn" title="Change thumbnail"><i class="fa-solid fa-camera"></i></button>
+        </div>
         <div class="artist-detail-info">
             <h1 class="artist-detail-name">${artist.name}</h1>
             <p class="artist-detail-meta">${videoCountText}</p>
@@ -137,6 +137,8 @@ export async function renderArtistDetailPage(artistId) {
     const grid = document.createElement("div");
     grid.className = "video-grid";
     grid.id = "video-grid-artist";
+    grid.dataset.artistId = artist.id;
+    grid.dataset.artistName = artist.name;
 
     const fragment = document.createDocumentFragment();
     artist.videos.forEach((item) => {
@@ -158,6 +160,18 @@ export async function renderArtistDetailPage(artistId) {
       </div>`;
   }
   artistDetailPage.appendChild(content);
+
+  document
+    .getElementById("edit-artist-thumbnail-btn")
+    .addEventListener("click", async () => {
+      const result = await window.electronAPI.artistUpdateThumbnail(artistId);
+      if (result.success) {
+        showNotification("Artist thumbnail updated.", "success");
+        await renderArtistDetailPage(artistId);
+      } else if (result.error !== "File selection cancelled.") {
+        showNotification(`Error: ${result.error}`, "error");
+      }
+    });
 
   hideLoader();
 }
