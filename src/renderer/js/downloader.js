@@ -1,4 +1,3 @@
-// src/renderer/js/downloader.js
 import { loadLibrary } from "./renderer.js";
 import { showNotification } from "./notifications.js";
 import { AppState } from "./state.js";
@@ -165,6 +164,15 @@ window.electronAPI.onDownloadQueueStart(({ infos, jobId }) => {
     `.download-item[data-job-id="${jobId}"]`
   );
   if (!placeholder) return;
+
+  const existingLibraryIds = new Set(AppState.library.map((v) => v.id));
+  const videosToTouch = infos
+    .filter((info) => existingLibraryIds.has(info.id))
+    .map((info) => info.id);
+
+  if (videosToTouch.length > 0) {
+    window.electronAPI.videosTouch(videosToTouch);
+  }
 
   const fragment = document.createDocumentFragment();
 
