@@ -30,7 +30,7 @@ const autoSubsToggle = document.getElementById("auto-subs-toggle");
 const sponsorblockToggle = document.getElementById("sponsorblock-toggle");
 const importFilesBtn = document.getElementById("import-files-btn");
 const exportAllBtn = document.getElementById("export-all-btn");
-const cleanupBtn = document.getElementById("cleanup-btn");
+const reinitializeAppBtn = document.getElementById("reinitialize-app-btn");
 const updateYtdlpBtn = document.getElementById("update-ytdlp-btn");
 const updaterConsoleContainer = document.getElementById(
   "updater-console-container"
@@ -148,18 +148,27 @@ export function initializeSettingsPage() {
     exportAllBtn.innerHTML = `<i class="fa-solid fa-folder-open"></i> Export Library`;
   });
 
-  cleanupBtn.addEventListener("click", async () => {
-    cleanupBtn.disabled = true;
-    cleanupBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Cleaning...`;
-    const result = await window.electronAPI.dbCleanupOrphans();
-    if (result.success) {
-      showNotification(`Removed ${result.count} unused artist(s).`, "success");
-      await loadLibrary();
-    } else {
-      showNotification(`Cleanup failed: ${result.error}`, "error");
-    }
-    cleanupBtn.disabled = false;
-    cleanupBtn.innerHTML = `<i class="fa-solid fa-broom"></i> Clean Up`;
+  reinitializeAppBtn.addEventListener("click", () => {
+    showConfirmationModal(
+      "Reinitialize App?",
+      "This will rescan your media directory for deleted files, clear the application cache, and remove any artists that no longer have media. This can fix some library issues. Are you sure?",
+      async () => {
+        reinitializeAppBtn.disabled = true;
+        reinitializeAppBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Working...`;
+        const result = await window.electronAPI.appReinitialize();
+        if (result.success) {
+          showNotification(
+            `App reinitialized: ${result.deletedVideos} video(s) and ${result.deletedArtists} artist(s) removed.`,
+            "success"
+          );
+          await loadLibrary();
+        } else {
+          showNotification(`Reinitialization failed: ${result.error}`, "error");
+        }
+        reinitializeAppBtn.disabled = false;
+        reinitializeAppBtn.innerHTML = `<i class="fa-solid fa-sync"></i> Reinitialize`;
+      }
+    );
   });
 
   updateYtdlpBtn.addEventListener("click", async () => {
