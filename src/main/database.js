@@ -1,4 +1,3 @@
-// src/main/database.js
 const path = require("path");
 const fs = require("fs");
 const knex = require("knex");
@@ -43,6 +42,7 @@ function initialize(app) {
         await db.schema.createTable("playlists", (table) => {
           table.increments("id").primary();
           table.string("name").notNullable();
+          table.string("coverPath");
           table.timestamp("createdAt").defaultTo(db.fn.now());
         });
       }
@@ -91,26 +91,15 @@ function initialize(app) {
         });
       }
 
-      if (!(await db.schema.hasColumn("videos", "creator"))) {
-        await db.schema.alterTable("videos", (table) => {
-          table.string("creator");
+      if (!(await db.schema.hasColumn("playlists", "coverPath"))) {
+        await db.schema.alterTable("playlists", (table) => {
+          table.string("coverPath");
         });
       }
-
-      if (!(await db.schema.hasColumn("videos", "hasEmbeddedSubs"))) {
+      if (!(await db.schema.hasColumn("videos", "subtitlePath"))) {
         await db.schema.alterTable("videos", (table) => {
+          table.string("subtitlePath");
           table.boolean("hasEmbeddedSubs").defaultTo(false);
-        });
-      }
-
-      if (!(await db.schema.hasColumn("videos", "description"))) {
-        await db.schema.alterTable("videos", (table) => {
-          table.text("description");
-        });
-      }
-      if (!(await db.schema.hasColumn("videos", "source"))) {
-        await db.schema.alterTable("videos", (table) => {
-          table.string("source").defaultTo("youtube");
         });
       }
     } catch (error) {
@@ -244,13 +233,30 @@ async function createPlaylist(name) {
   }
 }
 
+async function findOrCreatePlaylistByName(name) {
+  try {
+    let playlist = await db("playlists").where({ name }).first();
+    if (playlist) {
+      return playlist;
+    }
+    const [id] = await db("playlists").insert({ name });
+    return { id, name };
+  } catch (error) {
+    if (error.message.includes("UNIQUE constraint failed")) {
+      return db("playlists").where({ name }).first();
+    }
+    console.error(`Error finding or creating playlist "${name}":`, error);
+    return null;
+  }
+}
+
 async function getAllPlaylistsWithStats() {
   try {
     const playlists = await db.raw(`
       SELECT
         p.*,
-        (SELECT COUNT(*) FROM playlist_videos pv WHERE pv.playlistId = p.id) as videoCount,
-        (SELECT v.coverPath FROM playlist_videos pv JOIN videos v ON v.id = pv.videoId WHERE pv.playlistId = p.id ORDER BY pv.sortOrder ASC LIMIT 1) as thumbnail
+        COALESCE(p.coverPath, (SELECT v.coverPath FROM playlist_videos pv JOIN videos v ON v.id = pv.videoId WHERE pv.playlistId = p.id ORDER BY pv.sortOrder ASC LIMIT 1)) as thumbnail,
+        (SELECT COUNT(*) FROM playlist_videos pv WHERE pv.playlistId = p.id) as videoCount
       FROM playlists p
       ORDER BY p.createdAt DESC
     `);
@@ -291,10 +297,34 @@ async function renamePlaylist(playlistId, newName) {
 
 async function deletePlaylist(playlistId) {
   try {
+    const playlist = await db("playlists").where({ id: playlistId }).first();
+    if (playlist && playlist.coverPath) {
+      try {
+        const p = path.normalize(
+          decodeURIComponent(playlist.coverPath.replace("file://", ""))
+        );
+        if (fs.existsSync(p)) fs.unlinkSync(p);
+      } catch (err) {
+        console.error(
+          `Failed to delete playlist cover ${playlist.coverPath}:`,
+          err
+        );
+      }
+    }
     await db("playlists").where({ id: playlistId }).del();
     return { success: true };
   } catch (error) {
     console.error(`Error deleting playlist ${playlistId}:`, error);
+    return { success: false, error: error.message };
+  }
+}
+
+async function updatePlaylistCover(playlistId, coverPath) {
+  try {
+    await db("playlists").where({ id: playlistId }).update({ coverPath });
+    return { success: true };
+  } catch (error) {
+    console.error(`Error updating cover for playlist ${playlistId}:`, error);
     return { success: false, error: error.message };
   }
 }
@@ -400,7 +430,7 @@ async function linkVideoToArtist(videoId, artistId) {
 async function getAllArtistsWithStats() {
   try {
     const artists = await db("artists")
-      .innerJoin("video_artists", "artists.id", "video_artists.artistId")
+      .leftJoin("video_artists", "artists.id", "video_artists.artistId")
       .select(
         "artists.id",
         "artists.name",
@@ -410,7 +440,6 @@ async function getAllArtistsWithStats() {
       .count("video_artists.videoId as videoCount")
       .groupBy("artists.id")
       .orderBy("artists.name", "asc");
-
     return artists;
   } catch (error) {
     console.error("Error getting all artists with stats:", error);
@@ -433,6 +462,16 @@ async function getArtistDetails(artistId) {
   } catch (error) {
     console.error(`Error getting details for artist ${artistId}:`, error);
     return null;
+  }
+}
+
+async function updateArtistThumbnail(artistId, thumbnailPath) {
+  try {
+    await db("artists").where({ id: artistId }).update({ thumbnailPath });
+    return { success: true };
+  } catch (error) {
+    console.error(`Error updating thumbnail for artist ${artistId}:`, error);
+    return { success: false, error: error.message };
   }
 }
 
@@ -464,6 +503,7 @@ async function shutdown() {
 module.exports = {
   initialize,
   shutdown,
+  db,
   getLibrary,
   addOrUpdateVideo,
   getVideoById,
@@ -472,10 +512,12 @@ module.exports = {
   toggleFavorite,
   clearAllMedia,
   createPlaylist,
+  findOrCreatePlaylistByName,
   getAllPlaylistsWithStats,
   getPlaylistDetails,
   renamePlaylist,
   deletePlaylist,
+  updatePlaylistCover,
   addVideoToPlaylist,
   removeVideoFromPlaylist,
   updateVideoOrderInPlaylist,
@@ -484,5 +526,6 @@ module.exports = {
   linkVideoToArtist,
   getAllArtistsWithStats,
   getArtistDetails,
+  updateArtistThumbnail,
   cleanupOrphanArtists,
 };
