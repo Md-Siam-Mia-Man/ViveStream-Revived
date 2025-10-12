@@ -1,67 +1,55 @@
 // src/renderer/js/state.js
 
-/**
- * The single source of truth for the application's renderer-side state.
- */
 export const AppState = {
-  // Global App State
   assetsPath: "",
 
-  // Library and Playback State
   library: [],
   playbackQueue: [],
   currentlyPlayingIndex: -1,
-  // Page-specific data caches
+  playbackContext: {
+    type: null,
+    id: null,
+    name: "",
+  },
+
   playlists: [],
   artists: [],
+
+  currentFilters: {
+    type: "all", // 'all', 'video', 'audio'
+    duration: "all", // 'all', '<5', '5-20', '>20'
+    source: "all", // 'all', 'youtube', 'local'
+  },
 };
 
-/**
- * Sets the absolute path to the application's assets folder.
- * @param {string} path - The assets path.
- */
 export function setAssetsPath(path) {
   AppState.assetsPath = path;
 }
 
-/**
- * Updates the main media library.
- * @param {Array} media - The new array of media items.
- */
 export function setLibrary(media) {
   AppState.library = media;
 }
 
-/**
- * Updates the currently playing track and its queue.
- * @param {number} index - The index of the new track in the queue.
- * @param {Array} queue - The playback queue.
- */
-export function setCurrentlyPlaying(index, queue) {
+export function setCurrentlyPlaying(index, queue, context = null) {
   AppState.currentlyPlayingIndex = index;
   AppState.playbackQueue = queue;
+  AppState.playbackContext = context || { type: null, id: null, name: "" };
 }
 
-/**
- * Updates the cached list of all playlists.
- * @param {Array} playlists - The array of playlist objects.
- */
 export function setAllPlaylists(playlists) {
   AppState.playlists = playlists;
 }
 
-/**
- * Updates the cached list of all artists.
- * @param {Array} artists - The array of artist objects.
- */
 export function setAllArtists(artists) {
   AppState.artists = artists;
 }
 
-/**
- * Clears all dynamic state, typically after a major library change.
- */
+export function setFilters(newFilters) {
+  AppState.currentFilters = { ...AppState.currentFilters, ...newFilters };
+}
+
 export function resetPlaybackState() {
   AppState.playbackQueue = [];
   AppState.currentlyPlayingIndex = -1;
+  AppState.playbackContext = { type: null, id: null, name: "" };
 }
