@@ -1,4 +1,3 @@
-// src/main/main.js
 const {
   app,
   BrowserWindow,
@@ -36,9 +35,17 @@ const userHomePath = app.getPath("home");
 const viveStreamPath = path.join(userHomePath, "ViveStream");
 const videoPath = path.join(viveStreamPath, "videos");
 const coverPath = path.join(viveStreamPath, "covers");
+const playlistCoverPath = path.join(coverPath, "playlists");
+const artistCoverPath = path.join(coverPath, "artists");
 const subtitlePath = path.join(viveStreamPath, "subtitles");
 const settingsPath = path.join(app.getPath("userData"), "settings.json");
-const mediaPaths = [videoPath, coverPath, subtitlePath];
+const mediaPaths = [
+  videoPath,
+  coverPath,
+  playlistCoverPath,
+  artistCoverPath,
+  subtitlePath,
+];
 
 let tray = null;
 let win = null;
@@ -82,6 +89,10 @@ function saveSettings(settings) {
   );
 }
 if (!fs.existsSync(settingsPath)) saveSettings(defaultSettings);
+
+function sanitizeFilename(filename) {
+  return filename.replace(/[\\/:"*?<>|]/g, "_");
+}
 
 function parseYtDlpError(stderr) {
   if (stderr.includes("Private video"))
@@ -168,6 +179,8 @@ class Downloader {
       "--write-description",
       "--embed-metadata",
       "--embed-chapters",
+      "--download-archive",
+      path.join(app.getPath("userData"), "download-archive.txt"),
     ];
 
     const outputTemplate =
@@ -387,6 +400,9 @@ class Downloader {
         source: "youtube",
       };
       await db.addOrUpdateVideo(videoData);
+      if (job.playlistId) {
+        await db.addVideoToPlaylist(job.playlistId, videoData.id);
+      }
       if (win)
         win.webContents.send("download-complete", {
           id: videoInfo.id,
@@ -559,6 +575,19 @@ ipcMain.handle("video:update-metadata", (e, videoId, metadata) =>
   db.updateVideoMetadata(videoId, metadata)
 );
 
+ipcMain.handle("videos:touch", async (e, videoIds) => {
+  try {
+    await db
+      .db("videos")
+      .whereIn("id", videoIds)
+      .update({ downloadedAt: new Date().toISOString() });
+    return { success: true };
+  } catch (error) {
+    console.error("Error touching videos:", error);
+    return { success: false, error: error.message };
+  }
+});
+
 ipcMain.on("download-video", (e, { downloadOptions, jobId }) => {
   const args = [
     downloadOptions.url,
@@ -584,7 +613,7 @@ ipcMain.on("download-video", (e, { downloadOptions, jobId }) => {
   proc.stdout.on("data", (d) => (j += d));
   proc.stderr.on("data", (d) => (errorOutput += d));
 
-  proc.on("close", (c) => {
+  proc.on("close", async (c) => {
     clearTimeout(timeout);
     if (c === 0 && j.trim()) {
       try {
@@ -592,9 +621,17 @@ ipcMain.on("download-video", (e, { downloadOptions, jobId }) => {
           .trim()
           .split("\n")
           .map((l) => JSON.parse(l));
+        let playlistId = null;
+        if (infos.length > 0 && infos[0].playlist_title) {
+          const playlist = await db.findOrCreatePlaylistByName(
+            infos[0].playlist_title
+          );
+          if (playlist) playlistId = playlist.id;
+        }
+
         if (win) win.webContents.send("download-queue-start", { infos, jobId });
         downloader.addToQueue(
-          infos.map((i) => ({ ...downloadOptions, videoInfo: i }))
+          infos.map((i) => ({ ...downloadOptions, videoInfo: i, playlistId }))
         );
       } catch (parseError) {
         if (win)
@@ -738,8 +775,11 @@ ipcMain.handle("media:export-file", async (e, videoId) => {
   const sourcePath = path.normalize(
     decodeURIComponent(video.filePath.replace("file://", ""))
   );
+  const extension = path.extname(sourcePath);
+  const defaultFilename = `${sanitizeFilename(video.title)}${extension}`;
+
   const { canceled, filePath: destPath } = await dialog.showSaveDialog(win, {
-    defaultPath: path.basename(sourcePath),
+    defaultPath: defaultFilename,
     title: "Export Media File",
   });
 
@@ -769,7 +809,9 @@ ipcMain.handle("media:export-all", async () => {
       const sourcePath = path.normalize(
         decodeURIComponent(video.filePath.replace("file://", ""))
       );
-      const destPath = path.join(destFolder, path.basename(sourcePath));
+      const extension = path.extname(sourcePath);
+      const filename = `${sanitizeFilename(video.title)}${extension}`;
+      const destPath = path.join(destFolder, filename);
       await fse.copy(sourcePath, destPath);
       exportedCount++;
     } catch (error) {
@@ -777,6 +819,30 @@ ipcMain.handle("media:export-all", async () => {
     }
   }
   return { success: true, count: exportedCount };
+});
+
+ipcMain.handle("app:reinitialize", async () => {
+  try {
+    await win.webContents.session.clearCache();
+    const dbVideos = await db.getLibrary();
+    const diskFiles = new Set(fs.readdirSync(videoPath));
+    const deadDbEntries = dbVideos.filter(
+      (v) => !diskFiles.has(path.basename(decodeURIComponent(v.filePath)))
+    );
+    for (const entry of deadDbEntries) {
+      await db.deleteVideo(entry.id);
+    }
+    const orphanResult = await db.cleanupOrphanArtists();
+    return {
+      success: true,
+      clearedCache: true,
+      deletedVideos: deadDbEntries.length,
+      deletedArtists: orphanResult.count,
+    };
+  } catch (error) {
+    console.error("Reinitialization failed:", error);
+    return { success: false, error: error.message };
+  }
 });
 
 ipcMain.handle("db:cleanup-orphans", () => db.cleanupOrphanArtists());
@@ -800,6 +866,42 @@ ipcMain.handle("playlist:update-order", (e, playlistId, videoIds) =>
 ipcMain.handle("playlist:get-for-video", (e, videoId) =>
   db.getPlaylistsForVideo(videoId)
 );
+ipcMain.handle("playlist:update-cover", async (e, playlistId) => {
+  const { canceled, filePaths } = await dialog.showOpenDialog(win, {
+    properties: ["openFile"],
+    filters: [{ name: "Images", extensions: ["jpg", "png", "gif"] }],
+  });
+  if (canceled || filePaths.length === 0)
+    return { success: false, error: "File selection cancelled." };
+  try {
+    const sourcePath = filePaths[0];
+    const newFileName = `${playlistId}${path.extname(sourcePath)}`;
+    const destPath = path.join(playlistCoverPath, newFileName);
+    await fse.copy(sourcePath, destPath, { overwrite: true });
+    const fileUri = `file://${destPath.replace(/\\/g, "/")}`;
+    return await db.updatePlaylistCover(playlistId, fileUri);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
 
 ipcMain.handle("artist:get-all", () => db.getAllArtistsWithStats());
 ipcMain.handle("artist:get-details", (e, id) => db.getArtistDetails(id));
+ipcMain.handle("artist:update-thumbnail", async (e, artistId) => {
+  const { canceled, filePaths } = await dialog.showOpenDialog(win, {
+    properties: ["openFile"],
+    filters: [{ name: "Images", extensions: ["jpg", "png", "gif"] }],
+  });
+  if (canceled || filePaths.length === 0)
+    return { success: false, error: "File selection cancelled." };
+  try {
+    const sourcePath = filePaths[0];
+    const newFileName = `${artistId}${path.extname(sourcePath)}`;
+    const destPath = path.join(artistCoverPath, newFileName);
+    await fse.copy(sourcePath, destPath, { overwrite: true });
+    const fileUri = `file://${destPath.replace(/\\/g, "/")}`;
+    return await db.updateArtistThumbnail(artistId, fileUri);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
