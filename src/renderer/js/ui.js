@@ -1,7 +1,13 @@
 // src/renderer/js/ui.js
-import { AppState } from "./state.js";
-import { showPage, handleNav, showLoader, hideLoader } from "./renderer.js";
-import { formatTime, debounce } from "./utils.js";
+import { AppState, setFilters } from "./state.js";
+import {
+  showPage,
+  handleNav,
+  showLoader,
+  hideLoader,
+  renderSearchPage,
+} from "./renderer.js";
+import { formatTime, debounce, fuzzySearch } from "./utils.js";
 import { eventBus } from "./event-bus.js";
 import { openAddToPlaylistModal } from "./playlists.js";
 import { renderArtistsPage } from "./artists.js";
@@ -95,16 +101,39 @@ function sortLibrary(library, sortKey) {
   });
 }
 
+function applyFilters(library) {
+  const { type, duration, source } = AppState.currentFilters;
+  return library.filter((item) => {
+    const typeMatch = type === "all" || item.type === type;
+
+    const durationMatch =
+      duration === "all" ||
+      (duration === "<5" && item.duration < 300) ||
+      (duration === "5-20" && item.duration >= 300 && item.duration <= 1200) ||
+      (duration === ">20" && item.duration > 1200);
+
+    const sourceMatch = source === "all" || item.source === source;
+
+    return typeMatch && durationMatch && sourceMatch;
+  });
+}
+
 function renderGrid(container, library, isPlaylistItem = false) {
   if (!container) return;
   container.innerHTML = "";
   const fragment = document.createDocumentFragment();
   if (library && library.length > 0) {
-    const sortedLibrary = sortLibrary(library, currentSort);
-    sortedLibrary.forEach((item) => {
-      const gridItem = createGridItem(item, isPlaylistItem);
-      fragment.appendChild(gridItem);
-    });
+    const filteredLibrary = applyFilters(library);
+    const sortedLibrary = sortLibrary(filteredLibrary, currentSort);
+
+    if (sortedLibrary.length > 0) {
+      sortedLibrary.forEach((item) => {
+        const gridItem = createGridItem(item, isPlaylistItem);
+        fragment.appendChild(gridItem);
+      });
+    } else {
+      fragment.innerHTML = `<p class="empty-message">No media matches the current filters.</p>`;
+    }
   }
   container.appendChild(fragment);
 
@@ -119,6 +148,12 @@ function createPageHeader(title) {
   header.innerHTML = `
         <h1 class="page-header-title">${title}</h1>
         <div class="page-header-actions">
+            <div class="filter-dropdown-container" id="filter-dropdown">
+                <button class="action-button filter-btn">
+                    <i class="fa-solid fa-filter"></i>
+                    <span>Filter</span>
+                </button>
+            </div>
             <div class="sort-dropdown-container" id="sort-dropdown">
                 <button class="sort-dropdown-btn">
                     <i class="fa-solid fa-sort"></i>
@@ -130,12 +165,41 @@ function createPageHeader(title) {
                     <div class="sort-option-item" data-value="downloadedAt-asc"><span class="check"><i class="fa-solid fa-check"></i></span>Date Added (Oldest)</div>
                     <div class="sort-option-item" data-value="title-asc"><span class="check"><i class="fa-solid fa-check"></i></span>Title (A-Z)</div>
                     <div class="sort-option-item" data-value="title-desc"><span class="check"><i class="fa-solid fa-check"></i></span>Title (Z-A)</div>
-                    <div class="sort-option-item" data-value="duration-asc"><span class="check"><i class="fa-solid fa-check"></i></span>Duration (Shortest)</div>
                     <div class="sort-option-item" data-value="duration-desc"><span class="check"><i class="fa-solid fa-check"></i></span>Duration (Longest)</div>
+                    <div class="sort-option-item" data-value="duration-asc"><span class="check"><i class="fa-solid fa-check"></i></span>Duration (Shortest)</div>
                 </div>
             </div>
         </div>`;
   return header;
+}
+
+function createFilterPanel() {
+  const panel = document.createElement("div");
+  panel.className = "filter-panel";
+  panel.id = "filter-panel";
+  panel.innerHTML = `
+        <div class="filter-group">
+            <label>Type:</label>
+            <button class="filter-btn active" data-filter="type" data-value="all">All</button>
+            <button class="filter-btn" data-filter="type" data-value="video">Video</button>
+            <button class="filter-btn" data-filter="type" data-value="audio">Audio</button>
+        </div>
+        <div class="filter-group">
+            <label>Duration:</label>
+            <button class="filter-btn active" data-filter="duration" data-value="all">All</button>
+            <button class="filter-btn" data-filter="duration" data-value="<5">&lt; 5 min</button>
+            <button class="filter-btn" data-filter="duration" data-value="5-20">5-20 min</button>
+            <button class="filter-btn" data-filter="duration" data-value=">20">&gt; 20 min</button>
+        </div>
+        <div class="filter-group">
+            <label>Source:</label>
+            <button class="filter-btn active" data-filter="source" data-value="all">All</button>
+            <button class="filter-btn" data-filter="source" data-value="youtube">YouTube</button>
+            <button class="filter-btn" data-filter="source" data-value="local">Local</button>
+        </div>
+    `;
+  panel.style.display = "none";
+  return panel;
 }
 
 function updateSortUI() {
@@ -152,44 +216,44 @@ function updateSortUI() {
   });
 }
 
-export function renderHomePageGrid(library = AppState.library) {
+function reapplyCurrentView() {
+  const activePage =
+    document.querySelector(".nav-item.active")?.dataset.page || "home";
+  if (activePage === "home") renderHomePageGrid();
+  if (activePage === "favorites") renderFavoritesPage();
+}
+
+export function renderHomePageGrid() {
   const homePage = document.getElementById("home-page");
   homePage.innerHTML = "";
   if (AppState.library.length === 0) {
     homePage.innerHTML = `<div class="placeholder-page"><i class="fa-solid fa-house-chimney-crack placeholder-icon"></i><h2 class="placeholder-title">Your Library is Empty</h2><p class="placeholder-text">Go to the <span class="link-style" id="go-to-downloads-link">Downloads</span> page to get started.</p></div>`;
   } else {
     homePage.appendChild(createPageHeader("Home"));
+    homePage.appendChild(createFilterPanel());
     const grid = document.createElement("div");
     grid.className = "video-grid";
     grid.id = "video-grid-home";
     homePage.appendChild(grid);
-    if (library.length === 0 && homeSearchInput.value) {
-      grid.innerHTML = `<p class="empty-message">No results found for "<strong>${homeSearchInput.value}</strong>"</p>`;
-    } else {
-      renderGrid(grid, library);
-    }
+    renderGrid(grid, AppState.library);
   }
   updateSortUI();
   hideLoader();
 }
 
-export function renderFavoritesPage(library) {
+export function renderFavoritesPage() {
   const favoritesPage = document.getElementById("favorites-page");
   favoritesPage.innerHTML = "";
   const favoritesLibrary = AppState.library.filter((video) => video.isFavorite);
-  const libraryToRender = library || favoritesLibrary;
 
   if (favoritesLibrary.length > 0) {
     favoritesPage.appendChild(createPageHeader("Favorites"));
+    favoritesPage.appendChild(createFilterPanel());
     const grid = document.createElement("div");
     grid.className = "video-grid";
     grid.id = "video-grid-favorites";
     favoritesPage.appendChild(grid);
-    if (libraryToRender.length === 0 && homeSearchInput.value) {
-      grid.innerHTML = `<p class="empty-message">No favorite items match "<strong>${homeSearchInput.value}</strong>"</p>`;
-    } else {
-      renderGrid(grid, libraryToRender);
-    }
+    renderGrid(grid, favoritesLibrary);
   } else {
     favoritesPage.innerHTML = `<div class="page-header"><h1 class="page-header-title">Favorites</h1></div><div class="placeholder-page"><i class="fa-solid fa-heart-crack placeholder-icon"></i><h2 class="placeholder-title">No Favorites Yet</h2><p class="placeholder-text">Click the heart icon on any video to add it to your favorites.</p></div>`;
   }
@@ -242,74 +306,51 @@ function updateFavoriteUI(videoId, isFavorite) {
 eventBus.on("ui:favorite_toggled", updateFavoriteUI);
 
 export function updateSearchPlaceholder(pageId) {
-  let placeholderText = "Search...";
   let isSearchable = true;
   switch (pageId) {
-    case "home":
-    case "favorites":
-      placeholderText = "Search your library...";
-      break;
-    case "playlists":
-      placeholderText = "Search playlists...";
-      break;
-    case "artists":
-      placeholderText = "Search artists...";
-      break;
-    default:
-      placeholderText = "Search is unavailable";
+    case "downloads":
+    case "settings":
       isSearchable = false;
   }
-  homeSearchInput.placeholder = placeholderText;
+  homeSearchInput.placeholder = isSearchable
+    ? "Search videos, artists, playlists..."
+    : "Search is unavailable";
   homeSearchInput.disabled = !isSearchable;
 }
 
-const debouncedSearchHandler = debounce((term, page) => {
-  const lowerTerm = term.toLowerCase().trim();
-  switch (page) {
-    case "home":
-      renderHomePageGrid(
-        AppState.library.filter(
-          (v) =>
-            v.title.toLowerCase().includes(lowerTerm) ||
-            v.creator?.toLowerCase().includes(lowerTerm)
-        )
-      );
-      break;
-    case "favorites":
-      renderFavoritesPage(
-        AppState.library.filter(
-          (v) =>
-            v.isFavorite &&
-            (v.title.toLowerCase().includes(lowerTerm) ||
-              v.creator?.toLowerCase().includes(lowerTerm))
-        )
-      );
-      break;
-    case "playlists":
-      renderPlaylistsPage(
-        AppState.playlists.filter((p) =>
-          p.name.toLowerCase().includes(lowerTerm)
-        )
-      );
-      break;
-    case "artists":
-      renderArtistsPage(
-        AppState.artists.filter((a) => a.name.toLowerCase().includes(lowerTerm))
-      );
-      break;
-    default:
-      hideLoader();
-  }
+const debouncedSearchHandler = debounce((term) => {
+  renderSearchPage(term);
 }, 300);
 
 function initializeMainEventListeners() {
-  document.body.addEventListener("click", (e) => {
+  document.body.addEventListener("click", async (e) => {
     const itemEl = e.target.closest(".video-grid-item");
     if (itemEl) {
       const videoId = itemEl.dataset.id;
-      const sourceLib = e.target.closest("#video-grid-playlist")
-        ? AppState.playbackQueue
-        : AppState.library;
+      const playlistGrid = e.target.closest("#video-grid-playlist");
+      const artistGrid = e.target.closest("#video-grid-artist");
+      const favoritesGrid = e.target.closest("#video-grid-favorites");
+
+      let sourceLib;
+      let context = null;
+
+      if (playlistGrid) {
+        const playlistId = playlistGrid.dataset.playlistId;
+        const playlist =
+          await window.electronAPI.playlistGetDetails(playlistId);
+        sourceLib = playlist.videos;
+        context = { type: "playlist", id: playlistId, name: playlist.name };
+      } else if (artistGrid) {
+        const artistId = artistGrid.dataset.artistId;
+        const artist = await window.electronAPI.artistGetDetails(artistId);
+        sourceLib = artist.videos;
+        context = { type: "artist", id: artistId, name: artist.name };
+      } else if (favoritesGrid) {
+        sourceLib = AppState.library.filter((v) => v.isFavorite);
+        context = { type: "favorites", id: null, name: "Favorites" };
+      } else {
+        sourceLib = AppState.library;
+      }
 
       if (e.target.closest(".menu-btn")) {
         e.stopPropagation();
@@ -338,9 +379,33 @@ function initializeMainEventListeners() {
       }
       const videoIndex = sourceLib.findIndex((v) => v.id === videoId);
       if (videoIndex > -1) {
-        eventBus.emit("player:play_request", videoIndex, sourceLib);
+        eventBus.emit("player:play_request", {
+          index: videoIndex,
+          queue: sourceLib,
+          context: context,
+        });
       }
       return;
+    }
+
+    if (e.target.closest("#filter-dropdown")) {
+      const panel = document.getElementById("filter-panel");
+      if (panel) {
+        panel.style.display = panel.style.display === "none" ? "flex" : "none";
+      }
+    }
+
+    if (e.target.closest(".filter-btn")) {
+      const btn = e.target.closest(".filter-btn");
+      const filterType = btn.dataset.filter;
+      const value = btn.dataset.value;
+      setFilters({ [filterType]: value });
+
+      btn.parentElement
+        .querySelectorAll(".filter-btn")
+        .forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+      reapplyCurrentView();
     }
 
     const sortDropdown = e.target.closest("#sort-dropdown");
@@ -353,10 +418,7 @@ function initializeMainEventListeners() {
         currentSort = option.dataset.value;
         localStorage.setItem("librarySort", currentSort);
         updateSortUI();
-        const activePage =
-          document.querySelector(".nav-item.active").dataset.page;
-        if (activePage === "home") renderHomePageGrid();
-        if (activePage === "favorites") renderFavoritesPage();
+        reapplyCurrentView();
         sortDropdown.classList.remove("open");
       }
     } else {
@@ -385,13 +447,14 @@ function initializeMainEventListeners() {
   homeSearchInput.addEventListener("input", (e) => {
     if (homeSearchInput.disabled) return;
     const searchTerm = e.target.value;
-    const activeNavItem = document.querySelector(".nav-item.active");
-    if (!activeNavItem) {
-      hideLoader();
+    if (searchTerm.trim() === "") {
+      const activePage =
+        document.querySelector(".nav-item.active")?.dataset.page || "home";
+      handleNav(activePage);
       return;
     }
     showLoader();
-    debouncedSearchHandler(searchTerm, activeNavItem.dataset.page);
+    debouncedSearchHandler(searchTerm);
   });
 }
 
