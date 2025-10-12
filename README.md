@@ -21,28 +21,32 @@ Welcome! **ViveStream** is a modern, offline-first media player built for those 
 
 ## 🚀 Core Features
 
-- 📥 **Versatile Downloader:** Download videos from YouTube and other supported sites. Choose from a wide range of quality options, from 480p up to 4K.
-- 📂 **Import & Export:**
-  - **Import Local Files:** Add your existing video and audio files from your computer directly into the ViveStream library. Metadata and cover art are automatically extracted.
-  - **Export:** Save a copy of any media from your library to another location on your computer.
+- 📥 **Versatile Downloader:**
+  - **YouTube & More:** Download videos and entire playlists from YouTube and other supported sites. ViveStream automatically creates local playlists for you.
+  - **Smart Downloads:** Already have a video? ViveStream skips re-downloading it but updates its "date added" so it appears with the rest of its playlist.
+  - **Import Local Files:** Add your existing video and audio files from your computer directly into the ViveStream library.
 - ✂️ **Advanced Download Controls:**
   - Clip specific sections using start/end times.
   - Automatically split videos by their chapters into individual files.
   - Remove sponsored segments, intros, and outros with SponsorBlock integration.
-  - Download subtitles for videos.
+  - Download subtitles for videos (official and auto-generated).
   - Use cookies from your browser to access members-only or age-restricted content.
 - 📚 **Robust Library Management:**
-  - **✍️ Full Metadata Control:** Edit titles, artists, and descriptions with a seamless inline editor directly on the player page.
-  - **Advanced Sorting:** Sort your library by date added, title, or duration.
-  - **Playlists:** Create custom playlists, add media, and reorder with intuitive drag-and-drop.
-  - **Artists:** Media is automatically sorted by artist, creating dedicated pages for your favorite creators.
-  - **Favorites:** A dedicated section for your most-loved content.
-  - **Fast Search:** Instantly search your entire library of videos, playlists, and artists.
+  - **Powerful Search:** Instantly find what you're looking for with fuzzy search across videos, artists, and playlists. Results are neatly organized by category.
+  - **Advanced Filtering:** Filter your library and favorites by media type (video/audio), duration, and source (YouTube/local).
+  - **Full Metadata Control:** Edit titles, artists, and descriptions with a seamless inline editor directly on the player page.
+  - **Playlists:** Create custom playlists, add media with a drag-and-drop interface, and upload custom cover images.
+  - **Artists:** Media is automatically sorted by artist. Upload custom profile images for your favorite creators.
+  - **Favorites:** A dedicated, filterable section for your most-loved content.
 - 🎬 **High-Performance Integrated Player:**
-  - **Gapless Playback:** Intelligent preloading ensures seamless, uninterrupted playback within playlists.
-  - **Hardware Acceleration:** Smooth, efficient playback of high-resolution content with minimal CPU usage.
+  - **Context-Aware Queue:** When you play from a playlist, artist page, or favorites, the "Up Next" queue is intelligently populated and visually grouped.
+  - **Gapless Playback:** Intelligent preloading ensures seamless, uninterrupted playback.
+  - **Sleep Timer:** Set a timer to stop playback after a certain number of tracks, a set duration in minutes, or at a specific time of day.
   - **System Media Keys:** Control playback with your keyboard's media keys, even when the app is in the background.
-  - **Full Feature Set:** Includes theater mode, fullscreen, miniplayer, playback speed control, sleep timer, and subtitle support.
+  - **Full Feature Set:** Includes theater mode, fullscreen, miniplayer, playback speed control, and subtitle support.
+- ⚙️ **Maintenance & Customization:**
+  - **Export Library:** Save a copy of any media file or your entire library to another location, with files named by their proper titles.
+  - **Reinitialize App:** A one-click function to clear the app's cache, rescan media files, and clean up any orphaned entries from the database.
 - 📦 **All-in-One & Standalone:** No need to install Python, yt-dlp, or FFmpeg separately. Everything is bundled and ready to go.
 
 ---
@@ -81,21 +85,18 @@ Welcome! **ViveStream** is a modern, offline-first media player built for those 
 
 1.  **Download Content**
     - Navigate to the **Downloads** page via the sidebar.
-    - Paste a video or playlist URL into the input box.
-    - Select your desired quality and whether to include subtitles.
-    - Use the "Advanced Options" for clipping or chapter splitting.
+    - Paste a video or playlist URL. If it's a playlist, a corresponding playlist will be created in your library.
+    - Select your desired quality and other options.
     - Click `Download` and monitor progress in the queue below.
 
-2.  **Import Local Files**
-    - Navigate to the **Settings** page.
-    - Under "Maintenance", click "Import Files".
-    - Select the video or audio files you want to add to your library.
+2.  **Manage Your Library**
+    - The **Home** and **Favorites** pages display your media. Use the filter and sort buttons to refine your view.
+    - The **Playlists** and **Artists** pages provide curated views. Click on a playlist or artist to see their content, where you can also upload custom cover images.
+    - Use the global search bar at the top to find anything in your library.
 
-3.  **Enjoy Your Library**
-    - The **Home** page displays all your media. Use the sort button to change the order.
-    - The **Playlists** and **Artists** pages provide curated views of your library.
-    - Mark videos as ❤️ **Favorites** to find them in their own dedicated section.
+3.  **Enjoy Your Media**
     - Click any thumbnail to begin playback.
+    - The "Up Next" queue will automatically show other videos from the context you started playback from (e.g., the rest of the playlist).
 
 ---
 
@@ -142,4 +143,4 @@ Contributions are welcome! If you have an idea for a new feature or have found a
 
 ## 📄 License
 
-This project is licensed under the MIT License. See the [LICENSE.md](LICENSE.md) file for details.
+This project is licensed under the MIT License. See the [LICENSE](LICENSE.md) file for details.
