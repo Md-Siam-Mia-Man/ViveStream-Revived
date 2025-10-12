@@ -1,4 +1,3 @@
-// src/preload/preload.js
 const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("electronAPI", {
@@ -23,6 +22,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   toggleFavorite: (id) => ipcRenderer.invoke("toggle-favorite", id),
   videoUpdateMetadata: (videoId, metadata) =>
     ipcRenderer.invoke("video:update-metadata", videoId, metadata),
+  videosTouch: (videoIds) => ipcRenderer.invoke("videos:touch", videoIds),
 
   openExternal: (url) => ipcRenderer.send("open-external", url),
 
@@ -49,7 +49,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   mediaExportFile: (videoId) =>
     ipcRenderer.invoke("media:export-file", videoId),
   mediaExportAll: () => ipcRenderer.invoke("media:export-all"),
-  dbCleanupOrphans: () => ipcRenderer.invoke("db:cleanup-orphans"),
+  appReinitialize: () => ipcRenderer.invoke("app:reinitialize"),
 
   playlistCreate: (name) => ipcRenderer.invoke("playlist:create", name),
   playlistGetAll: () => ipcRenderer.invoke("playlist:get-all"),
@@ -65,9 +65,13 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.invoke("playlist:update-order", playlistId, videoIds),
   playlistGetForVideo: (videoId) =>
     ipcRenderer.invoke("playlist:get-for-video", videoId),
+  playlistUpdateCover: (playlistId) =>
+    ipcRenderer.invoke("playlist:update-cover", playlistId),
 
   artistGetAll: () => ipcRenderer.invoke("artist:get-all"),
   artistGetDetails: (id) => ipcRenderer.invoke("artist:get-details", id),
+  artistUpdateThumbnail: (artistId) =>
+    ipcRenderer.invoke("artist:update-thumbnail", artistId),
 
   onMediaKeyPlayPause: (cb) => ipcRenderer.on("media-key-play-pause", cb),
   onMediaKeyNextTrack: (cb) => ipcRenderer.on("media-key-next-track", cb),
