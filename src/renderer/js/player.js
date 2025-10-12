@@ -1,4 +1,3 @@
-// src/renderer/js/player.js
 import { AppState, setCurrentlyPlaying } from "./state.js";
 import { showPage } from "./renderer.js";
 import { activateMiniplayer } from "./miniplayer.js";
@@ -56,8 +55,80 @@ const editableDescriptionTextarea = document.getElementById(
 const saveEditBtn = document.getElementById("save-edit-btn");
 const cancelEditBtn = document.getElementById("cancel-edit-btn");
 
-let sleepTimerId = null;
 let hideControlsTimeout;
+
+const SleepTimer = {
+  id: null,
+  type: null, // 'time', 'tracks', 'minutes'
+  value: 0,
+  remaining: 0,
+  statusEl: document.getElementById("sleep-timer-status"),
+  statusTextEl: document.getElementById("sleep-timer-status-text"),
+
+  start(type, value) {
+    this.stop();
+    this.type = type;
+    this.value = parseInt(value, 10);
+    this.remaining = this.value;
+
+    if (this.type === "minutes") {
+      this.remaining *= 60; // to seconds
+      this.id = setInterval(() => this.update(), 1000);
+    } else if (this.type === "tracks") {
+      eventBus.on("playback:trackchange", this.onTrackChange);
+    } else if (this.type === "time") {
+      const [hours, minutes] = value.split(":").map(Number);
+      const now = new Date();
+      const endTime = new Date();
+      endTime.setHours(hours, minutes, 0, 0);
+      if (endTime < now) endTime.setDate(endTime.getDate() + 1);
+      this.remaining = Math.round((endTime - now) / 1000);
+      this.id = setInterval(() => this.update(), 1000);
+    }
+    this.updateDisplay();
+    this.statusEl.classList.remove("hidden");
+    showNotification(`Sleep timer set.`, "info");
+  },
+  stop() {
+    clearInterval(this.id);
+    this.id = null;
+    this.type = null;
+    eventBus.off("playback:trackchange", this.onTrackChange);
+    this.statusEl.classList.add("hidden");
+  },
+  onTrackChange() {
+    SleepTimer.remaining--;
+    SleepTimer.updateDisplay();
+    if (SleepTimer.remaining <= 0) SleepTimer.trigger();
+  },
+  update() {
+    this.remaining--;
+    this.updateDisplay();
+    if (this.remaining <= 0) this.trigger();
+  },
+  trigger() {
+    videoPlayer.pause();
+    showNotification(`Sleep timer ended. Playback paused.`, "info");
+    this.stop();
+  },
+  updateDisplay() {
+    if (this.type === "tracks") {
+      this.statusTextEl.textContent = `${this.remaining} track${
+        this.remaining > 1 ? "s" : ""
+      } left`;
+    } else {
+      this.statusTextEl.textContent = formatTime(this.remaining);
+    }
+  },
+  clear() {
+    if (this.id || this.type) {
+      this.stop();
+      showNotification(`Sleep timer cleared.`, "info");
+    }
+  },
+};
+
+SleepTimer.onTrackChange = SleepTimer.onTrackChange.bind(SleepTimer);
 
 const lazyLoadObserver = new IntersectionObserver(
   (entries, observer) => {
@@ -94,14 +165,17 @@ function handleTrackEnd() {
   }
 }
 
-function playLibraryItem(index, sourceLibrary, options = {}) {
-  if (!sourceLibrary || index < 0 || index >= sourceLibrary.length) return;
+function playLibraryItem({ index, queue, context = null, options = {} }) {
+  if (!queue || index < 0 || index >= queue.length) return;
 
-  setCurrentlyPlaying(index, sourceLibrary);
+  setCurrentlyPlaying(index, queue, context);
   const item = AppState.playbackQueue[AppState.currentlyPlayingIndex];
 
   videoPlayer.src = decodeURIComponent(item.filePath);
   subtitleTrack.src = "";
+  if (item.subtitlePath) {
+    subtitleTrack.src = decodeURIComponent(item.subtitlePath);
+  }
 
   if (item.type === "audio") {
     playerSection.classList.add("audio-mode");
@@ -188,11 +262,26 @@ export function updateVideoDetails(item) {
 
 export function renderUpNextList() {
   upNextList.innerHTML = "";
-  if (AppState.currentlyPlayingIndex < 0 || AppState.playbackQueue.length <= 1)
+  if (AppState.currentlyPlayingIndex < 0 || AppState.library.length === 0)
     return;
 
   const placeholderSrc = `${AppState.assetsPath}/logo.png`;
   const fragment = document.createDocumentFragment();
+  const context = AppState.playbackContext;
+  const contextQueueIds = new Set(AppState.playbackQueue.map((v) => v.id));
+
+  if (context.type && context.name) {
+    const icon = {
+      playlist: "fa-layer-group",
+      artist: "fa-microphone-lines",
+      favorites: "fa-heart",
+    }[context.type];
+    const header = document.createElement("div");
+    header.className = "up-next-context-header";
+    header.innerHTML = `<i class="fa-solid ${icon}"></i> Playing from: ${context.name}`;
+    fragment.appendChild(header);
+  }
+
   for (let i = 1; i < AppState.playbackQueue.length; i++) {
     const itemIndex =
       (AppState.currentlyPlayingIndex + i) % AppState.playbackQueue.length;
@@ -211,6 +300,28 @@ export function renderUpNextList() {
       </div>`;
     fragment.appendChild(li);
   }
+
+  if (context.type) {
+    const remainingLibrary = AppState.library.filter(
+      (v) => !contextQueueIds.has(v.id)
+    );
+    remainingLibrary.forEach((video) => {
+      const li = document.createElement("li");
+      li.className = "up-next-item";
+      li.dataset.id = video.id;
+      const actualSrc = video.coverPath
+        ? decodeURIComponent(video.coverPath)
+        : placeholderSrc;
+      li.innerHTML = `
+        <img data-src="${actualSrc}" src="${placeholderSrc}" class="thumbnail" alt="thumbnail" onerror="this.onerror=null;this.src='${placeholderSrc}';">
+        <div class="item-info">
+          <p class="item-title">${video.title}</p>
+          <p class="item-uploader">${video.creator || video.uploader}</p>
+        </div>`;
+      fragment.appendChild(li);
+    });
+  }
+
   upNextList.appendChild(fragment);
   upNextList
     .querySelectorAll(".thumbnail")
@@ -227,7 +338,11 @@ function playNext() {
   if (AppState.playbackQueue.length > 0) {
     const nextIndex =
       (AppState.currentlyPlayingIndex + 1) % AppState.playbackQueue.length;
-    playLibraryItem(nextIndex, AppState.playbackQueue);
+    playLibraryItem({
+      index: nextIndex,
+      queue: AppState.playbackQueue,
+      context: AppState.playbackContext,
+    });
   }
 }
 
@@ -236,7 +351,11 @@ function playPrevious() {
     const prevIndex =
       (AppState.currentlyPlayingIndex - 1 + AppState.playbackQueue.length) %
       AppState.playbackQueue.length;
-    playLibraryItem(prevIndex, AppState.playbackQueue);
+    playLibraryItem({
+      index: prevIndex,
+      queue: AppState.playbackQueue,
+      context: AppState.playbackContext,
+    });
   }
 }
 
@@ -286,32 +405,14 @@ export function loadSettings() {
 }
 
 function buildSettingsMenu() {
-  const hasSubtitles =
-    (videoPlayer.textTracks.length > 0 && videoPlayer.textTracks[0].cues) ||
-    (subtitleTrack.track.src && subtitleTrack.track.src.startsWith("file"));
-  let isSubtitlesOn =
-    hasSubtitles &&
-    ((videoPlayer.textTracks.length > 0 &&
-      videoPlayer.textTracks[0].mode === "showing") ||
-      subtitleTrack.track.mode === "showing");
-
   settingsMenu.innerHTML = `
-        <div class="settings-item ${
-          !hasSubtitles ? "disabled" : ""
-        }" data-setting="subtitles">
-            <i class="fa-solid fa-closed-captioning"></i>
-            <span>Subtitles</span>
-            <span class="setting-value" id="subtitles-value">${
-              isSubtitlesOn ? "On" : "Off"
-            }</span>
-        </div>
         <div class="settings-item" data-setting="speed"><i class="fa-solid fa-gauge-high"></i><span>Playback Speed</span><span class="setting-value" id="speed-value">${
           videoPlayer.playbackRate === 1
             ? "Normal"
             : videoPlayer.playbackRate + "x"
         }</span><span class="chevron"><i class="fa-solid fa-chevron-right"></i></span></div>
         <div class="settings-item" data-setting="sleep"><i class="fa-solid fa-moon"></i><span>Sleep Timer</span><span class="setting-value" id="sleep-value">${
-          sleepTimerId ? "On" : "Off"
+          SleepTimer.type ? "On" : "Off"
         }</span><span class="chevron"><i class="fa-solid fa-chevron-right"></i></span></div>`;
 }
 
@@ -486,11 +587,15 @@ videoDescriptionBox.addEventListener("click", () => {
 });
 upNextList.addEventListener("click", (e) => {
   const itemEl = e.target.closest(".up-next-item");
-  if (itemEl)
-    playLibraryItem(
-      AppState.playbackQueue.findIndex((v) => v.id === itemEl.dataset.id),
-      AppState.playbackQueue
-    );
+  if (itemEl) {
+    const isContextItem = !!AppState.playbackContext.type;
+    const queue = isContextItem ? AppState.playbackQueue : AppState.library;
+    playLibraryItem({
+      index: queue.findIndex((v) => v.id === itemEl.dataset.id),
+      queue: queue,
+      context: AppState.playbackContext,
+    });
+  }
 });
 favoriteBtn.addEventListener("click", () => {
   if (AppState.currentlyPlayingIndex > -1)
@@ -612,22 +717,8 @@ settingsBtn.addEventListener("click", (e) => {
 settingsMenu.addEventListener("click", (e) => {
   const item = e.target.closest(".settings-item");
   if (!item) return;
-
   const setting = item.dataset.setting;
-  if (setting === "subtitles" && !item.classList.contains("disabled")) {
-    const isCurrentlyOn =
-      (videoPlayer.textTracks.length > 0 &&
-        videoPlayer.textTracks[0].mode === "showing") ||
-      subtitleTrack.track.mode === "showing";
-    const newMode = isCurrentlyOn ? "hidden" : "showing";
-    if (videoPlayer.textTracks.length > 0) {
-      for (const track of videoPlayer.textTracks) track.mode = newMode;
-    }
-    if (subtitleTrack.track.src) subtitleTrack.track.mode = newMode;
-    settingsMenu.querySelector("#subtitles-value").textContent =
-      newMode === "showing" ? "On" : "Off";
-    settingsMenu.classList.remove("active");
-  } else if (setting === "speed") {
+  if (setting === "speed") {
     handleSubmenu(
       `[data-setting="speed"]`,
       speedSubmenu,
@@ -637,14 +728,14 @@ settingsMenu.addEventListener("click", (e) => {
     );
     item.click();
   } else if (setting === "sleep") {
-    handleSubmenu(
-      `[data-setting="sleep"]`,
-      sleepSubmenu,
-      [0, 15, 30, 60, 120],
-      "minutes",
-      (v) => (v === 0 ? "Off" : `${v} minutes`)
-    );
-    item.click();
+    settingsMenu.classList.remove("active");
+    sleepSubmenu.innerHTML = `
+            <div class="submenu-item" data-action="back"><span class="chevron"><i class="fa-solid fa-chevron-left"></i></span><span>Sleep Timer</span></div>
+            <div class="submenu-item" data-minutes="0"><span class="check"><i class="fa-solid fa-check"></i></span><span>Off</span></div>
+            <div class="submenu-item"><div class="sleep-timer-input-group"><input type="number" min="1" id="sleep-tracks-input" placeholder="Tracks"><button id="sleep-tracks-btn">Set</button></div></div>
+            <div class="submenu-item"><div class="sleep-timer-input-group"><input type="number" min="1" id="sleep-minutes-input" placeholder="Minutes"><button id="sleep-minutes-btn">Set</button></div></div>
+            <div class="submenu-item"><div class="sleep-timer-input-group"><input type="time" id="sleep-time-input"><button id="sleep-time-btn">Set</button></div></div>`;
+    sleepSubmenu.classList.add("active");
   }
 });
 speedSubmenu.addEventListener("click", (e) => {
@@ -665,33 +756,27 @@ speedSubmenu.addEventListener("click", (e) => {
 });
 sleepSubmenu.addEventListener("click", (e) => {
   e.stopPropagation();
-  const target = e.target.closest(".submenu-item");
+  const target = e.target.closest(".submenu-item, button");
   if (!target) return;
   if (target.dataset.action === "back") {
     sleepSubmenu.classList.remove("active");
     settingsMenu.classList.add("active");
-    return;
+  } else if (target.dataset.minutes === "0") {
+    SleepTimer.clear();
+    sleepSubmenu.classList.remove("active");
+  } else if (target.id === "sleep-tracks-btn") {
+    const val = document.getElementById("sleep-tracks-input").value;
+    if (val) SleepTimer.start("tracks", val);
+    sleepSubmenu.classList.remove("active");
+  } else if (target.id === "sleep-minutes-btn") {
+    const val = document.getElementById("sleep-minutes-input").value;
+    if (val) SleepTimer.start("minutes", val);
+    sleepSubmenu.classList.remove("active");
+  } else if (target.id === "sleep-time-btn") {
+    const val = document.getElementById("sleep-time-input").value;
+    if (val) SleepTimer.start("time", val);
+    sleepSubmenu.classList.remove("active");
   }
-  const value = parseFloat(target.dataset.minutes);
-  clearTimeout(sleepTimerId);
-  sleepTimerId = null;
-  if (value > 0) {
-    sleepTimerId = setTimeout(
-      () => {
-        videoPlayer.pause();
-        showNotification(`Sleep timer ended. Playback paused.`, "info");
-        settingsMenu.querySelector("#sleep-value").textContent = "Off";
-        sleepTimerId = null;
-      },
-      value * 60 * 1000
-    );
-    showNotification(`Sleep timer set for ${value} minutes.`, "info");
-  } else {
-    showNotification(`Sleep timer cleared.`, "info");
-  }
-  settingsMenu.querySelector("#sleep-value").textContent =
-    value === 0 ? "Off" : `${value} min`;
-  sleepSubmenu.classList.remove("active");
 });
 document.addEventListener("click", (e) => {
   if (
@@ -707,6 +792,8 @@ document.addEventListener("click", (e) => {
 });
 cancelEditBtn.addEventListener("click", exitEditMode);
 saveEditBtn.addEventListener("click", saveMetadataChanges);
+
+SleepTimer.statusEl.addEventListener("click", SleepTimer.clear);
 
 eventBus.on("player:play_request", playLibraryItem);
 eventBus.on("controls:toggle_play", togglePlay);
