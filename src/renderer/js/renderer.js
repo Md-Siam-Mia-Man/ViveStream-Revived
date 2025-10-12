@@ -1,4 +1,3 @@
-// src/renderer/js/renderer.js
 import {
   AppState,
   setLibrary,
@@ -12,13 +11,15 @@ import {
   renderFavoritesPage,
   updateSearchPlaceholder,
   initializeUI,
+  createGridItem,
 } from "./ui.js";
 import {
   renderPlaylistsPage,
   initializePlaylistContextMenus,
   renderPlaylistDetailPage,
+  renderPlaylistCard,
 } from "./playlists.js";
-import { renderArtistsPage } from "./artists.js";
+import { renderArtistsPage, renderArtistCard } from "./artists.js";
 import {
   updateVideoDetails,
   renderUpNextList,
@@ -38,6 +39,7 @@ import {
 import { showConfirmationModal } from "./modals.js";
 import { showNotification } from "./notifications.js";
 import { eventBus } from "./event-bus.js";
+import { fuzzySearch } from "./utils.js";
 
 const pages = document.querySelectorAll(".page");
 const homeSearchInput = document.getElementById("home-search-input");
@@ -58,6 +60,7 @@ const playlistContextMenu = document.getElementById(
   "playlist-item-context-menu"
 );
 const loaderOverlay = document.getElementById("loader-overlay");
+const contentWrapper = document.querySelector(".content-wrapper");
 
 let currentPlaylistId = null;
 
@@ -91,12 +94,11 @@ export function showPage(pageId, isSubPage = false) {
     updateSearchPlaceholder(pageId);
   }
 
-  if (homeSearchInput.value) {
-    homeSearchInput.value = "";
-    homeSearchInput.dispatchEvent(new Event("input", { bubbles: true }));
+  if (targetPageId === "player-page") {
+    deactivateMiniplayer();
+    contentWrapper.scrollTo(0, 0);
   }
 
-  if (targetPageId === "player-page") deactivateMiniplayer();
   if (
     isPlayerPageVisible &&
     !shouldActivateMiniplayer &&
@@ -162,6 +164,56 @@ export async function loadLibrary() {
   if (AppState.currentlyPlayingIndex > -1) renderUpNextList();
 }
 
+export function renderSearchPage(term) {
+  const searchPage =
+    document.getElementById("search-page") || document.createElement("div");
+  searchPage.id = "search-page";
+  searchPage.className = "page";
+  contentWrapper.appendChild(searchPage);
+
+  showPage("search-page", true);
+
+  const videoResults = fuzzySearch(term, AppState.library, [
+    "title",
+    "creator",
+  ]);
+  const playlistResults = fuzzySearch(term, AppState.playlists, ["name"]);
+  const artistResults = fuzzySearch(term, AppState.artists, ["name"]);
+
+  searchPage.innerHTML = `
+        <div class="page-header"><h1 class="page-header-title">Search Results for "${term}"</h1></div>
+        <div class="page-content"></div>
+    `;
+
+  const content = searchPage.querySelector(".page-content");
+  const template = document.getElementById("search-results-section-template");
+
+  const createSection = (title, items, renderFn, gridClass) => {
+    if (items.length === 0) return;
+    const section = template.content.cloneNode(true);
+    section.querySelector(".search-section-title").textContent = title;
+    const grid = section.querySelector(".search-section-grid");
+    grid.classList.add(gridClass);
+    items.forEach((item) => grid.appendChild(renderFn(item)));
+    content.appendChild(section);
+  };
+
+  createSection("Videos", videoResults, createGridItem, "video-grid");
+  createSection(
+    "Playlists",
+    playlistResults,
+    renderPlaylistCard,
+    "playlist-grid"
+  );
+  createSection("Artists", artistResults, renderArtistCard, "artist-grid");
+
+  if (content.children.length === 0) {
+    content.innerHTML = `<p class="empty-message">No results found for "<strong>${term}</strong>".</p>`;
+  }
+
+  hideLoader();
+}
+
 function initializeWindowControls() {
   trayBtn.addEventListener("click", () => window.electronAPI.trayWindow());
   minimizeBtn.addEventListener("click", () =>
@@ -201,8 +253,10 @@ function initializeContextMenu() {
     } else {
       const videoIndex = AppState.library.findIndex((v) => v.id === videoId);
       if (videoIndex > -1) {
-        eventBus.emit("player:play_request", videoIndex, AppState.library, {
-          startInEditMode: true,
+        eventBus.emit("player:play_request", {
+          index: videoIndex,
+          queue: AppState.library,
+          options: { startInEditMode: true },
         });
       }
     }
