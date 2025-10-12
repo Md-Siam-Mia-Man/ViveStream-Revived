@@ -71,10 +71,14 @@
         <div class="header-center">
             <div class="search-container">
                 <i class="fa-solid fa-magnifying-glass search-icon"></i>
-                <input type="text" id="home-search-input" placeholder="Search...">
+                <input type="text" id="home-search-input" placeholder="Search everything...">
             </div>
         </div>
         <div class="header-right">
+            <div class="sleep-timer-status hidden" id="sleep-timer-status">
+                <i class="fa-solid fa-moon"></i>
+                <span id="sleep-timer-status-text"></span>
+            </div>
         </div>
     </div>
     <div class="app-body">
@@ -267,7 +271,6 @@
                     </div>
                     <div class="secondary-column">
                         <div class="playlist-area">
-                            <h4>Up next</h4>
                             <ul id="up-next-list"></ul>
                         </div>
                     </div>
@@ -278,6 +281,7 @@
             <div id="artists-page" class="page hidden"></div>
             <div id="artist-detail-page" class="page hidden"></div>
             <div id="favorites-page" class="page hidden"></div>
+            <div id="search-page" class="page hidden"></div>
             <div id="settings-page" class="page hidden">
                 <div class="settings-container">
                     <h1 class="settings-header">Settings</h1>
@@ -383,7 +387,7 @@
                         <div class="setting-item">
                             <div class="setting-text">
                                 <label>Import & Export</label>
-                                <p>Add local files to your library or export your entire library to a folder.</p>
+                                <p>Add local files or export your entire library to a folder.</p>
                             </div>
                             <div class="setting-control">
                                 <button class="setting-btn" id="import-files-btn"><i
@@ -394,12 +398,12 @@
                         </div>
                         <div class="setting-item">
                             <div class="setting-text">
-                                <label>Clean Up Library</label>
-                                <p>Remove any artists that no longer have videos in your library.</p>
+                                <label>Reinitialize App</label>
+                                <p>Rescan media files, clear cache, and remove dead entries from the database.</p>
                             </div>
                             <div class="setting-control">
-                                <button class="setting-btn" id="cleanup-btn"><i class="fa-solid fa-broom"></i> Clean
-                                    Up</button>
+                                <button class="setting-btn" id="reinitialize-app-btn"><i class="fa-solid fa-sync"></i>
+                                    Reinitialize</button>
                             </div>
                         </div>
                         <div class="setting-item">
@@ -587,6 +591,13 @@
                     </button>
                 </div>
             </div>
+        </div>
+    </template>
+
+    <template id="search-results-section-template">
+        <div class="search-results-section">
+            <h2 class="search-section-title"></h2>
+            <div class="search-section-grid"></div>
         </div>
     </template>
 
