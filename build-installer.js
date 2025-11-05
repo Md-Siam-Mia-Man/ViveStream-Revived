@@ -1,4 +1,4 @@
-const { packager } = require("@electron/packager");
+const packager = require("@electron/packager");
 const compile = require("innosetup-compiler");
 const path = require("path");
 const fs = require("fs-extra");
@@ -25,7 +25,7 @@ config.finalInstallerPath = path.join(
 );
 
 async function runPreBuildChecks() {
-  console.log("[1/6] 🧐 Running pre-build checks...");
+  console.log("[1/5] 🧐 Running pre-build checks...");
   const requiredFiles = [
     config.issPath,
     path.join(config.vendorDir, "yt-dlp.exe"),
@@ -42,7 +42,7 @@ async function runPreBuildChecks() {
 }
 
 async function cleanupPreviousBuild() {
-  console.log("[2/6] 🧹 Cleaning up previous build artifacts...");
+  console.log("[2/5] 🧹 Cleaning up previous build artifacts...");
   await fs.remove(config.outputDir);
   await fs.remove(config.innoSetupOutputDir);
   await fs.ensureDir(config.outputDir);
@@ -50,7 +50,7 @@ async function cleanupPreviousBuild() {
 }
 
 async function packageApp() {
-  console.log("[3/6] 📦 Packaging Electron app with Electron Packager...");
+  console.log("[3/5] 📦 Packaging Electron app with Electron Packager...");
   await packager({
     dir: __dirname,
     out: config.outputDir,
@@ -60,6 +60,7 @@ async function packageApp() {
     overwrite: true,
     asar: true,
     icon: config.iconPath,
+    extraResource: [config.vendorDir, config.assetsDir],
     ignore: [
       /^\/release(\/|$)/,
       /^\/InnoSetupOutput(\/|$)/,
@@ -74,21 +75,8 @@ async function packageApp() {
   console.log("   ✅ App packaged successfully.");
 }
 
-async function copyExtraResources() {
-  console.log("[4/6] 🚚 Copying extra resources...");
-  const resourcesDestPath = path.join(config.packagedAppPath, "resources");
-  try {
-    await fs.copy(config.vendorDir, path.join(resourcesDestPath, "vendor"));
-    await fs.copy(config.assetsDir, path.join(resourcesDestPath, "assets"));
-    console.log("   ✅ Extra resources copied.");
-  } catch (error) {
-    console.error("   ❌ Failed to copy extra resources.");
-    throw error;
-  }
-}
-
 async function createInstaller() {
-  console.log("[5/6] ⚙️ Compiling Windows installer with Inno Setup...");
+  console.log("[4/5] ⚙️ Compiling Windows installer with Inno Setup...");
   await compile(config.issPath, {
     O: config.innoSetupOutputDir,
     D: {
@@ -104,7 +92,7 @@ async function createInstaller() {
 }
 
 async function finalizeBuild() {
-  console.log("[6/6] ✨ Finalizing and cleaning up...");
+  console.log("[5/5] ✨ Finalizing and cleaning up...");
   console.group("   Tasks:");
   const tempInstallerName = (await fs.readdir(config.innoSetupOutputDir))[0];
   const tempInstallerPath = path.join(
@@ -131,7 +119,6 @@ async function build() {
     await runPreBuildChecks();
     await cleanupPreviousBuild();
     await packageApp();
-    await copyExtraResources();
     await createInstaller();
     await finalizeBuild();
 
