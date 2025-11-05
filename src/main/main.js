@@ -26,7 +26,10 @@ const getResourcePath = (subfolder, fileName) => {
   return path.join(basePath, fileName);
 };
 
-const ytDlpPath = getResourcePath("vendor", `yt-dlp${exeSuffix}`);
+const bundledYtDlpPath = getResourcePath("vendor", `yt-dlp${exeSuffix}`);
+const userYtDlpPath = path.join(app.getPath("userData"), `yt-dlp${exeSuffix}`);
+let ytDlpPath = userYtDlpPath;
+
 const ffmpegPath = getResourcePath("vendor", `ffmpeg${exeSuffix}`);
 const ffprobePath = getResourcePath("vendor", `ffprobe${exeSuffix}`);
 const iconPath = getResourcePath("assets", "icon.ico");
@@ -64,6 +67,22 @@ const defaultSettings = {
   outputTemplate: "%(id)s.%(ext)s",
   speedLimit: "",
 };
+
+async function initializeYtDlp() {
+  try {
+    const userPathExists = await fse.pathExists(userYtDlpPath);
+    if (!userPathExists) {
+      await fse.copy(bundledYtDlpPath, userYtDlpPath);
+    }
+    ytDlpPath = userYtDlpPath;
+  } catch (error) {
+    console.error(
+      "Failed to initialize user yt-dlp, falling back to bundled version:",
+      error
+    );
+    ytDlpPath = bundledYtDlpPath;
+  }
+}
 
 function getSettings() {
   if (fs.existsSync(settingsPath)) {
@@ -472,22 +491,22 @@ app.on("will-quit", () => globalShortcut.unregisterAll());
 
 app
   .whenReady()
-  .then(() => {
+  .then(async () => {
     try {
-      db.initialize(app)
-        .then(createWindow)
-        .then(createTray)
-        .then(() => {
-          globalShortcut.register("MediaPlayPause", () =>
-            win?.webContents.send("media-key-play-pause")
-          );
-          globalShortcut.register("MediaNextTrack", () =>
-            win?.webContents.send("media-key-next-track")
-          );
-          globalShortcut.register("MediaPreviousTrack", () =>
-            win?.webContents.send("media-key-prev-track")
-          );
-        });
+      await initializeYtDlp();
+      await db.initialize(app);
+      createWindow();
+      createTray();
+
+      globalShortcut.register("MediaPlayPause", () =>
+        win?.webContents.send("media-key-play-pause")
+      );
+      globalShortcut.register("MediaNextTrack", () =>
+        win?.webContents.send("media-key-next-track")
+      );
+      globalShortcut.register("MediaPreviousTrack", () =>
+        win?.webContents.send("media-key-prev-track")
+      );
     } catch (error) {
       console.error("Failed during app startup:", error);
       dialog.showErrorBox(
