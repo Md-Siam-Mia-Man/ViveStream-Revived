@@ -1,4 +1,3 @@
-// src/renderer/js/ui.js
 import { AppState, setFilters } from "./state.js";
 import {
   showPage,
@@ -46,7 +45,7 @@ export function createGridItem(item, isPlaylistItem = false) {
   const thumbnail = element.querySelector(".grid-thumbnail");
   const overlayIconContainer = element.querySelector(".thumbnail-overlay-icon");
   const favoriteBtn = element.querySelector(".favorite-btn");
-  const favoriteIcon = favoriteBtn.querySelector("i");
+  const favoriteIcon = favoriteBtn.querySelector("span");
 
   element.dataset.id = item.id;
   if (isPlaylistItem) {
@@ -65,7 +64,8 @@ export function createGridItem(item, isPlaylistItem = false) {
   };
 
   if (item.type === "audio") {
-    overlayIconContainer.innerHTML = '<i class="fa-solid fa-music"></i>';
+    overlayIconContainer.innerHTML =
+      '<span class="material-symbols-outlined">music_note</span>';
   }
 
   element.querySelector(".thumbnail-duration").textContent = formatTime(
@@ -77,9 +77,9 @@ export function createGridItem(item, isPlaylistItem = false) {
 
   favoriteBtn.classList.toggle("is-favorite", !!item.isFavorite);
   favoriteBtn.title = item.isFavorite ? "Unfavorite" : "Favorite";
-  favoriteIcon.className = `fa-${
-    item.isFavorite ? "solid" : "regular"
-  } fa-heart`;
+  if (item.isFavorite) {
+    favoriteIcon.style.fontVariationSettings = "'FILL' 1";
+  }
 
   return element;
 }
@@ -132,7 +132,10 @@ function renderGrid(container, library, isPlaylistItem = false) {
         fragment.appendChild(gridItem);
       });
     } else {
-      fragment.innerHTML = `<p class="empty-message">No media matches the current filters.</p>`;
+      const emptyMessage = document.createElement("p");
+      emptyMessage.className = "empty-message";
+      emptyMessage.textContent = "No media matches the current filters.";
+      fragment.appendChild(emptyMessage);
     }
   }
   container.appendChild(fragment);
@@ -148,25 +151,23 @@ function createPageHeader(title) {
   header.innerHTML = `
         <h1 class="page-header-title">${title}</h1>
         <div class="page-header-actions">
-            <div class="filter-dropdown-container" id="filter-dropdown">
-                <button class="action-button filter-btn">
-                    <i class="fa-solid fa-filter"></i>
-                    <span>Filter</span>
-                </button>
-            </div>
+            <button class="action-button" id="filter-btn">
+                <span class="material-symbols-outlined">filter_list</span>
+                <span>Filter</span>
+            </button>
             <div class="sort-dropdown-container" id="sort-dropdown">
                 <button class="sort-dropdown-btn">
-                    <i class="fa-solid fa-sort"></i>
+                    <span class="material-symbols-outlined">sort</span>
                     <span id="sort-dropdown-label">Sort By</span>
-                    <i class="fa-solid fa-chevron-down chevron"></i>
+                    <span class="material-symbols-outlined chevron">expand_more</span>
                 </button>
                 <div class="sort-options-list">
-                    <div class="sort-option-item" data-value="downloadedAt-desc"><span class="check"><i class="fa-solid fa-check"></i></span>Date Added (Newest)</div>
-                    <div class="sort-option-item" data-value="downloadedAt-asc"><span class="check"><i class="fa-solid fa-check"></i></span>Date Added (Oldest)</div>
-                    <div class="sort-option-item" data-value="title-asc"><span class="check"><i class="fa-solid fa-check"></i></span>Title (A-Z)</div>
-                    <div class="sort-option-item" data-value="title-desc"><span class="check"><i class="fa-solid fa-check"></i></span>Title (Z-A)</div>
-                    <div class="sort-option-item" data-value="duration-desc"><span class="check"><i class="fa-solid fa-check"></i></span>Duration (Longest)</div>
-                    <div class="sort-option-item" data-value="duration-asc"><span class="check"><i class="fa-solid fa-check"></i></span>Duration (Shortest)</div>
+                    <div class="sort-option-item" data-value="downloadedAt-desc"><span class="check material-symbols-outlined">done</span>Date Added (Newest)</div>
+                    <div class="sort-option-item" data-value="downloadedAt-asc"><span class="check material-symbols-outlined">done</span>Date Added (Oldest)</div>
+                    <div class="sort-option-item" data-value="title-asc"><span class="check material-symbols-outlined">done</span>Title (A-Z)</div>
+                    <div class="sort-option-item" data-value="title-desc"><span class="check material-symbols-outlined">done</span>Title (Z-A)</div>
+                    <div class="sort-option-item" data-value="duration-desc"><span class="check material-symbols-outlined">done</span>Duration (Longest)</div>
+                    <div class="sort-option-item" data-value="duration-asc"><span class="check material-symbols-outlined">done</span>Duration (Shortest)</div>
                 </div>
             </div>
         </div>`;
@@ -211,7 +212,7 @@ function updateSortUI() {
     const isActive = opt.dataset.value === currentSort;
     opt.classList.toggle("active", isActive);
     if (isActive) {
-      label.textContent = opt.textContent.trim();
+      label.textContent = opt.textContent.replace("done", "").trim();
     }
   });
 }
@@ -227,7 +228,7 @@ export function renderHomePageGrid() {
   const homePage = document.getElementById("home-page");
   homePage.innerHTML = "";
   if (AppState.library.length === 0) {
-    homePage.innerHTML = `<div class="placeholder-page"><i class="fa-solid fa-house-chimney-crack placeholder-icon"></i><h2 class="placeholder-title">Your Library is Empty</h2><p class="placeholder-text">Go to the <span class="link-style" id="go-to-downloads-link">Downloads</span> page to get started.</p></div>`;
+    homePage.innerHTML = `<div class="placeholder-page"><span class="material-symbols-outlined placeholder-icon">home</span><h2 class="placeholder-title">Your Library is Empty</h2><p class="placeholder-text">Go to the <span class="link-style" id="go-to-downloads-link">Downloads</span> page to get started.</p></div>`;
   } else {
     homePage.appendChild(createPageHeader("Home"));
     homePage.appendChild(createFilterPanel());
@@ -255,7 +256,7 @@ export function renderFavoritesPage() {
     favoritesPage.appendChild(grid);
     renderGrid(grid, favoritesLibrary);
   } else {
-    favoritesPage.innerHTML = `<div class="page-header"><h1 class="page-header-title">Favorites</h1></div><div class="placeholder-page"><i class="fa-solid fa-heart-crack placeholder-icon"></i><h2 class="placeholder-title">No Favorites Yet</h2><p class="placeholder-text">Click the heart icon on any video to add it to your favorites.</p></div>`;
+    favoritesPage.innerHTML = `<div class="page-header"><h1 class="page-header-title">Favorites</h1></div><div class="placeholder-page"><span class="material-symbols-outlined placeholder-icon">heart_broken</span><h2 class="placeholder-title">No Favorites Yet</h2><p class="placeholder-text">Click the heart icon on any video to add it to your favorites.</p></div>`;
   }
   updateSortUI();
   hideLoader();
@@ -280,8 +281,10 @@ function updateFavoriteUI(videoId, isFavorite) {
   ) {
     const favoriteBtn = document.getElementById("favorite-btn");
     favoriteBtn.classList.toggle("is-favorite", isFavorite);
-    const playerIcon = favoriteBtn.querySelector("i");
-    playerIcon.className = `fa-solid fa-heart`;
+    const playerIcon = favoriteBtn.querySelector("span");
+    playerIcon.style.fontVariationSettings = isFavorite
+      ? "'FILL' 1"
+      : "'FILL' 0";
   }
 
   document
@@ -291,9 +294,9 @@ function updateFavoriteUI(videoId, isFavorite) {
       if (gridBtn) {
         gridBtn.classList.toggle("is-favorite", isFavorite);
         gridBtn.title = isFavorite ? "Unfavorite" : "Favorite";
-        gridBtn.querySelector("i").className = `fa-${
-          isFavorite ? "solid" : "regular"
-        } fa-heart`;
+        gridBtn.querySelector("span").style.fontVariationSettings = isFavorite
+          ? "'FILL' 1"
+          : "'FILL' 0";
       }
     });
 
@@ -336,8 +339,9 @@ function initializeMainEventListeners() {
 
       if (playlistGrid) {
         const playlistId = playlistGrid.dataset.playlistId;
-        const playlist =
-          await window.electronAPI.playlistGetDetails(playlistId);
+        const playlist = await window.electronAPI.playlistGetDetails(
+          playlistId
+        );
         sourceLib = playlist.videos;
         context = { type: "playlist", id: playlistId, name: playlist.name };
       } else if (artistGrid) {
@@ -388,7 +392,7 @@ function initializeMainEventListeners() {
       return;
     }
 
-    if (e.target.closest("#filter-dropdown")) {
+    if (e.target.closest("#filter-btn")) {
       const panel = document.getElementById("filter-panel");
       if (panel) {
         panel.style.display = panel.style.display === "none" ? "flex" : "none";
