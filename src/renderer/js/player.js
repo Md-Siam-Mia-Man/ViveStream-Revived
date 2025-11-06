@@ -23,7 +23,10 @@ const videoInfoTitle = document.getElementById("video-info-title");
 const channelThumb = document.getElementById("channel-thumb");
 const videoInfoUploader = document.getElementById("video-info-uploader");
 const videoInfoDate = document.getElementById("video-info-date");
-const upNextList = document.getElementById("up-next-list");
+const persistentQueueList = document.getElementById("persistent-queue-list");
+const upNextContextHeader = document.getElementById(
+  "up-next-context-header-text"
+);
 const favoriteBtn = document.getElementById("favorite-btn");
 const addToPlaylistBtn = document.getElementById("add-to-playlist-btn");
 const theaterBtn = document.getElementById("theater-btn");
@@ -59,7 +62,7 @@ let hideControlsTimeout;
 
 const SleepTimer = {
   id: null,
-  type: null, // 'time', 'tracks', 'minutes'
+  type: null,
   value: 0,
   remaining: 0,
   statusEl: document.getElementById("sleep-timer-status"),
@@ -72,7 +75,7 @@ const SleepTimer = {
     this.remaining = this.value;
 
     if (this.type === "minutes") {
-      this.remaining *= 60; // to seconds
+      this.remaining *= 60;
       this.id = setInterval(() => this.update(), 1000);
     } else if (this.type === "tracks") {
       eventBus.on("playback:trackchange", this.onTrackChange);
@@ -140,7 +143,7 @@ const lazyLoadObserver = new IntersectionObserver(
       }
     });
   },
-  { root: upNextList }
+  { root: persistentQueueList }
 );
 
 function preloadNextItem() {
@@ -160,7 +163,7 @@ function handleTrackEnd() {
   if (autoplayToggle.checked) {
     playNext();
   } else {
-    playPauseBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
+    playPauseBtn.querySelector("span").textContent = "play_arrow";
     eventBus.emit("playback:pause");
   }
 }
@@ -261,33 +264,30 @@ export function updateVideoDetails(item) {
 }
 
 export function renderUpNextList() {
-  upNextList.innerHTML = "";
+  persistentQueueList.innerHTML = "";
   if (AppState.currentlyPlayingIndex < 0 || AppState.library.length === 0)
     return;
 
   const placeholderSrc = `${AppState.assetsPath}/logo.png`;
   const fragment = document.createDocumentFragment();
   const context = AppState.playbackContext;
-  const contextQueueIds = new Set(AppState.playbackQueue.map((v) => v.id));
+
+  const icon = {
+    playlist: "playlist_play",
+    artist: "artist",
+    favorites: "favorite",
+  }[context.type];
 
   if (context.type && context.name) {
-    const icon = {
-      playlist: "fa-layer-group",
-      artist: "fa-microphone-lines",
-      favorites: "fa-heart",
-    }[context.type];
-    const header = document.createElement("div");
-    header.className = "up-next-context-header";
-    header.innerHTML = `<i class="fa-solid ${icon}"></i> Playing from: ${context.name}`;
-    fragment.appendChild(header);
+    upNextContextHeader.innerHTML = `<span class="material-symbols-outlined">${icon}</span> ${context.name}`;
+  } else {
+    upNextContextHeader.textContent = "Up Next";
   }
 
-  for (let i = 1; i < AppState.playbackQueue.length; i++) {
-    const itemIndex =
-      (AppState.currentlyPlayingIndex + i) % AppState.playbackQueue.length;
-    const video = AppState.playbackQueue[itemIndex];
+  AppState.playbackQueue.forEach((video, index) => {
     const li = document.createElement("li");
     li.className = "up-next-item";
+    li.classList.toggle("is-playing", index === AppState.currentlyPlayingIndex);
     li.dataset.id = video.id;
     const actualSrc = video.coverPath
       ? decodeURIComponent(video.coverPath)
@@ -299,31 +299,10 @@ export function renderUpNextList() {
         <p class="item-uploader">${video.creator || video.uploader}</p>
       </div>`;
     fragment.appendChild(li);
-  }
+  });
 
-  if (context.type) {
-    const remainingLibrary = AppState.library.filter(
-      (v) => !contextQueueIds.has(v.id)
-    );
-    remainingLibrary.forEach((video) => {
-      const li = document.createElement("li");
-      li.className = "up-next-item";
-      li.dataset.id = video.id;
-      const actualSrc = video.coverPath
-        ? decodeURIComponent(video.coverPath)
-        : placeholderSrc;
-      li.innerHTML = `
-        <img data-src="${actualSrc}" src="${placeholderSrc}" class="thumbnail" alt="thumbnail" onerror="this.onerror=null;this.src='${placeholderSrc}';">
-        <div class="item-info">
-          <p class="item-title">${video.title}</p>
-          <p class="item-uploader">${video.creator || video.uploader}</p>
-        </div>`;
-      fragment.appendChild(li);
-    });
-  }
-
-  upNextList.appendChild(fragment);
-  upNextList
+  persistentQueueList.appendChild(fragment);
+  persistentQueueList
     .querySelectorAll(".thumbnail")
     .forEach((img) => lazyLoadObserver.observe(img));
 }
@@ -377,10 +356,10 @@ export function updateVolumeUI() {
     "--volume-progress",
     `${(muted ? 0 : vol) * 100}%`
   );
-  const icon = muteBtn.querySelector("i");
-  if (muted || vol === 0) icon.className = "fa-solid fa-volume-xmark";
-  else if (vol < 0.5) icon.className = "fa-solid fa-volume-low";
-  else icon.className = "fa-solid fa-volume-high";
+  const icon = muteBtn.querySelector("span");
+  if (muted || vol === 0) icon.textContent = "volume_off";
+  else if (vol < 0.5) icon.textContent = "volume_down";
+  else icon.textContent = "volume_up";
 }
 
 export function loadSettings() {
@@ -406,14 +385,14 @@ export function loadSettings() {
 
 function buildSettingsMenu() {
   settingsMenu.innerHTML = `
-        <div class="settings-item" data-setting="speed"><i class="fa-solid fa-gauge-high"></i><span>Playback Speed</span><span class="setting-value" id="speed-value">${
+        <div class="settings-item" data-setting="speed"><span class="material-symbols-outlined">speed</span><span>Playback Speed</span><span class="setting-value" id="speed-value">${
           videoPlayer.playbackRate === 1
             ? "Normal"
             : videoPlayer.playbackRate + "x"
-        }</span><span class="chevron"><i class="fa-solid fa-chevron-right"></i></span></div>
-        <div class="settings-item" data-setting="sleep"><i class="fa-solid fa-moon"></i><span>Sleep Timer</span><span class="setting-value" id="sleep-value">${
+        }</span><span class="chevron material-symbols-outlined">arrow_forward_ios</span></div>
+        <div class="settings-item" data-setting="sleep"><span class="material-symbols-outlined">bedtime</span><span>Sleep Timer</span><span class="setting-value" id="sleep-value">${
           SleepTimer.type ? "On" : "Off"
-        }</span><span class="chevron"><i class="fa-solid fa-chevron-right"></i></span></div>`;
+        }</span><span class="chevron material-symbols-outlined">arrow_forward_ios</span></div>`;
 }
 
 function handleSubmenu(mainSel, subMenuEl, values, type, labelFormatter) {
@@ -425,7 +404,7 @@ function handleSubmenu(mainSel, subMenuEl, values, type, labelFormatter) {
     const currentVal = type === "speed" ? videoPlayer.playbackRate : null;
     subMenuEl.innerHTML = `
       <div class="submenu-item" data-action="back">
-          <span class="chevron"><i class="fa-solid fa-chevron-left"></i></span>
+          <span class="chevron material-symbols-outlined">arrow_back_ios</span>
           <span>${
             mainItem.querySelector("span:nth-child(2)").textContent
           }</span>
@@ -435,7 +414,7 @@ function handleSubmenu(mainSel, subMenuEl, values, type, labelFormatter) {
           (v) =>
             `<div class="submenu-item ${
               v == currentVal ? "active" : ""
-            }" data-${type}="${v}"><span class="check"><i class="fa-solid fa-check"></i></span><span>${labelFormatter(
+            }" data-${type}="${v}"><span class="check material-symbols-outlined">done</span><span>${labelFormatter(
               v
             )}</span></div>`
         )
@@ -497,12 +476,12 @@ async function saveMetadataChanges() {
 [videoPlayer, videoPlayerPreload].forEach((player) => {
   player.addEventListener("play", () => {
     playerSection.classList.remove("paused");
-    playPauseBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
+    playPauseBtn.querySelector("span").textContent = "pause";
     if (player === videoPlayer) eventBus.emit("playback:play");
   });
   player.addEventListener("pause", () => {
     playerSection.classList.add("paused");
-    playPauseBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
+    playPauseBtn.querySelector("span").textContent = "play_arrow";
     if (player === videoPlayer) eventBus.emit("playback:pause");
   });
   player.addEventListener("ended", handleTrackEnd);
@@ -573,9 +552,9 @@ autoplayToggle.addEventListener("change", (e) => {
 document.addEventListener("fullscreenchange", () => {
   const isFullscreen = !!document.fullscreenElement;
   playerPage.classList.toggle("fullscreen-mode", isFullscreen);
-  fullscreenBtn.innerHTML = `<i class="fa-solid ${
-    isFullscreen ? "fa-compress" : "fa-expand"
-  }"></i>`;
+  fullscreenBtn.querySelector("span").textContent = isFullscreen
+    ? "fullscreen_exit"
+    : "fullscreen";
 });
 videoDescriptionBox.addEventListener("click", () => {
   videoDescriptionBox.classList.toggle("expanded");
@@ -585,11 +564,10 @@ videoDescriptionBox.addEventListener("click", () => {
     ? "Show less"
     : "Show more";
 });
-upNextList.addEventListener("click", (e) => {
+persistentQueueList.addEventListener("click", (e) => {
   const itemEl = e.target.closest(".up-next-item");
   if (itemEl) {
-    const isContextItem = !!AppState.playbackContext.type;
-    const queue = isContextItem ? AppState.playbackQueue : AppState.library;
+    const queue = AppState.playbackQueue;
     playLibraryItem({
       index: queue.findIndex((v) => v.id === itemEl.dataset.id),
       queue: queue,
@@ -730,8 +708,8 @@ settingsMenu.addEventListener("click", (e) => {
   } else if (setting === "sleep") {
     settingsMenu.classList.remove("active");
     sleepSubmenu.innerHTML = `
-            <div class="submenu-item" data-action="back"><span class="chevron"><i class="fa-solid fa-chevron-left"></i></span><span>Sleep Timer</span></div>
-            <div class="submenu-item" data-minutes="0"><span class="check"><i class="fa-solid fa-check"></i></span><span>Off</span></div>
+            <div class="submenu-item" data-action="back"><span class="chevron material-symbols-outlined">arrow_back_ios</span><span>Sleep Timer</span></div>
+            <div class="submenu-item" data-minutes="0"><span class="check material-symbols-outlined">done</span><span>Off</span></div>
             <div class="submenu-item"><div class="sleep-timer-input-group"><input type="number" min="1" id="sleep-tracks-input" placeholder="Tracks"><button id="sleep-tracks-btn">Set</button></div></div>
             <div class="submenu-item"><div class="sleep-timer-input-group"><input type="number" min="1" id="sleep-minutes-input" placeholder="Minutes"><button id="sleep-minutes-btn">Set</button></div></div>
             <div class="submenu-item"><div class="sleep-timer-input-group"><input type="time" id="sleep-time-input"><button id="sleep-time-btn">Set</button></div></div>`;
