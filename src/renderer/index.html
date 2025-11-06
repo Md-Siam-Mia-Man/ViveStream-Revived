@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta http-equiv="Content-Security-Policy" content="font-src 'self' data:; script-src 'self' 'unsafe-inline';">
     <title>ViveStream</title>
-    <link rel="stylesheet" href="../../node_modules/@fortawesome/fontawesome-free/css/all.min.css">
+    <link rel="stylesheet" href="../../assets/icons/index.css">
     <link rel="stylesheet" href="./css/style.css">
     <link rel="stylesheet" href="./css/home.css">
     <link rel="stylesheet" href="./css/downloads.css">
@@ -21,14 +21,14 @@
     <div class="title-bar">
         <div class="title-bar-drag-region"></div>
         <div class="window-controls-container">
-            <button id="tray-btn" class="window-control-btn" title="Minimize to Tray"><i
-                    class="fa-solid fa-compress-arrows-alt"></i></button>
-            <button id="minimize-btn" class="window-control-btn" title="Minimize"><i
-                    class="fa-solid fa-minus"></i></button>
-            <button id="maximize-btn" class="window-control-btn" title="Maximize"><i
-                    class="fa-regular fa-square"></i></button>
-            <button id="close-btn" class="window-control-btn close-btn" title="Close"><i
-                    class="fa-solid fa-xmark"></i></button>
+            <button id="tray-btn" class="window-control-btn" title="Minimize to Tray"><span
+                    class="material-symbols-outlined">close_fullscreen</span></button>
+            <button id="minimize-btn" class="window-control-btn" title="Minimize"><span
+                    class="material-symbols-outlined">remove</span></button>
+            <button id="maximize-btn" class="window-control-btn" title="Maximize"><span
+                    class="material-symbols-outlined">crop_square</span></button>
+            <button id="close-btn" class="window-control-btn close-btn" title="Close"><span
+                    class="material-symbols-outlined">close</span></button>
         </div>
     </div>
     <div class="header-bar">
@@ -56,7 +56,7 @@
                             }
                         }
                     </style>
-                    <path width="120" height="120" rx="20" fill="#ff0b55"
+                    <path width="120" height="120" rx="20" fill="#ef233c"
                         d="M83.333 0H416.667A83.333 83.333 0 0 1 500 83.333V416.667A83.333 83.333 0 0 1 416.667 500H83.333A83.333 83.333 0 0 1 0 416.667V83.333A83.333 83.333 0 0 1 83.333 0z" />
                     <path d="m125 125 125 250 125 -250" stroke="#f1f1f1" stroke-width="25" fill="none"
                         stroke-linecap="round" />
@@ -70,13 +70,13 @@
         </div>
         <div class="header-center">
             <div class="search-container">
-                <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                <span class="material-symbols-outlined search-icon">search</span>
                 <input type="text" id="home-search-input" placeholder="Search everything...">
             </div>
         </div>
         <div class="header-right">
             <div class="sleep-timer-status hidden" id="sleep-timer-status">
-                <i class="fa-solid fa-moon"></i>
+                <span class="material-symbols-outlined">bedtime</span>
                 <span id="sleep-timer-status-text"></span>
             </div>
         </div>
@@ -84,18 +84,23 @@
     <div class="app-body">
         <nav class="sidebar">
             <ul class="sidebar-nav">
-                <li class="nav-item active" data-page="home"><i class="fa-solid fa-house"></i><span>Home</span></li>
-                <li class="nav-item" data-page="favorites"><i class="fa-solid fa-heart"></i><span>Favorites</span></li>
-                <li class="nav-item" data-page="playlists"><i class="fa-solid fa-layer-group"></i><span>Playlists</span>
+                <li class="nav-item active" data-page="home"><span
+                        class="material-symbols-outlined">home</span><span>Home</span></li>
+                <li class="nav-item" data-page="favorites"><span
+                        class="material-symbols-outlined">favorite</span><span>Favorites</span></li>
+                <li class="nav-item" data-page="playlists"><span
+                        class="material-symbols-outlined">playlist_play</span><span>Playlists</span>
                 </li>
-                <li class="nav-item" data-page="artists"><i
-                        class="fa-solid fa-microphone-lines"></i><span>Artists</span>
+                <li class="nav-item" data-page="artists"><span
+                        class="material-symbols-outlined">artist</span><span>Artists</span>
                 </li>
-                <li class="nav-item" data-page="downloads"><i class="fa-solid fa-download"></i><span>Downloads</span>
+                <li class="nav-item" data-page="downloads"><span
+                        class="material-symbols-outlined">download</span><span>Downloads</span>
                 </li>
             </ul>
             <ul class="sidebar-nav-bottom">
-                <li class="nav-item" data-page="settings"><i class="fa-solid fa-gear"></i><span>Settings</span></li>
+                <li class="nav-item" data-page="settings"><span
+                        class="material-symbols-outlined">settings</span><span>Settings</span></li>
             </ul>
         </nav>
         <div class="content-wrapper">
@@ -110,7 +115,7 @@
                         <p class="download-card-subtitle">Paste a YouTube video or playlist URL to begin.</p>
                         <form id="download-form">
                             <div class="url-input-container">
-                                <i class="fa-solid fa-link url-icon"></i>
+                                <span class="material-symbols-outlined url-icon">link</span>
                                 <input type="text" id="url-input" placeholder="Enter YouTube URL..." required>
                             </div>
                             <div class="download-options">
@@ -119,7 +124,8 @@
                                     <div class="custom-select-container" id="video-quality-select-container">
                                         <div class="selected-option" data-value="1080">
                                             <span>1080p</span>
-                                            <span class="chevron"><i class="fa-solid fa-chevron-down"></i></span>
+                                            <span class="chevron"><span
+                                                    class="material-symbols-outlined">expand_more</span></span>
                                         </div>
                                         <div class="options-list">
                                             <div class="option-item" data-value="best">Best</div>
@@ -138,11 +144,11 @@
                                         <span class="slider round"></span>
                                     </label>
                                 </div>
-                                <button type="submit" class="download-button"><i
-                                        class="fa-solid fa-download"></i><span>Download</span></button>
+                                <button type="submit" class="download-button"><span
+                                        class="material-symbols-outlined">download</span><span>Download</span></button>
                             </div>
                             <div class="advanced-options-toggle" id="advanced-options-toggle">
-                                <i class="fa-solid fa-sliders"></i> Advanced Options
+                                <span class="material-symbols-outlined">tune</span> Advanced Options
                             </div>
                             <div class="advanced-options-panel hidden" id="advanced-options-panel">
                                 <div class="option-group">
@@ -169,15 +175,17 @@
                     <div class="download-queue-header">
                         <h3>Download Queue</h3>
                         <div class="queue-actions">
-                            <button id="clear-completed-btn" class="queue-action-btn"><i class="fa-solid fa-check"></i>
+                            <button id="clear-completed-btn" class="queue-action-btn"><span
+                                    class="material-symbols-outlined">done_all</span>
                                 Clear Completed</button>
-                            <button id="clear-all-btn" class="queue-action-btn"><i class="fa-solid fa-trash-can"></i>
+                            <button id="clear-all-btn" class="queue-action-btn"><span
+                                    class="material-symbols-outlined">delete</span>
                                 Clear All</button>
                         </div>
                     </div>
                     <div id="download-queue-area"></div>
                     <div id="empty-queue-placeholder" class="hidden">
-                        <i class="fa-solid fa-download placeholder-icon"></i>
+                        <span class="material-symbols-outlined placeholder-icon">download</span>
                         <p>Your download queue is empty</p>
                         <span>Paste a link above to get started</span>
                     </div>
@@ -202,15 +210,15 @@
                                 </div>
                                 <div class="bottom-controls">
                                     <div class="left-controls">
-                                        <button class="control-button prev-btn"><i
-                                                class="fa-solid fa-backward-step"></i></button>
-                                        <button class="control-button play-pause-btn"><i
-                                                class="fa-solid fa-play"></i></button>
-                                        <button class="control-button next-btn"><i
-                                                class="fa-solid fa-forward-step"></i></button>
+                                        <button class="control-button prev-btn"><span
+                                                class="material-symbols-outlined">skip_previous</span></button>
+                                        <button class="control-button play-pause-btn"><span
+                                                class="material-symbols-outlined">play_arrow</span></button>
+                                        <button class="control-button next-btn"><span
+                                                class="material-symbols-outlined">skip_next</span></button>
                                         <div class="volume-container">
-                                            <button class="control-button mute-btn"><i
-                                                    class="fa-solid fa-volume-high"></i></button>
+                                            <button class="control-button mute-btn"><span
+                                                    class="material-symbols-outlined">volume_up</span></button>
                                             <div class="volume-slider-container">
                                                 <input class="volume-slider" type="range" min="0" max="1" step="0.01"
                                                     value="1">
@@ -223,14 +231,14 @@
                                         <div class="autoplay-container"><label class="switch"><input type="checkbox"
                                                     id="autoplay-toggle" checked><span
                                                     class="slider round"></span></label></div>
-                                        <button class="control-button" id="settings-btn" title="Settings"><i
-                                                class="fa-solid fa-cog"></i></button>
-                                        <button class="control-button" id="miniplayer-btn" title="Miniplayer"><i
-                                                class="fa-solid fa-clone"></i></button>
-                                        <button class="control-button" id="theater-btn" title="Theater Mode"><i
-                                                class="fa-solid fa-desktop"></i></button>
-                                        <button class="control-button" id="fullscreen-btn" title="Fullscreen"><i
-                                                class="fa-solid fa-expand"></i></button>
+                                        <button class="control-button" id="settings-btn" title="Settings"><span
+                                                class="material-symbols-outlined">settings</span></button>
+                                        <button class="control-button" id="miniplayer-btn" title="Miniplayer"><span
+                                                class="material-symbols-outlined">picture_in_picture_alt</span></button>
+                                        <button class="control-button" id="theater-btn" title="Theater Mode"><span
+                                                class="material-symbols-outlined">width_wide</span></button>
+                                        <button class="control-button" id="fullscreen-btn" title="Fullscreen"><span
+                                                class="material-symbols-outlined">fullscreen</span></button>
                                     </div>
                                 </div>
                             </div>
@@ -252,12 +260,13 @@
                                     </div>
                                 </div>
                                 <div class="action-buttons">
-                                    <button class="action-button favorite-btn" id="favorite-btn"><i
-                                            class="fa-solid fa-heart"></i><span>Favorite</span></button>
-                                    <button class="action-button" id="add-to-playlist-btn"><i
-                                            class="fa-solid fa-plus"></i><span>Add to Playlist</span></button>
-                                    <button class="action-button" id="video-menu-btn"><i
-                                            class="fa-solid fa-ellipsis-vertical"></i></button>
+                                    <button class="action-button favorite-btn" id="favorite-btn"><span
+                                            class="material-symbols-outlined">favorite</span><span>Favorite</span></button>
+                                    <button class="action-button" id="add-to-playlist-btn"><span
+                                            class="material-symbols-outlined">playlist_add</span><span>Add to
+                                            Playlist</span></button>
+                                    <button class="action-button" id="video-menu-btn"><span
+                                            class="material-symbols-outlined">more_vert</span></button>
                                     <button class="action-button edit-action" id="cancel-edit-btn">Cancel</button>
                                     <button class="action-button edit-action" id="save-edit-btn">Save</button>
                                 </div>
@@ -270,8 +279,17 @@
                         </div>
                     </div>
                     <div class="secondary-column">
-                        <div class="playlist-area">
-                            <ul id="up-next-list"></ul>
+                        <div class="up-next-container" id="up-next-context-box">
+                            <div class="up-next-header">
+                                <span id="up-next-context-header-text">Up Next</span>
+                            </div>
+                            <ul id="persistent-queue-list"></ul>
+                        </div>
+                        <div class="up-next-container" id="up-next-recommendations">
+                            <div class="up-next-header">
+                                <span id="recommendations-header-text">Recommendations</span>
+                            </div>
+                            <ul id="recommendations-list"></ul>
                         </div>
                     </div>
                 </main>
@@ -285,6 +303,21 @@
             <div id="settings-page" class="page hidden">
                 <div class="settings-container">
                     <h1 class="settings-header">Settings</h1>
+                    <div class="settings-section">
+                        <h2 class="settings-section-title">Appearance</h2>
+                        <div class="setting-item">
+                            <div class="setting-text">
+                                <label for="theme-toggle">Theme</label>
+                                <p>Switch between light and dark mode.</p>
+                            </div>
+                            <div class="setting-control">
+                                <label class="switch">
+                                    <input type="checkbox" id="theme-toggle">
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
                     <div class="settings-section">
                         <h2 class="settings-section-title">Downloads</h2>
                         <div class="setting-item">
@@ -326,7 +359,8 @@
                                 <div class="custom-select-container" id="cookie-browser-select-container">
                                     <div class="selected-option" data-value="none">
                                         <span>None</span>
-                                        <span class="chevron"><i class="fa-solid fa-chevron-down"></i></span>
+                                        <span class="chevron"><span
+                                                class="material-symbols-outlined">expand_more</span></span>
                                     </div>
                                     <div class="options-list">
                                         <div class="option-item selected" data-value="none">None</div>
@@ -390,9 +424,10 @@
                                 <p>Add local files or export your entire library to a folder.</p>
                             </div>
                             <div class="setting-control">
-                                <button class="setting-btn" id="import-files-btn"><i
-                                        class="fa-solid fa-file-import"></i> Import Files</button>
-                                <button class="setting-btn" id="export-all-btn"><i class="fa-solid fa-folder-open"></i>
+                                <button class="setting-btn" id="import-files-btn"><span
+                                        class="material-symbols-outlined">upload_file</span> Import Files</button>
+                                <button class="setting-btn" id="export-all-btn"><span
+                                        class="material-symbols-outlined">folder_open</span>
                                     Export Library</button>
                             </div>
                         </div>
@@ -402,7 +437,8 @@
                                 <p>Rescan media files, clear cache, and remove dead entries from the database.</p>
                             </div>
                             <div class="setting-control">
-                                <button class="setting-btn" id="reinitialize-app-btn"><i class="fa-solid fa-sync"></i>
+                                <button class="setting-btn" id="reinitialize-app-btn"><span
+                                        class="material-symbols-outlined">sync</span>
                                     Reinitialize</button>
                             </div>
                         </div>
@@ -412,8 +448,9 @@
                                 <p>Keep the internal downloader (yt-dlp) up-to-date to prevent download errors.</p>
                             </div>
                             <div class="setting-control">
-                                <button class="setting-btn" id="update-ytdlp-btn"><i
-                                        class="fa-solid fa-cloud-arrow-down"></i> Check for Updates</button>
+                                <button class="setting-btn" id="update-ytdlp-btn"><span
+                                        class="material-symbols-outlined">system_update</span> Check for
+                                    Updates</button>
                             </div>
                         </div>
                         <div id="updater-console-container" class="hidden">
@@ -437,8 +474,9 @@
                                 <p><strong>Warning:</strong> This will permanently delete all your downloaded videos,
                                     audio, and metadata.</p>
                             </div>
-                            <div class="setting-control"><button class="danger-btn" id="clear-media-btn"><i
-                                        class="fa-solid fa-trash-can"></i> Clear Media</button></div>
+                            <div class="setting-control"><button class="danger-btn" id="clear-media-btn"><span
+                                        class="material-symbols-outlined">delete_forever</span> Clear Media</button>
+                            </div>
                         </div>
                     </div>
                     <div class="settings-section about-section">
@@ -467,7 +505,7 @@
                                         }
                                     }
                                 </style>
-                                <path width="120" height="120" rx="20" fill="#ff0b55"
+                                <path width="120" height="120" rx="20" fill="#ef233c"
                                     d="M83.333 0H416.667A83.333 83.333 0 0 1 500 83.333V416.667A83.333 83.333 0 0 1 416.667 500H83.333A83.333 83.333 0 0 1 0 416.667V83.333A83.333 83.333 0 0 1 83.333 0z" />
                                 <path d="m125 125 125 250 125 -250" stroke="#f1f1f1" stroke-width="25" fill="none"
                                     stroke-linecap="round" />
@@ -480,30 +518,36 @@
                             <p class="about-version" id="app-version"></p>
                             <p class="about-dev">Developed by Md. Siam Mia</p>
                             <div class="about-links">
-                                <a id="github-view-link" class="about-btn github-view-btn"><i
-                                        class="fa-brands fa-github"></i> View on GitHub</a>
-                                <a id="github-star-link" class="about-btn github-star-btn"><i
-                                        class="fa-solid fa-star"></i> Star on GitHub</a>
+                                <a id="github-view-link" class="about-btn github-view-btn"><span
+                                        class="material-symbols-outlined">code</span> View on GitHub</a>
+                                <a id="github-star-link" class="about-btn github-star-btn"><span
+                                        class="material-symbols-outlined">star</span> Star on GitHub</a>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
             <div class="context-menu" id="video-item-context-menu">
-                <div class="context-menu-item" id="context-edit-btn"><i class="fa-solid fa-pencil"></i> Edit Metadata
+                <div class="context-menu-item" id="context-edit-btn"><span class="material-symbols-outlined">edit</span>
+                    Edit Metadata
                 </div>
-                <div class="context-menu-item" id="context-export-btn"><i class="fa-solid fa-file-export"></i> Export
+                <div class="context-menu-item" id="context-export-btn"><span
+                        class="material-symbols-outlined">download</span> Export
                     File</div>
                 <div class="context-menu-divider"></div>
-                <div class="context-menu-item" id="context-remove-from-playlist-btn"><i class="fa-solid fa-times"></i>
+                <div class="context-menu-item" id="context-remove-from-playlist-btn"><span
+                        class="material-symbols-outlined">playlist_remove</span>
                     Remove from Playlist</div>
-                <div class="context-menu-item" id="context-delete-btn"><i class="fa-solid fa-trash-can"></i> Delete
+                <div class="context-menu-item" id="context-delete-btn"><span
+                        class="material-symbols-outlined">delete</span> Delete
                     from Library</div>
             </div>
             <div class="context-menu" id="playlist-item-context-menu">
-                <div class="context-menu-item" id="context-playlist-rename-btn"><i class="fa-solid fa-pencil"></i>
+                <div class="context-menu-item" id="context-playlist-rename-btn"><span
+                        class="material-symbols-outlined">edit</span>
                     Rename</div>
-                <div class="context-menu-item" id="context-playlist-delete-btn"><i class="fa-solid fa-trash-can"></i>
+                <div class="context-menu-item" id="context-playlist-delete-btn"><span
+                        class="material-symbols-outlined">delete</span>
                     Delete</div>
             </div>
         </div>
@@ -516,15 +560,18 @@
             <p class="miniplayer-uploader">Uploader</p>
         </div>
         <div class="miniplayer-controls">
-            <button class="mini-control-button" id="miniplayer-prev-btn"><i
-                    class="fa-solid fa-backward-step"></i></button>
-            <button class="mini-control-button" id="miniplayer-play-pause-btn"><i class="fa-solid fa-play"></i></button>
-            <button class="mini-control-button" id="miniplayer-next-btn"><i
-                    class="fa-solid fa-forward-step"></i></button>
+            <button class="mini-control-button" id="miniplayer-prev-btn"><span
+                    class="material-symbols-outlined">skip_previous</span></button>
+            <button class="mini-control-button" id="miniplayer-play-pause-btn"><span
+                    class="material-symbols-outlined">play_arrow</span></button>
+            <button class="mini-control-button" id="miniplayer-next-btn"><span
+                    class="material-symbols-outlined">skip_next</span></button>
         </div>
         <div class="miniplayer-actions">
-            <button class="mini-action-button" id="miniplayer-expand-btn"><i class="fa-solid fa-expand"></i></button>
-            <button class="mini-action-button" id="miniplayer-close-btn"><i class="fa-solid fa-xmark"></i></button>
+            <button class="mini-action-button" id="miniplayer-expand-btn"><span
+                    class="material-symbols-outlined">expand_less</span></button>
+            <button class="mini-action-button" id="miniplayer-close-btn"><span
+                    class="material-symbols-outlined">close</span></button>
         </div>
         <div class="miniplayer-progress-container">
             <div class="miniplayer-progress-bar"></div>
@@ -536,7 +583,7 @@
             <div class="modal-header">
                 <h3>Add to Playlist</h3>
                 <div class="modal-header-input-container">
-                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <span class="material-symbols-outlined">search</span>
                     <input type="text" id="add-to-playlist-input" placeholder="Find or create playlist...">
                 </div>
             </div>
@@ -582,12 +629,12 @@
                 </div>
                 <div class="grid-item-actions">
                     <button class="grid-item-action-btn favorite-btn">
-                        <i class="fa-regular fa-heart"></i>
+                        <span class="material-symbols-outlined">favorite</span>
                     </button>
-                    <button class="grid-item-action-btn add-to-playlist-grid-btn" title="Add to Playlist"><i
-                            class="fa-solid fa-plus"></i></button>
+                    <button class="grid-item-action-btn add-to-playlist-grid-btn" title="Add to Playlist"><span
+                            class="material-symbols-outlined">playlist_add</span></button>
                     <button class="grid-item-action-btn menu-btn" title="More">
-                        <i class="fa-solid fa-ellipsis-vertical"></i>
+                        <span class="material-symbols-outlined">more_vert</span>
                     </button>
                 </div>
             </div>
