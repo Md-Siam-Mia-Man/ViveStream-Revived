@@ -1,4 +1,3 @@
-// src/renderer/js/playlists.js
 import { AppState, setAllPlaylists } from "./state.js";
 import {
   showPage,
@@ -52,7 +51,7 @@ export async function renderPlaylistsPage(playlistsToRender) {
   header.innerHTML = `
     <h1 class="page-header-title">Playlists</h1>
     <div class="page-header-actions">
-        <button class="action-button" id="create-new-playlist-btn"><i class="fa-solid fa-plus"></i> Create Playlist</button>
+        <button class="action-button" id="create-new-playlist-btn"><span class="material-symbols-outlined">add</span> Create Playlist</button>
     </div>`;
   playlistsPage.appendChild(header);
 
@@ -62,7 +61,7 @@ export async function renderPlaylistsPage(playlistsToRender) {
     const placeholder = document.createElement("div");
     placeholder.className = "placeholder-page";
     placeholder.innerHTML = `
-        <i class="fa-solid fa-layer-group placeholder-icon"></i>
+        <span class="material-symbols-outlined placeholder-icon">playlist_play</span>
         <h2 class="placeholder-title">No Playlists Yet</h2>
         <p class="placeholder-text">Create your first playlist to organize your media.</p>`;
     playlistsPage.appendChild(placeholder);
@@ -110,8 +109,8 @@ export function renderPlaylistCard(playlist) {
   card.innerHTML = `
     <div class="playlist-thumbnail-container">
         <img data-src="${thumbnailSrc}" src="${placeholderSrc}" class="playlist-thumbnail lazy" alt="playlist-thumbnail" onerror="this.onerror=null;this.src='${placeholderSrc}';">
-        <div class="playlist-overlay-info"><i class="fa-solid fa-layer-group"></i><span>Playlist</span></div>
-        <i class="fa-solid fa-play playlist-play-icon"></i>
+        <div class="playlist-overlay-info"><span class="material-symbols-outlined">playlist_play</span><span>Playlist</span></div>
+        <span class="material-symbols-outlined playlist-play-icon">play_arrow</span>
     </div>
     <div class="playlist-item-details">
         <div class="playlist-item-info">
@@ -119,7 +118,7 @@ export function renderPlaylistCard(playlist) {
             <p class="playlist-item-meta">${videoCountText}</p>
         </div>
         <div class="playlist-item-actions">
-             <button class="grid-item-action-btn menu-btn" title="More"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+             <button class="grid-item-action-btn menu-btn" title="More"><span class="material-symbols-outlined">more_vert</span></button>
         </div>
     </div>`;
   return card;
@@ -148,22 +147,22 @@ export async function renderPlaylistDetailPage(playlistId) {
   const coverSrc = playlist.coverPath
     ? decodeURIComponent(playlist.coverPath)
     : playlist.videos[0]?.coverPath
-      ? decodeURIComponent(playlist.videos[0].coverPath)
-      : placeholderSrc;
+    ? decodeURIComponent(playlist.videos[0].coverPath)
+    : placeholderSrc;
 
   const header = document.createElement("div");
   header.className = "playlist-detail-header-container";
   header.innerHTML = `
     <div class="playlist-detail-cover-container">
         <img src="${coverSrc}" class="playlist-detail-cover" alt="playlist cover" onerror="this.onerror=null;this.src='${placeholderSrc}';">
-        <button class="edit-cover-btn" id="edit-playlist-cover-btn" title="Change cover"><i class="fa-solid fa-camera"></i></button>
+        <button class="edit-cover-btn" id="edit-playlist-cover-btn" title="Change cover"><span class="material-symbols-outlined">photo_camera</span></button>
     </div>
     <div class="playlist-detail-info">
         <h1 class="playlist-detail-title">${playlist.name}</h1>
         <p class="playlist-detail-meta">${videoCountText}</p>
         <div class="playlist-detail-actions">
-             <button class="action-button" id="rename-playlist-btn" data-id="${playlist.id}" data-name="${playlist.name}"><i class="fa-solid fa-pencil"></i> Rename</button>
-             <button class="action-button danger-btn" id="delete-playlist-btn" data-id="${playlist.id}" data-name="${playlist.name}"><i class="fa-solid fa-trash-can"></i> Delete</button>
+             <button class="action-button" id="rename-playlist-btn" data-id="${playlist.id}" data-name="${playlist.name}"><span class="material-symbols-outlined">edit</span> Rename</button>
+             <button class="action-button danger-btn" id="delete-playlist-btn" data-id="${playlist.id}" data-name="${playlist.name}"><span class="material-symbols-outlined">delete</span> Delete</button>
         </div>
     </div>
     `;
@@ -204,7 +203,7 @@ export async function renderPlaylistDetailPage(playlistId) {
   } else {
     content.innerHTML = `
       <div class="placeholder-page" style="flex-grow: 1;">
-        <i class="fa-solid fa-video-slash placeholder-icon"></i>
+        <span class="material-symbols-outlined placeholder-icon">videocam_off</span>
         <h2 class="placeholder-title">Playlist is Empty</h2>
         <p class="placeholder-text">Add some videos to get started.</p>
       </div>`;
@@ -233,9 +232,9 @@ export async function openAddToPlaylistModal(videoId) {
             (p) => `
             <div class="add-playlist-item" data-id="${p.id}">
                 <input type="checkbox" id="playlist-check-${p.id}" ${
-                  checkedIds.has(p.id) ? "checked" : ""
-                }>
-                <span class="custom-checkbox"><i class="fa-solid fa-check"></i></span>
+              checkedIds.has(p.id) ? "checked" : ""
+            }>
+                <span class="custom-checkbox"><span class="material-symbols-outlined">done</span></span>
                 <label for="playlist-check-${p.id}">${p.name}</label>
             </div>`
           )
@@ -266,8 +265,9 @@ playlistsPage.addEventListener("click", async (e) => {
   if (playlistCard) {
     const playlistId = playlistCard.dataset.id;
     if (e.target.closest(".playlist-thumbnail-container")) {
-      const playlistData =
-        await window.electronAPI.playlistGetDetails(playlistId);
+      const playlistData = await window.electronAPI.playlistGetDetails(
+        playlistId
+      );
       if (playlistData && playlistData.videos.length > 0) {
         eventBus.emit("player:play_request", {
           index: 0,
