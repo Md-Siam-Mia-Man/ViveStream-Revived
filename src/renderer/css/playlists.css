@@ -20,7 +20,7 @@
 .playlist-thumbnail-container {
      position: relative;
      cursor: pointer;
-     background-color: var(--yt-dark-grey);
+     background-color: var(--secondary-background);
      border-radius: 12px;
      overflow: hidden;
      aspect-ratio: 16/9;
@@ -56,8 +56,12 @@
      display: flex;
      align-items: center;
      gap: 8px;
-     color: var(--yt-white);
+     color: #fff;
      font-weight: 500;
+}
+
+.playlist-overlay-info .material-symbols-outlined {
+     font-size: 20px;
 }
 
 .playlist-play-icon {
@@ -102,7 +106,7 @@
 
 .playlist-item-meta {
      font-size: 0.8rem;
-     color: var(--yt-light-grey);
+     color: var(--secondary-text);
 }
 
 .playlist-item-actions {
@@ -122,8 +126,8 @@
      align-items: center;
      margin: 10px;
      padding: 24px;
-     background: var(--yt-dark-grey);
-     border-bottom: 1px solid var(--yt-border);
+     background: var(--secondary-background);
+     border-bottom: 1px solid var(--border-color);
      border-radius: 24px;
 }
 
@@ -132,7 +136,7 @@
      width: 200px;
      height: 200px;
      flex-shrink: 0;
-     border-radius: 50%;
+     border-radius: 12px;
      overflow: hidden;
 }
 
@@ -158,6 +162,7 @@
      cursor: pointer;
      opacity: 0;
      transition: opacity 0.2s;
+     font-size: 20px;
 }
 
 .playlist-detail-cover-container:hover .edit-cover-btn {
@@ -176,7 +181,7 @@
 }
 
 .playlist-detail-meta {
-     color: var(--yt-light-grey);
+     color: var(--secondary-text);
 }
 
 .playlist-detail-actions {
