@@ -40,7 +40,7 @@
      width: 100%;
      aspect-ratio: 16/9;
      object-fit: cover;
-     background-color: var(--yt-dark-grey);
+     background-color: var(--secondary-background);
      transition: border-radius 0.2s ease, transform 0.2s ease;
      display: block;
 }
@@ -76,7 +76,7 @@
      bottom: 8px;
      right: 8px;
      background-color: rgba(0, 0, 0, 0.8);
-     color: var(--yt-white);
+     color: #fff;
      padding: 2px 6px;
      border-radius: 4px;
      font-size: 0.8rem;
@@ -113,7 +113,7 @@
 
 .grid-item-meta {
      font-size: 0.8rem;
-     color: var(--yt-light-grey);
+     color: var(--secondary-text);
 }
 
 .grid-item-actions {
@@ -132,11 +132,11 @@
 .grid-item-action-btn {
      background-color: transparent;
      border: none;
-     color: var(--yt-light-grey);
+     color: var(--secondary-text);
      border-radius: 50%;
      width: 36px;
      height: 36px;
-     font-size: 1rem;
+     font-size: 20px;
      cursor: pointer;
      display: flex;
      align-items: center;
@@ -145,19 +145,28 @@
 }
 
 .grid-item-action-btn:hover {
-     background-color: var(--yt-dark-grey);
-     color: var(--yt-white);
+     background-color: var(--secondary-background);
+     color: var(--primary-text);
 }
 
-.grid-item-action-btn.favorite-btn.is-favorite {
-     color: var(--yt-red);
+.grid-item-action-btn.favorite-btn.is-favorite .material-symbols-outlined {
+     color: var(--primary-accent);
+}
+
+.grid-item-action-btn.favorite-btn .material-symbols-outlined {
+     font-variation-settings: 'FILL' 0;
+     transition: font-variation-settings .2s;
+}
+
+.grid-item-action-btn.favorite-btn.is-favorite .material-symbols-outlined {
+     font-variation-settings: 'FILL' 1;
 }
 
 .filter-panel {
      padding: 10px 24px;
-     background-color: var(--yt-dark-grey);
-     border-top: 1px solid var(--yt-border);
-     border-bottom: 1px solid var(--yt-border);
+     background-color: var(--secondary-background);
+     border-top: 1px solid var(--border-color);
+     border-bottom: 1px solid var(--border-color);
      display: flex;
      gap: 24px;
      align-items: center;
@@ -173,28 +182,28 @@
 .filter-group label {
      font-size: 0.9rem;
      font-weight: 500;
-     color: var(--yt-light-grey);
+     color: var(--secondary-text);
 }
 
 .filter-btn {
      font-size: 0.85rem;
      padding: 6px 14px;
-     border: 1px solid var(--yt-border);
+     border: 1px solid var(--border-color);
      background-color: transparent;
-     color: var(--yt-white);
+     color: var(--primary-text);
      border-radius: 16px;
      cursor: pointer;
      transition: all 0.2s;
 }
 
 .filter-btn:hover {
-     background-color: var(--yt-border);
+     background-color: var(--border-color);
 }
 
 .filter-btn.active {
-     background-color: var(--yt-white);
-     color: var(--yt-black);
-     border-color: var(--yt-white);
+     background-color: var(--primary-text);
+     color: var(--primary-background);
+     border-color: var(--primary-text);
      font-weight: 600;
 }
 
@@ -215,7 +224,7 @@
      font-family: var(--font-display);
      font-size: 1.5rem;
      padding-bottom: 8px;
-     border-bottom: 1px solid var(--yt-border);
+     border-bottom: 1px solid var(--border-color);
 }
 
 .search-section-grid {
