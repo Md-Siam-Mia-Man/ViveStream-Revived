@@ -354,6 +354,7 @@ function initializeMainEventListeners() {
         context = { type: "favorites", id: null, name: "Favorites" };
       } else {
         sourceLib = AppState.library;
+        context = { type: "home", id: null, name: "Library" };
       }
 
       if (e.target.closest(".menu-btn")) {
