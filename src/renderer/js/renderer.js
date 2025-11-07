@@ -224,10 +224,8 @@ function initializeWindowControls() {
   );
   closeBtn.addEventListener("click", () => window.electronAPI.closeWindow());
   window.electronAPI.onWindowMaximized((isMaximized) => {
-    const icon = maximizeBtn.querySelector("i");
-    icon.className = `fa-regular ${
-      isMaximized ? "fa-window-restore" : "fa-square"
-    }`;
+    const icon = maximizeBtn.querySelector("span");
+    icon.textContent = isMaximized ? "crop_square" : "fullscreen_exit";
   });
 }
 
@@ -381,8 +379,15 @@ function initializeAppEventListeners() {
   });
 }
 
+function applyTheme() {
+  const savedTheme = localStorage.getItem("theme") || "dark";
+  document.body.classList.toggle("light-theme", savedTheme === "light");
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
   showLoader();
+  applyTheme();
+
   const assetsPath = await window.electronAPI.getAssetsPath();
   setAssetsPath(assetsPath);
 
