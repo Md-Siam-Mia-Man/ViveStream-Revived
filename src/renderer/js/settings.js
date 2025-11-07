@@ -1,4 +1,3 @@
-// src/js/settings.js
 import { showConfirmationModal } from "./modals.js";
 import { showNotification } from "./notifications.js";
 import { loadLibrary, showPage } from "./renderer.js";
@@ -8,6 +7,7 @@ import { closeMiniplayer } from "./miniplayer.js";
 let currentSettings = {};
 
 const appVersionEl = document.getElementById("app-version");
+const themeToggle = document.getElementById("theme-toggle");
 const concurrentDownloadsSlider = document.getElementById(
   "concurrent-downloads-slider"
 );
@@ -68,11 +68,19 @@ function updateSettingsUI(settings) {
 export async function loadSettings() {
   const settings = await window.electronAPI.getSettings();
   updateSettingsUI(settings);
+  const savedTheme = localStorage.getItem("theme") || "dark";
+  themeToggle.checked = savedTheme === "light";
 }
 
 export function initializeSettingsPage() {
   window.electronAPI.getAppVersion().then((v) => {
     if (appVersionEl) appVersionEl.textContent = `Version ${v}`;
+  });
+
+  themeToggle.addEventListener("change", (e) => {
+    const theme = e.target.checked ? "light" : "dark";
+    document.body.classList.toggle("light-theme", e.target.checked);
+    localStorage.setItem("theme", theme);
   });
 
   const saveSetting = (key, value) => {
@@ -117,7 +125,7 @@ export function initializeSettingsPage() {
 
   importFilesBtn.addEventListener("click", async () => {
     importFilesBtn.disabled = true;
-    importFilesBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Importing...`;
+    importFilesBtn.innerHTML = `<span class="material-symbols-outlined spin">progress_activity</span> Importing...`;
     const result = await window.electronAPI.mediaImportFiles();
     if (result.success) {
       showNotification(
@@ -129,12 +137,12 @@ export function initializeSettingsPage() {
       showNotification(`Import failed: ${result.error}`, "error");
     }
     importFilesBtn.disabled = false;
-    importFilesBtn.innerHTML = `<i class="fa-solid fa-file-import"></i> Import Files`;
+    importFilesBtn.innerHTML = `<span class="material-symbols-outlined">upload_file</span> Import Files`;
   });
 
   exportAllBtn.addEventListener("click", async () => {
     exportAllBtn.disabled = true;
-    exportAllBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Exporting...`;
+    exportAllBtn.innerHTML = `<span class="material-symbols-outlined spin">progress_activity</span> Exporting...`;
     const result = await window.electronAPI.mediaExportAll();
     if (result.success) {
       showNotification(
@@ -145,7 +153,7 @@ export function initializeSettingsPage() {
       showNotification(`Export failed: ${result.error}`, "error");
     }
     exportAllBtn.disabled = false;
-    exportAllBtn.innerHTML = `<i class="fa-solid fa-folder-open"></i> Export Library`;
+    exportAllBtn.innerHTML = `<span class="material-symbols-outlined">folder_open</span> Export Library`;
   });
 
   reinitializeAppBtn.addEventListener("click", () => {
@@ -154,7 +162,7 @@ export function initializeSettingsPage() {
       "This will rescan your media directory for deleted files, clear the application cache, and remove any artists that no longer have media. This can fix some library issues. Are you sure?",
       async () => {
         reinitializeAppBtn.disabled = true;
-        reinitializeAppBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Working...`;
+        reinitializeAppBtn.innerHTML = `<span class="material-symbols-outlined spin">progress_activity</span> Working...`;
         const result = await window.electronAPI.appReinitialize();
         if (result.success) {
           showNotification(
@@ -166,19 +174,19 @@ export function initializeSettingsPage() {
           showNotification(`Reinitialization failed: ${result.error}`, "error");
         }
         reinitializeAppBtn.disabled = false;
-        reinitializeAppBtn.innerHTML = `<i class="fa-solid fa-sync"></i> Reinitialize`;
+        reinitializeAppBtn.innerHTML = `<span class="material-symbols-outlined">sync</span> Reinitialize`;
       }
     );
   });
 
   updateYtdlpBtn.addEventListener("click", async () => {
     updateYtdlpBtn.disabled = true;
-    updateYtdlpBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Updating...`;
+    updateYtdlpBtn.innerHTML = `<span class="material-symbols-outlined spin">progress_activity</span> Updating...`;
     updaterConsole.textContent = "Starting update process...\n";
     updaterConsoleContainer.classList.remove("hidden");
     const result = await window.electronAPI.checkYtDlpUpdate();
     updateYtdlpBtn.disabled = false;
-    updateYtdlpBtn.innerHTML = `<i class="fa-solid fa-cloud-arrow-down"></i> Check for Updates`;
+    updateYtdlpBtn.innerHTML = `<span class="material-symbols-outlined">system_update</span> Check for Updates`;
     showNotification(
       result.success
         ? "Downloader updated successfully!"
