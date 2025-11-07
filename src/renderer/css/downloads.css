@@ -1,4 +1,3 @@
-/* src/css/downloads.css */
 #downloads-page {
      align-items: flex-start;
      justify-content: flex-start;
@@ -15,10 +14,10 @@
 }
 
 .download-card {
-     background-color: var(--yt-dark-grey);
+     background-color: var(--secondary-background);
      padding: 24px;
      border-radius: 12px;
-     border: 1px solid var(--yt-border);
+     border: 1px solid var(--border-color);
 }
 
 .download-card h2 {
@@ -27,7 +26,7 @@
 }
 
 .download-card-subtitle {
-     color: var(--yt-light-grey);
+     color: var(--secondary-text);
      font-size: 0.9rem;
      margin-top: 4px;
      margin-bottom: 24px;
@@ -49,15 +48,15 @@
 .url-input-container .url-icon {
      position: absolute;
      left: 16px;
-     font-size: 16px;
+     font-size: 20px;
      opacity: 0.6;
 }
 
 #url-input {
      width: 100%;
-     background-color: var(--yt-black);
-     border: 1px solid var(--yt-border);
-     color: var(--yt-white);
+     background-color: var(--primary-background);
+     border: 1px solid var(--border-color);
+     color: var(--primary-text);
      border-radius: 8px;
      padding: 12px 16px 12px 42px;
      font-size: 1rem;
@@ -66,8 +65,8 @@
 
 #url-input:focus {
      outline: none;
-     border-color: var(--yt-red);
-     box-shadow: 0 0 0 3px rgba(255, 11, 85, 0.3);
+     border-color: var(--primary-accent);
+     box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-accent) 30%, transparent);
 }
 
 #download-form .download-options {
@@ -89,17 +88,17 @@
 
 .option-group label {
      font-size: 0.9rem;
-     color: var(--yt-light-grey);
+     color: var(--secondary-text);
      font-weight: 500;
      flex-shrink: 0;
 }
 
 .radio-group {
      display: flex;
-     background-color: var(--yt-black);
+     background-color: var(--primary-background);
      border-radius: 6px;
      padding: 4px;
-     border: 1px solid var(--yt-border);
+     border: 1px solid var(--border-color);
 }
 
 .radio-label {
@@ -120,12 +119,12 @@
      font-size: 0.9rem;
      cursor: pointer;
      transition: background-color 0.2s, color 0.2s;
-     color: var(--yt-light-grey);
+     color: var(--secondary-text);
 }
 
 .radio-label input[type="radio"]:checked+span {
-     background-color: var(--yt-red);
-     color: var(--yt-white);
+     background-color: var(--primary-accent);
+     color: #fff;
      font-weight: 500;
 }
 
@@ -140,8 +139,8 @@
      justify-content: space-between;
      align-items: center;
      padding: 10px 12px;
-     background-color: var(--yt-black);
-     border: 1px solid var(--yt-border);
+     background-color: var(--primary-background);
+     border: 1px solid var(--border-color);
      border-radius: 6px;
      cursor: pointer;
      font-size: 0.9rem;
@@ -149,11 +148,11 @@
 }
 
 .custom-select-container.open .selected-option {
-     border-color: var(--yt-red);
+     border-color: var(--primary-accent);
 }
 
 .selected-option .chevron {
-     color: var(--yt-light-grey);
+     color: var(--secondary-text);
      transition: transform 0.2s ease;
 }
 
@@ -166,8 +165,8 @@
      top: calc(100% + 5px);
      left: 0;
      right: 0;
-     background-color: var(--yt-dark-grey);
-     border: 1px solid var(--yt-border);
+     background-color: var(--secondary-background);
+     border: 1px solid var(--border-color);
      border-radius: 6px;
      z-index: 100;
      max-height: 200px;
@@ -193,11 +192,11 @@
 }
 
 .option-item:hover {
-     background-color: var(--yt-border);
+     background-color: var(--border-color);
 }
 
 .option-item.selected {
-     background-color: var(--yt-red-dark);
+     background-color: var(--primary-accent-dark);
      font-weight: 500;
 }
 
@@ -210,22 +209,22 @@
      font-size: 1rem;
      font-weight: 500;
      border-radius: 8px;
-     background-color: var(--yt-red);
+     background-color: var(--primary-accent);
      border: none;
-     color: var(--yt-white);
+     color: #fff;
      cursor: pointer;
      transition: background-color 0.2s;
      margin-left: auto;
 }
 
 .download-button:hover {
-     background-color: var(--yt-red-dark);
+     background-color: var(--primary-accent-dark);
 }
 
 .advanced-options-toggle {
      font-size: 0.9rem;
      font-weight: 500;
-     color: var(--yt-light-grey);
+     color: var(--secondary-text);
      cursor: pointer;
      transition: color 0.2s;
      display: flex;
@@ -234,7 +233,7 @@
 }
 
 .advanced-options-toggle:hover {
-     color: var(--yt-white);
+     color: var(--primary-text);
 }
 
 .advanced-options-panel {
@@ -243,8 +242,8 @@
      gap: 16px 24px;
      align-items: center;
      padding: 16px;
-     background-color: var(--yt-black);
-     border: 1px solid var(--yt-border);
+     background-color: var(--primary-background);
+     border: 1px solid var(--border-color);
      border-radius: 8px;
      overflow: hidden;
      max-height: 150px;
@@ -259,10 +258,10 @@
 }
 
 .time-input {
-     background-color: var(--yt-dark-grey);
-     border: 1px solid var(--yt-border);
+     background-color: var(--secondary-background);
+     border: 1px solid var(--border-color);
      border-radius: 6px;
-     color: var(--yt-white);
+     color: var(--primary-text);
      padding: 8px 12px;
      font-size: 0.9rem;
      width: 120px;
@@ -270,12 +269,12 @@
 
 .time-input:focus {
      outline: none;
-     border-color: var(--yt-red);
+     border-color: var(--primary-accent);
 }
 
 .advanced-options-note {
      font-size: 0.8rem;
-     color: var(--yt-light-grey);
+     color: var(--secondary-text);
      margin-left: auto;
      flex-shrink: 0;
      max-width: 300px;
@@ -291,7 +290,7 @@
 .download-queue-header h3 {
      font-size: 1.2rem;
      font-weight: 500;
-     color: var(--yt-light-grey);
+     color: var(--secondary-text);
 }
 
 .queue-actions {
@@ -303,9 +302,9 @@
      display: flex;
      align-items: center;
      gap: 6px;
-     background-color: var(--yt-dark-grey);
-     border: 1px solid var(--yt-border);
-     color: var(--yt-light-grey);
+     background-color: var(--secondary-background);
+     border: 1px solid var(--border-color);
+     color: var(--secondary-text);
      padding: 6px 12px;
      border-radius: 6px;
      cursor: pointer;
@@ -314,13 +313,13 @@
      transition: all 0.2s ease;
 }
 
-.queue-action-btn i {
-     font-size: 12px;
+.queue-action-btn .material-symbols-outlined {
+     font-size: 16px;
 }
 
 .queue-action-btn:hover {
-     background-color: var(--yt-border);
-     color: var(--yt-white);
+     background-color: var(--border-color);
+     color: var(--primary-text);
 }
 
 #download-queue-area {
@@ -345,10 +344,10 @@
      display: flex;
      align-items: center;
      gap: 16px;
-     background-color: var(--yt-dark-grey);
+     background-color: var(--secondary-background);
      padding: 12px;
      border-radius: 8px;
-     border: 1px solid var(--yt-border);
+     border: 1px solid var(--border-color);
      transition: all 0.3s ease;
      position: relative;
      overflow: hidden;
@@ -365,7 +364,7 @@
      object-fit: cover;
      border-radius: 4px;
      flex-shrink: 0;
-     background-color: var(--yt-black);
+     background-color: var(--primary-background);
      position: relative;
      overflow: hidden;
 }
@@ -406,7 +405,7 @@
      width: 24px;
      height: 24px;
      border: 3px solid rgba(255, 255, 255, 0.3);
-     border-top-color: var(--yt-white);
+     border-top-color: #fff;
      border-radius: 50%;
      animation: spin 1s linear infinite;
      display: none;
@@ -418,13 +417,13 @@
 
 .download-item[data-status="completed"] .thumb-overlay-icon.complete {
      display: flex;
-     color: var(--yt-white);
+     color: #fff;
 }
 
 .download-item[data-status="error"] .thumb-overlay-icon.error,
 .download-item[data-status="info-error"] .thumb-overlay-icon.error {
      display: flex;
-     color: var(--yt-red);
+     color: var(--primary-accent);
 }
 
 .download-item-info {
@@ -444,13 +443,13 @@
 
 .download-item-uploader {
      font-size: 0.8rem;
-     color: var(--yt-light-grey);
+     color: var(--secondary-text);
 }
 
 .download-item-progress-bar-container {
      width: 100%;
      height: 5px;
-     background-color: var(--yt-border);
+     background-color: var(--border-color);
      border-radius: 5px;
      overflow: hidden;
 }
@@ -458,7 +457,7 @@
 .download-item-progress-bar {
      width: 0%;
      height: 100%;
-     background: var(--yt-red);
+     background: var(--primary-accent);
      transition: width 0.1s linear;
 }
 
@@ -477,7 +476,7 @@
      justify-content: space-between;
      align-items: center;
      font-size: 0.8rem;
-     color: var(--yt-light-grey);
+     color: var(--secondary-text);
      margin-top: 4px;
 }
 
@@ -488,17 +487,21 @@
      gap: 6px;
 }
 
+.download-item-status .material-symbols-outlined {
+     font-size: 16px;
+}
+
 .download-item[data-status="completed"] .download-item-status {
-     color: var(--yt-light-grey);
+     color: var(--secondary-text);
 }
 
 .download-item[data-status="error"] .download-item-status,
 .download-item[data-status="info-error"] .download-item-status {
-     color: var(--yt-red);
+     color: var(--primary-accent);
 }
 
 .download-item[data-status="fetching"] .download-item-status {
-     color: var(--yt-light-grey);
+     color: var(--secondary-text);
 }
 
 .download-item-actions {
@@ -510,7 +513,7 @@
      align-items: center;
      gap: 8px;
      padding-right: 12px;
-     background: linear-gradient(to left, var(--yt-dark-grey) 50%, transparent 100%);
+     background: linear-gradient(to left, var(--secondary-background) 50%, transparent 100%);
      transform: translateX(100%);
      opacity: 0;
      transition: all 0.2s ease-in-out;
@@ -522,14 +525,14 @@
 }
 
 .download-action-btn {
-     background: var(--yt-border);
+     background: var(--border-color);
      border: none;
-     color: var(--yt-white);
+     color: var(--primary-text);
      width: 32px;
      height: 32px;
      border-radius: 50%;
      cursor: pointer;
-     font-size: 14px;
+     font-size: 20px;
      display: flex;
      align-items: center;
      justify-content: center;
@@ -537,18 +540,18 @@
 }
 
 .download-action-btn:hover {
-     background-color: var(--yt-red);
+     background-color: var(--primary-accent);
 }
 
 .download-action-btn.retry-btn:hover {
-     background-color: #4a4a4a;
+     background-color: var(--button-hover-bg);
 }
 
 #empty-queue-placeholder {
      text-align: center;
-     color: var(--yt-light-grey);
+     color: var(--secondary-text);
      padding: 40px;
-     border: 2px dashed var(--yt-border);
+     border: 2px dashed var(--border-color);
      border-radius: 12px;
      margin-top: 12px;
 }
@@ -566,7 +569,7 @@
 #empty-queue-placeholder p {
      font-size: 1.2rem;
      font-weight: 500;
-     color: var(--yt-white);
+     color: var(--primary-text);
 }
 
 @media (max-width: 768px) {
