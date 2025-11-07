@@ -42,7 +42,7 @@ export async function renderArtistsPage(artistsToRender) {
     const placeholder = document.createElement("div");
     placeholder.className = "placeholder-page";
     placeholder.innerHTML = `
-      <i class="fa-solid fa-microphone-slash placeholder-icon"></i>
+      <span class="material-symbols-outlined placeholder-icon">mic_off</span>
       <h2 class="placeholder-title">No Artists Found</h2>
       <p class="placeholder-text">Artists you download will appear here automatically.</p>`;
     artistsPage.appendChild(placeholder);
@@ -120,7 +120,7 @@ export async function renderArtistDetailPage(artistId) {
     <div class="artist-detail-header">
         <div class="artist-detail-image-container">
             <img src="${thumbnailSrc}" class="artist-detail-image" alt="${artist.name}" onerror="this.onerror=null;this.src='${placeholderSrc}';">
-            <button class="edit-cover-btn" id="edit-artist-thumbnail-btn" title="Change thumbnail"><i class="fa-solid fa-camera"></i></button>
+            <button class="edit-cover-btn" id="edit-artist-thumbnail-btn" title="Change thumbnail"><span class="material-symbols-outlined">photo_camera</span></button>
         </div>
         <div class="artist-detail-info">
             <h1 class="artist-detail-name">${artist.name}</h1>
@@ -154,7 +154,7 @@ export async function renderArtistDetailPage(artistId) {
   } else {
     content.innerHTML = `
       <div class="placeholder-page" style="flex-grow: 1;">
-        <i class="fa-solid fa-video-slash placeholder-icon"></i>
+        <span class="material-symbols-outlined placeholder-icon">videocam_off</span>
         <h2 class="placeholder-title">No Videos Found</h2>
         <p class="placeholder-text">This artist currently has no videos in your library.</p>
       </div>`;
