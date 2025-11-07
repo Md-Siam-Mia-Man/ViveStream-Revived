@@ -53,7 +53,7 @@ function createFetchingPlaceholder(url, jobId) {
                 <p class="download-item-uploader">Requesting from YouTube...</p>
                 <div class="download-item-progress-bar-container" style="display:none;"></div>
                 <div class="download-item-stats">
-                    <span class="download-item-status"><i class="fa-solid fa-sync-alt fa-spin"></i> Fetching details...</span>
+                    <span class="download-item-status"><span class="material-symbols-outlined spin">progress_activity</span> Fetching details...</span>
                 </div>
             </div>
             <div class="download-item-actions"></div>
@@ -99,8 +99,9 @@ downloadQueueArea.addEventListener("click", (e) => {
   } else if (btn.classList.contains("retry-btn")) {
     const job = downloadJobs.get(videoId);
     if (job) window.electronAPI.retryDownload(job);
-    item.querySelector(".download-item-status").innerHTML =
-      `<i class="fa-solid fa-clock"></i> Queued for retry...`;
+    item.querySelector(
+      ".download-item-status"
+    ).innerHTML = `<span class="material-symbols-outlined">schedule</span> Queued for retry...`;
     item.dataset.status = "queued";
   } else if (btn.classList.contains("remove-btn")) {
     item.remove();
@@ -149,13 +150,13 @@ function updateItemActions(item, status) {
   let actionsHTML = "";
 
   if (status === "downloading" || status === "queued") {
-    actionsHTML = `<button class="download-action-btn cancel-btn" title="Cancel"><i class="fa-solid fa-times"></i></button>`;
+    actionsHTML = `<button class="download-action-btn cancel-btn" title="Cancel"><span class="material-symbols-outlined">close</span></button>`;
   } else if (status === "error") {
-    actionsHTML = `<button class="download-action-btn retry-btn" title="Retry"><i class="fa-solid fa-sync-alt"></i></button>`;
+    actionsHTML = `<button class="download-action-btn retry-btn" title="Retry"><span class="material-symbols-outlined">refresh</span></button>`;
   } else if (status === "info-error") {
-    actionsHTML = `<button class="download-action-btn info-retry-btn" title="Retry Fetch"><i class="fa-solid fa-sync-alt"></i></button>`;
+    actionsHTML = `<button class="download-action-btn info-retry-btn" title="Retry Fetch"><span class="material-symbols-outlined">refresh</span></button>`;
   }
-  actionsHTML += `<button class="download-action-btn remove-btn" title="Remove from list"><i class="fa-solid fa-trash-can"></i></button>`;
+  actionsHTML += `<button class="download-action-btn remove-btn" title="Remove from list"><span class="material-symbols-outlined">delete</span></button>`;
   actionsContainer.innerHTML = actionsHTML;
 }
 
@@ -194,8 +195,8 @@ window.electronAPI.onDownloadQueueStart(({ infos, jobId }) => {
             <img data-src="${thumb}" src="${placeholderSrc}" class="lazy" alt="thumbnail" onerror="this.onerror=null;this.src='${placeholderSrc}';">
             <div class="thumb-overlay">
                 <div class="spinner"></div>
-                <div class="thumb-overlay-icon complete"><i class="fa-solid fa-check-circle"></i></div>
-                <div class="thumb-overlay-icon error"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                <div class="thumb-overlay-icon complete"><span class="material-symbols-outlined">check_circle</span></div>
+                <div class="thumb-overlay-icon error"><span class="material-symbols-outlined">warning</span></div>
             </div>
         </div>
         <div class="download-item-info">
@@ -203,7 +204,7 @@ window.electronAPI.onDownloadQueueStart(({ infos, jobId }) => {
             <p class="download-item-uploader">${video.uploader || "Unknown"}</p>
             <div class="download-item-progress-bar-container"><div class="download-item-progress-bar"></div></div>
             <div class="download-item-stats">
-                <span class="download-item-status"><i class="fa-solid fa-clock"></i> Queued</span>
+                <span class="download-item-status"><span class="material-symbols-outlined">schedule</span> Queued</span>
                 <span class="download-item-speed"></span>
                 <span class="download-item-eta"></span>
             </div>
@@ -230,12 +231,14 @@ window.electronAPI.onDownloadProgress((data) => {
     updateItemActions(item, "downloading");
   }
 
-  item.querySelector(".download-item-progress-bar").style.width =
-    `${data.percent}%`;
-  item.querySelector(".download-item-status").innerHTML =
-    `<i class="fa-solid fa-download"></i> Downloading (${data.percent.toFixed(
-      1
-    )}%)`;
+  item.querySelector(
+    ".download-item-progress-bar"
+  ).style.width = `${data.percent}%`;
+  item.querySelector(
+    ".download-item-status"
+  ).innerHTML = `<span class="material-symbols-outlined">download</span> Downloading (${data.percent.toFixed(
+    1
+  )}%)`;
   item.querySelector(".download-item-speed").textContent = data.currentSpeed;
   item.querySelector(".download-item-eta").textContent = `ETA: ${
     data.eta || "N/A"
@@ -248,8 +251,9 @@ window.electronAPI.onDownloadComplete((data) => {
   );
   if (item) {
     item.dataset.status = "completed";
-    item.querySelector(".download-item-status").innerHTML =
-      `<i class="fa-solid fa-check-circle"></i> Completed`;
+    item.querySelector(
+      ".download-item-status"
+    ).innerHTML = `<span class="material-symbols-outlined">check_circle</span> Completed`;
     const thumbImg = item.querySelector(".download-item-thumb img");
     if (thumbImg && data.videoData.coverPath) {
       thumbImg.src = decodeURIComponent(data.videoData.coverPath);
@@ -268,8 +272,9 @@ window.electronAPI.onDownloadError((data) => {
   );
   if (item) {
     item.dataset.status = "error";
-    item.querySelector(".download-item-status").innerHTML =
-      `<i class="fa-solid fa-triangle-exclamation"></i> Error`;
+    item.querySelector(
+      ".download-item-status"
+    ).innerHTML = `<span class="material-symbols-outlined">warning</span> Error`;
     item.querySelector(".download-item-eta").textContent =
       (data.error || "Unknown").substring(0, 50) + "...";
     showNotification(`Download failed: ${data.error || "Unknown"}`, "error");
@@ -288,8 +293,9 @@ window.electronAPI.onDownloadInfoError(({ jobId, error }) => {
     placeholder.querySelector(".download-item-title").textContent = error;
     placeholder.querySelector(".download-item-uploader").textContent =
       "Failed to fetch details";
-    placeholder.querySelector(".download-item-status").innerHTML =
-      `<i class="fa-solid fa-triangle-exclamation"></i> Error`;
+    placeholder.querySelector(
+      ".download-item-status"
+    ).innerHTML = `<span class="material-symbols-outlined">warning</span> Error`;
     updateItemActions(placeholder, "info-error");
   }
 });
