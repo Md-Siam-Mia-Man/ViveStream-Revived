@@ -46,7 +46,6 @@
 #player-page.theater-mode .secondary-column {
      flex-basis: auto;
      max-width: none;
-     flex-direction: row;
      padding: 16px;
      gap: 24px;
 }
@@ -62,11 +61,6 @@
      height: 75vh;
 }
 
-#player-page.theater-mode .up-next-context-box {
-     flex: 1;
-     max-height: none;
-}
-
 #player-page.theater-mode #persistent-queue-list {
      display: flex;
      flex-direction: row;
@@ -79,15 +73,6 @@
 #player-page.theater-mode .up-next-item {
      width: 250px;
      flex-shrink: 0;
-}
-
-#player-page.theater-mode .up-next-recommendations {
-     flex: 1;
-}
-
-#player-page.fullscreen-mode .secondary-column,
-#player-page.fullscreen-mode .video-info-section {
-     display: none;
 }
 
 .player-section {
@@ -224,7 +209,7 @@
 
 .action-button.favorite-btn .material-symbols-outlined {
      color: var(--secondary-text);
-     transition: color 0.2s, transform 0.2s;
+     transition: color 0.2s, transform 0.2s, font-variation-settings 0.2s;
 }
 
 .action-button.favorite-btn:hover .material-symbols-outlined {
@@ -299,6 +284,10 @@
      flex-direction: column;
 }
 
+#up-next-recommendations.hidden {
+     display: none;
+}
+
 .up-next-header {
      padding: 12px 16px;
      font-weight: 500;
@@ -355,7 +344,6 @@
      aspect-ratio: 16/9;
 }
 
-
 .up-next-item .item-info {
      display: flex;
      flex-direction: column;
@@ -377,6 +365,35 @@
 .up-next-item .item-uploader {
      font-size: 0.8rem;
      color: var(--secondary-text);
+}
+
+#recommendations-list {
+     display: flex;
+     flex-direction: column;
+     gap: 8px;
+     padding: 8px;
+}
+
+.recommendation-item {
+     display: flex;
+     gap: 10px;
+     cursor: pointer;
+     border-radius: 6px;
+     transition: background-color 0.2s;
+     padding: 6px;
+}
+
+.recommendation-item:hover {
+     background-color: var(--button-hover-bg);
+}
+
+.recommendation-item .thumbnail {
+     width: 160px;
+     height: 90px;
+     object-fit: cover;
+     border-radius: 4px;
+     flex-shrink: 0;
+     background-color: var(--primary-background);
 }
 
 #video-player {
