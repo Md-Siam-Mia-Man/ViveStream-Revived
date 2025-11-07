@@ -1,9 +1,7 @@
-// src/renderer/js/miniplayer.js
 import { showPage } from "./renderer.js";
 import { eventBus } from "./event-bus.js";
 import { AppState } from "./state.js";
 
-// --- DOM Element Selectors ---
 const miniplayer = document.getElementById("miniplayer");
 const miniplayerArtworkImg = document.getElementById("miniplayer-artwork-img");
 const miniplayerVideoContainer = document.getElementById(
@@ -18,15 +16,12 @@ const miniplayerNextBtn = document.getElementById("miniplayer-next-btn");
 const miniplayerPrevBtn = document.getElementById("miniplayer-prev-btn");
 const miniplayerExpandBtn = document.getElementById("miniplayer-expand-btn");
 const miniplayerCloseBtn = document.getElementById("miniplayer-close-btn");
-const videoPlayer = document.getElementById("video-player"); // Shared from main player
-const playerSection = document.getElementById("player-section"); // Main player container
+const videoPlayer = document.getElementById("video-player");
+const playerSection = document.getElementById("player-section");
 const miniplayerProgressBar = document.querySelector(
   ".miniplayer-progress-bar"
 );
 
-/**
- * Activates and shows the miniplayer, moving the video element into it.
- */
 export function activateMiniplayer() {
   if (!videoPlayer.src) return;
 
@@ -49,9 +44,6 @@ export function activateMiniplayer() {
   }
 }
 
-/**
- * Deactivates the miniplayer, hiding it and returning the video element to the main player.
- */
 export function deactivateMiniplayer() {
   if (miniplayer.classList.contains("hidden")) return;
 
@@ -62,17 +54,11 @@ export function deactivateMiniplayer() {
   miniplayer.classList.add("hidden");
 }
 
-/**
- * Fully closes the miniplayer and stops playback.
- */
 export function closeMiniplayer() {
   deactivateMiniplayer();
   eventBus.emit("controls:close_player");
 }
 
-/**
- * Initializes all event listeners for the miniplayer controls.
- */
 export function initializeMiniplayer() {
   miniplayerPlayPauseBtn.addEventListener("click", (e) => {
     e.stopPropagation();
@@ -104,13 +90,12 @@ export function initializeMiniplayer() {
     showPage("player");
   });
 
-  // Listen to events from the event bus to update UI
   eventBus.on("playback:play", () => {
-    miniplayerPlayPauseBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
+    miniplayerPlayPauseBtn.querySelector("span").textContent = "pause";
   });
 
   eventBus.on("playback:pause", () => {
-    miniplayerPlayPauseBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
+    miniplayerPlayPauseBtn.querySelector("span").textContent = "play_arrow";
   });
 
   eventBus.on("playback:trackchange", (item) => {
