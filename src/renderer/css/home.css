@@ -163,49 +163,73 @@
 }
 
 .filter-panel {
-     padding: 10px 24px;
+     margin: 0px 24px 24px 24px;
+     padding: 12px 24px;
      background-color: var(--secondary-background);
-     border-top: 1px solid var(--border-color);
-     border-bottom: 1px solid var(--border-color);
+     border: 1px solid var(--border-color);
      display: flex;
      gap: 24px;
      align-items: center;
-     overflow-x: auto;
+     overflow: hidden;
+     border-radius: 16px;
+     max-height: 0;
+     opacity: 0;
+     transform: translateY(-10px);
+     transition: max-height 0.4s ease, opacity 0.4s ease, transform 0.4s ease, padding 0.4s ease, margin 0.4s ease;
+}
+
+.filter-panel.visible {
+     max-height: 100px;
+     opacity: 1;
+     transform: translateY(0);
+     padding: 24px;
+     margin-bottom: 24px;
 }
 
 .filter-group {
      display: flex;
      align-items: center;
      gap: 8px;
+     position: relative;
+     background-color: var(--primary-background);
+     padding: 4px;
+     border-radius: 20px;
 }
 
 .filter-group label {
      font-size: 0.9rem;
      font-weight: 500;
      color: var(--secondary-text);
+     padding-left: 12px;
 }
 
 .filter-btn {
      font-size: 0.85rem;
      padding: 6px 14px;
-     border: 1px solid var(--border-color);
+     border: none;
      background-color: transparent;
      color: var(--primary-text);
      border-radius: 16px;
      cursor: pointer;
-     transition: all 0.2s;
+     transition: color 0.3s ease;
+     position: relative;
+     z-index: 1;
 }
 
-.filter-btn:hover {
-     background-color: var(--border-color);
+.filter-group .filter-selection-indicator {
+     position: absolute;
+     height: calc(100% - 8px);
+     top: 4px;
+     background-color: var(--primary-accent);
+     border-radius: 16px;
+     transition: left 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), width 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+     z-index: 0;
 }
 
 .filter-btn.active {
-     background-color: var(--primary-text);
-     color: var(--primary-background);
-     border-color: var(--primary-text);
-     font-weight: 600;
+     color: #fff;
 }
+
 
 #search-page .page-content {
      padding: 24px;
