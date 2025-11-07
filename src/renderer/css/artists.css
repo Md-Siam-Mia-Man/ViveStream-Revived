@@ -30,19 +30,19 @@
   height: 100%;
   object-fit: cover;
   border-radius: 50%;
-  background-color: var(--yt-dark-grey);
-  border: 3px solid var(--yt-border);
+  background-color: var(--secondary-background);
+  border: 3px solid var(--border-color);
   transition: border-color 0.2s ease;
 }
 
 .artist-grid-item:hover .artist-thumbnail {
-  border-color: var(--yt-red);
+  border-color: var(--primary-accent);
 }
 
 .artist-name {
   font-weight: 500;
   font-size: 1rem;
-  color: var(--yt-white);
+  color: var(--primary-text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -51,7 +51,7 @@
 
 .artist-meta {
   font-size: 0.85rem;
-  color: var(--yt-light-grey);
+  color: var(--secondary-text);
 }
 
 .artist-detail-header-wrapper {
@@ -81,7 +81,7 @@
   align-items: center;
   gap: 24px;
   padding: 32px;
-  background: linear-gradient(to top, rgba(18, 18, 18, 1) 0%, rgba(18, 18, 18, 0.7) 50%, rgba(18, 18, 18, 0.4) 100%);
+  background: linear-gradient(to top, var(--primary-background) 0%, color-mix(in srgb, var(--primary-background) 70%, transparent) 50%, color-mix(in srgb, var(--primary-background) 40%, transparent) 100%);
 }
 
 .artist-detail-image-container {
@@ -96,9 +96,9 @@
   height: 100%;
   object-fit: cover;
   border-radius: 50%;
-  background-color: var(--yt-black);
-  border: 4px solid var(--yt-white);
-  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.5);
+  background-color: var(--primary-background);
+  border: 4px solid var(--primary-text);
+  box-shadow: 0 5px 20px var(--shadow-color-heavy);
 }
 
 .artist-detail-image-container .edit-cover-btn {
@@ -111,19 +111,34 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  text-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+  text-shadow: 0 2px 5px var(--shadow-color-heavy);
 }
 
 .artist-detail-name {
   font-family: var(--font-display);
   font-size: 3.5rem;
   font-weight: 700;
+  color: #fff;
+}
+
+body.light-theme .artist-detail-header-wrapper::before {
+  filter: blur(20px) brightness(0.8);
+}
+
+body.light-theme .artist-detail-name {
+  color: var(--primary-text);
+  text-shadow: 0 1px 2px var(--shadow-color-light);
 }
 
 .artist-detail-meta {
   font-size: 1rem;
-  color: var(--yt-light-grey);
+  color: #eee;
   font-weight: 500;
+}
+
+body.light-theme .artist-detail-meta {
+  color: var(--secondary-text);
+  text-shadow: 0 1px 2px var(--shadow-color-light);
 }
 
 #artist-detail-page .video-grid {
