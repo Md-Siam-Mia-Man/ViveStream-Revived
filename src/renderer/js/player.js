@@ -24,6 +24,10 @@ const channelThumb = document.getElementById("channel-thumb");
 const videoInfoUploader = document.getElementById("video-info-uploader");
 const videoInfoDate = document.getElementById("video-info-date");
 const persistentQueueList = document.getElementById("persistent-queue-list");
+const recommendationsList = document.getElementById("recommendations-list");
+const upNextRecommendations = document.getElementById(
+  "up-next-recommendations"
+);
 const upNextContextHeader = document.getElementById(
   "up-next-context-header-text"
 );
@@ -57,6 +61,9 @@ const editableDescriptionTextarea = document.getElementById(
 );
 const saveEditBtn = document.getElementById("save-edit-btn");
 const cancelEditBtn = document.getElementById("cancel-edit-btn");
+const recommendationItemTemplate = document.getElementById(
+  "recommendation-item-template"
+);
 
 let hideControlsTimeout;
 
@@ -263,48 +270,98 @@ export function updateVideoDetails(item) {
   }
 }
 
+function createUpNextItem(video, isPlaying) {
+  const placeholderSrc = `${AppState.assetsPath}/logo.png`;
+  const li = document.createElement("li");
+  li.className = "up-next-item";
+  li.classList.toggle("is-playing", isPlaying);
+  li.dataset.id = video.id;
+  const actualSrc = video.coverPath
+    ? decodeURIComponent(video.coverPath)
+    : placeholderSrc;
+  li.innerHTML = `
+      <img data-src="${actualSrc}" src="${placeholderSrc}" class="thumbnail lazy" alt="thumbnail" onerror="this.onerror=null;this.src='${placeholderSrc}';">
+      <div class="item-info">
+        <p class="item-title">${video.title}</p>
+        <p class="item-uploader">${video.creator || video.uploader}</p>
+      </div>`;
+  return li;
+}
+
+function createRecommendationItem(video) {
+  const placeholderSrc = `${AppState.assetsPath}/logo.png`;
+  const clone = recommendationItemTemplate.content.cloneNode(true);
+  const li = clone.querySelector(".recommendation-item");
+  li.dataset.id = video.id;
+
+  const thumbnail = li.querySelector(".thumbnail");
+  const actualSrc = video.coverPath
+    ? decodeURIComponent(video.coverPath)
+    : placeholderSrc;
+  thumbnail.dataset.src = actualSrc;
+  thumbnail.src = placeholderSrc;
+  thumbnail.onerror = () => {
+    thumbnail.onerror = null;
+    thumbnail.src = placeholderSrc;
+  };
+
+  li.querySelector(".item-title").textContent = video.title;
+  li.querySelector(".item-uploader").textContent =
+    video.creator || video.uploader;
+  return li;
+}
+
 export function renderUpNextList() {
   persistentQueueList.innerHTML = "";
-  if (AppState.currentlyPlayingIndex < 0 || AppState.library.length === 0)
-    return;
+  recommendationsList.innerHTML = "";
 
-  const placeholderSrc = `${AppState.assetsPath}/logo.png`;
-  const fragment = document.createDocumentFragment();
+  if (AppState.currentlyPlayingIndex < 0) return;
+
   const context = AppState.playbackContext;
+  const currentQueue = AppState.playbackQueue;
+  const currentlyPlayingId = currentQueue[AppState.currentlyPlayingIndex].id;
 
   const icon = {
     playlist: "playlist_play",
     artist: "artist",
     favorites: "favorite",
+    home: "smart_display",
   }[context.type];
 
-  if (context.type && context.name) {
-    upNextContextHeader.innerHTML = `<span class="material-symbols-outlined">${icon}</span> ${context.name}`;
+  upNextContextHeader.innerHTML = `<span class="material-symbols-outlined">${
+    icon || "list"
+  }</span> ${context.name || "Up Next"}`;
+
+  if (context.type === "home") {
+    upNextRecommendations.classList.add("hidden");
+    const nextInQueue = AppState.library.filter(
+      (video) => video.id !== currentlyPlayingId
+    );
+    nextInQueue.forEach((video) => {
+      const itemEl = createUpNextItem(video, false);
+      persistentQueueList.appendChild(itemEl);
+    });
   } else {
-    upNextContextHeader.textContent = "Up Next";
+    upNextRecommendations.classList.remove("hidden");
+    currentQueue.forEach((video, index) => {
+      const isPlaying = index === AppState.currentlyPlayingIndex;
+      const itemEl = createUpNextItem(video, isPlaying);
+      persistentQueueList.appendChild(itemEl);
+    });
+
+    const queueIds = new Set(currentQueue.map((v) => v.id));
+    const recommendations = AppState.library.filter(
+      (video) => !queueIds.has(video.id)
+    );
+    recommendations.sort(() => 0.5 - Math.random());
+    recommendations.forEach((video) => {
+      const recEl = createRecommendationItem(video);
+      recommendationsList.appendChild(recEl);
+    });
   }
 
-  AppState.playbackQueue.forEach((video, index) => {
-    const li = document.createElement("li");
-    li.className = "up-next-item";
-    li.classList.toggle("is-playing", index === AppState.currentlyPlayingIndex);
-    li.dataset.id = video.id;
-    const actualSrc = video.coverPath
-      ? decodeURIComponent(video.coverPath)
-      : placeholderSrc;
-    li.innerHTML = `
-      <img data-src="${actualSrc}" src="${placeholderSrc}" class="thumbnail" alt="thumbnail" onerror="this.onerror=null;this.src='${placeholderSrc}';">
-      <div class="item-info">
-        <p class="item-title">${video.title}</p>
-        <p class="item-uploader">${video.creator || video.uploader}</p>
-      </div>`;
-    fragment.appendChild(li);
-  });
-
-  persistentQueueList.appendChild(fragment);
-  persistentQueueList
-    .querySelectorAll(".thumbnail")
-    .forEach((img) => lazyLoadObserver.observe(img));
+  const allLazyImages = playerPage.querySelectorAll(".thumbnail.lazy");
+  allLazyImages.forEach((img) => lazyLoadObserver.observe(img));
 }
 
 function togglePlay() {
@@ -573,6 +630,20 @@ persistentQueueList.addEventListener("click", (e) => {
       queue: queue,
       context: AppState.playbackContext,
     });
+  }
+});
+recommendationsList.addEventListener("click", (e) => {
+  const itemEl = e.target.closest(".recommendation-item");
+  if (itemEl) {
+    const videoId = itemEl.dataset.id;
+    const videoIndex = AppState.library.findIndex((v) => v.id === videoId);
+    if (videoIndex > -1) {
+      eventBus.emit("player:play_request", {
+        index: videoIndex,
+        queue: AppState.library,
+        context: { type: "home", id: null, name: "Library" },
+      });
+    }
   }
 });
 favoriteBtn.addEventListener("click", () => {
