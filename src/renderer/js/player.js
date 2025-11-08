@@ -23,14 +23,9 @@ const videoInfoTitle = document.getElementById("video-info-title");
 const channelThumb = document.getElementById("channel-thumb");
 const videoInfoUploader = document.getElementById("video-info-uploader");
 const videoInfoDate = document.getElementById("video-info-date");
-const persistentQueueList = document.getElementById("persistent-queue-list");
-const recommendationsList = document.getElementById("recommendations-list");
-const upNextRecommendations = document.getElementById(
-  "up-next-recommendations"
-);
-const upNextContextHeader = document.getElementById(
-  "up-next-context-header-text"
-);
+const upNextContainer = document.getElementById("up-next-container");
+const upNextList = document.getElementById("up-next-list");
+const upNextHeaderText = document.getElementById("up-next-header-text");
 const favoriteBtn = document.getElementById("favorite-btn");
 const addToPlaylistBtn = document.getElementById("add-to-playlist-btn");
 const theaterBtn = document.getElementById("theater-btn");
@@ -61,9 +56,7 @@ const editableDescriptionTextarea = document.getElementById(
 );
 const saveEditBtn = document.getElementById("save-edit-btn");
 const cancelEditBtn = document.getElementById("cancel-edit-btn");
-const recommendationItemTemplate = document.getElementById(
-  "recommendation-item-template"
-);
+const mainContent = playerPage.querySelector(".main-content");
 
 let hideControlsTimeout;
 
@@ -114,7 +107,7 @@ const SleepTimer = {
   update() {
     this.remaining--;
     this.updateDisplay();
-    if (this.remaining <= 0) this.trigger();
+    if (this.remaining <= 0) SleepTimer.trigger();
   },
   trigger() {
     videoPlayer.pause();
@@ -150,7 +143,7 @@ const lazyLoadObserver = new IntersectionObserver(
       }
     });
   },
-  { root: persistentQueueList }
+  { root: mainContent, rootMargin: "0px 0px 200px 0px" }
 );
 
 function preloadNextItem() {
@@ -288,79 +281,42 @@ function createUpNextItem(video, isPlaying) {
   return li;
 }
 
-function createRecommendationItem(video) {
-  const placeholderSrc = `${AppState.assetsPath}/logo.png`;
-  const clone = recommendationItemTemplate.content.cloneNode(true);
-  const li = clone.querySelector(".recommendation-item");
-  li.dataset.id = video.id;
-
-  const thumbnail = li.querySelector(".thumbnail");
-  const actualSrc = video.coverPath
-    ? decodeURIComponent(video.coverPath)
-    : placeholderSrc;
-  thumbnail.dataset.src = actualSrc;
-  thumbnail.src = placeholderSrc;
-  thumbnail.onerror = () => {
-    thumbnail.onerror = null;
-    thumbnail.src = placeholderSrc;
-  };
-
-  li.querySelector(".item-title").textContent = video.title;
-  li.querySelector(".item-uploader").textContent =
-    video.creator || video.uploader;
-  return li;
-}
-
 export function renderUpNextList() {
-  persistentQueueList.innerHTML = "";
-  recommendationsList.innerHTML = "";
+  upNextList.innerHTML = "";
 
-  if (AppState.currentlyPlayingIndex < 0) return;
+  if (
+    AppState.currentlyPlayingIndex < 0 ||
+    AppState.playbackQueue.length === 0
+  ) {
+    upNextContainer.classList.add("hidden");
+    return;
+  }
+
+  upNextContainer.classList.remove("hidden");
 
   const context = AppState.playbackContext;
   const currentQueue = AppState.playbackQueue;
-  const currentlyPlayingId = currentQueue[AppState.currentlyPlayingIndex].id;
 
-  const icon = {
-    playlist: "playlist_play",
-    artist: "artist",
-    favorites: "favorite",
-    home: "smart_display",
-  }[context.type];
-
-  upNextContextHeader.innerHTML = `<span class="material-symbols-outlined">${
-    icon || "list"
-  }</span> ${context.name || "Up Next"}`;
-
-  if (context.type === "home") {
-    upNextRecommendations.classList.add("hidden");
-    const nextInQueue = AppState.library.filter(
-      (video) => video.id !== currentlyPlayingId
-    );
-    nextInQueue.forEach((video) => {
-      const itemEl = createUpNextItem(video, false);
-      persistentQueueList.appendChild(itemEl);
-    });
+  if (context && context.name) {
+    const icon = {
+      playlist: "playlist_play",
+      artist: "artist",
+      favorites: "favorite",
+    }[context.type];
+    upNextHeaderText.innerHTML = `<span class="material-symbols-outlined">${
+      icon || "list"
+    }</span> ${context.name}`;
   } else {
-    upNextRecommendations.classList.remove("hidden");
-    currentQueue.forEach((video, index) => {
-      const isPlaying = index === AppState.currentlyPlayingIndex;
-      const itemEl = createUpNextItem(video, isPlaying);
-      persistentQueueList.appendChild(itemEl);
-    });
-
-    const queueIds = new Set(currentQueue.map((v) => v.id));
-    const recommendations = AppState.library.filter(
-      (video) => !queueIds.has(video.id)
-    );
-    recommendations.sort(() => 0.5 - Math.random());
-    recommendations.forEach((video) => {
-      const recEl = createRecommendationItem(video);
-      recommendationsList.appendChild(recEl);
-    });
+    upNextHeaderText.innerHTML = "Up Next";
   }
 
-  const allLazyImages = playerPage.querySelectorAll(".thumbnail.lazy");
+  currentQueue.forEach((video, index) => {
+    const isPlaying = index === AppState.currentlyPlayingIndex;
+    const itemEl = createUpNextItem(video, isPlaying);
+    upNextList.appendChild(itemEl);
+  });
+
+  const allLazyImages = upNextList.querySelectorAll(".thumbnail.lazy");
   allLazyImages.forEach((img) => lazyLoadObserver.observe(img));
 }
 
@@ -621,7 +577,7 @@ videoDescriptionBox.addEventListener("click", () => {
     ? "Show less"
     : "Show more";
 });
-persistentQueueList.addEventListener("click", (e) => {
+upNextList.addEventListener("click", (e) => {
   const itemEl = e.target.closest(".up-next-item");
   if (itemEl) {
     const queue = AppState.playbackQueue;
@@ -630,20 +586,6 @@ persistentQueueList.addEventListener("click", (e) => {
       queue: queue,
       context: AppState.playbackContext,
     });
-  }
-});
-recommendationsList.addEventListener("click", (e) => {
-  const itemEl = e.target.closest(".recommendation-item");
-  if (itemEl) {
-    const videoId = itemEl.dataset.id;
-    const videoIndex = AppState.library.findIndex((v) => v.id === videoId);
-    if (videoIndex > -1) {
-      eventBus.emit("player:play_request", {
-        index: videoIndex,
-        queue: AppState.library,
-        context: { type: "home", id: null, name: "Library" },
-      });
-    }
   }
 });
 favoriteBtn.addEventListener("click", () => {
