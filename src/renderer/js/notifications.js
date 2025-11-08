@@ -1,12 +1,5 @@
-// src/js/notifications.js
 const notificationContainer = document.getElementById("notification-container");
 
-/**
- * Displays a notification message on the screen.
- * @param {string} message - The main message to display.
- * @param {string} [type='success'] - The type of notification ('success', 'error', 'info').
- * @param {string} [details=''] - Additional details to show below the main message.
- */
 export function showNotification(message, type = "success", details = "") {
   if (!notificationContainer) return;
 
@@ -14,19 +7,19 @@ export function showNotification(message, type = "success", details = "") {
   notification.className = `notification ${type}`;
 
   const detailsHTML = details ? `<span>${details}</span>` : "";
-  const iconClass = {
-    success: "fa-solid fa-check-circle",
-    error: "fa-solid fa-triangle-exclamation",
-    info: "fa-solid fa-circle-info",
+  const iconName = {
+    success: "check_circle",
+    error: "warning",
+    info: "info",
   }[type];
 
   notification.innerHTML = `
-        <i class="${iconClass} notification-icon"></i>
+        <span class="material-symbols-outlined notification-icon">${iconName}</span>
         <div class="notification-content">
             <p>${message}</p>
             ${detailsHTML}
         </div>
-        <button class="close-notification" title="Close"><i class="fa-solid fa-xmark"></i></button>
+        <button class="close-notification" title="Close"><span class="material-symbols-outlined">close</span></button>
     `;
 
   notificationContainer.appendChild(notification);
