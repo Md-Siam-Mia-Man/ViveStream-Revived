@@ -163,8 +163,6 @@
 }
 
 .filter-panel {
-     margin: 0px 24px 24px 24px;
-     padding: 12px 24px;
      background-color: var(--secondary-background);
      border: 1px solid var(--border-color);
      display: flex;
