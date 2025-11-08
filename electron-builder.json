@@ -1,0 +1,71 @@
+{
+  "appId": "com.vivestream.app",
+  "productName": "ViveStream",
+  "directories": {
+    "output": "release"
+  },
+  "files": [
+    "src/**/*",
+    "assets/**/*",
+    "package.json",
+    "node_modules/**/*"
+  ],
+  "extraResources": [
+    {
+      "from": "assets/",
+      "to": "assets/"
+    }
+  ],
+  "win": {
+    "target": [
+      {
+        "target": "nsis",
+        "arch": ["x64"]
+      }
+    ],
+    "icon": "assets/icon.ico",
+    "publisherName": "Md. Siam Mia",
+    "fileAssociations": [
+      {
+        "ext": "vivestream",
+        "name": "ViveStream File",
+        "role": "Viewer"
+      }
+    ],
+    "extraResources": [
+      {
+        "from": "vendor/",
+        "to": "vendor/",
+        "filter": ["*.exe"]
+      }
+    ],
+    "certificateFile": null,
+    "sign": null
+  },
+  "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true,
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true,
+    "shortcutName": "ViveStream"
+  },
+  "linux": {
+    "target": [
+      {
+        "target": "AppImage",
+        "arch": ["x64"]
+      }
+    ],
+    "icon": "assets/icons",
+    "category": "AudioVideo;Player",
+    "description": "A beautiful YouTube downloader and player.",
+    "maintainer": "Md. Siam Mia",
+    "extraResources": [
+      {
+        "from": "vendor/",
+        "to": "vendor/",
+        "filter": ["ffmpeg", "ffprobe", "yt-dlp_linux"]
+      }
+    ]
+  }
+}

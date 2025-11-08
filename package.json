@@ -8,19 +8,23 @@
   "scripts": {
     "start": "electron .",
     "rebuild": "electron-rebuild -f -w sqlite3",
-    "build": "npm run rebuild && node build-installer.js"
+    "build": "npm run rebuild && npm run build:all",
+    "build:all": "npm run build:win && npm run build:linux",
+    "build:win": "electron-builder --win --config",
+    "build:linux": "electron-builder --linux --config",
+    "postinstall": "electron-builder install-app-deps"
   },
   "keywords": [],
   "devDependencies": {
     "@electron/packager": "^19.0.1",
     "electron": "^39.1.1",
+    "electron-builder": "^24.13.3",
     "electron-rebuild": "^3.2.9"
   },
   "dependencies": {
     "fs-extra": "^11.3.2",
-    "innosetup-compiler": "^6.3.1",
     "knex": "^3.1.0",
     "sortablejs": "^1.15.6",
-    "sqlite3": "^5.1.7"
+    "sqlite3": "^5.1.6"
   }
 }

@@ -6,7 +6,7 @@
   <p>
     <img src="https://img.shields.io/github/v/release/Md-Siam-Mia-Man/ViveStream-Revived?style=flat-square" alt="Latest Release Version">
     <img src="https://img.shields.io/github/license/Md-Siam-Mia-Man/ViveStream-Revived?style=flat-square" alt="License">
-    <img src="https://img.shields.io/badge/platform-Windows-informational?style=flat-square" alt="Platform">
+    <img src="https://img.shields.io/badge/platform-Windows%20%7C%20Linux-informational?style=flat-square" alt="Platform">
   </p>
 </div>
 
@@ -56,7 +56,9 @@ Welcome! **ViveStream** is a modern, offline-first media player built for those 
 ### Recommended Method (Installer)
 
 1.  Go to the [**Releases**](https://github.com/Md-Siam-Mia-Man/ViveStream-Revived/releases) page.
-2.  Download the latest `ViveStream-Installer-vX.X.X.exe` file.
+2.  Download the appropriate installer:
+    - For Windows: `ViveStream-Setup-vX.X.X.exe`
+    - For Linux: `ViveStream-X.X.X.AppImage`
 3.  Run the installer. It will handle everything for you.
 
 ### For Developers
@@ -121,11 +123,15 @@ Welcome! **ViveStream** is a modern, offline-first media player built for those 
 If you've made changes and want to create your own installer:
 
 ```bash
-# This command will package the app and generate a setup executable
+# This command will package the app for both Windows and Linux
 npm run build
+
+# Or build for specific platforms:
+npm run build:win    # Windows only
+npm run build:linux  # Linux only
 ```
 
-The final installer will be located in the `release/` directory.
+The final installers will be located in the `release/` directory.
 
 ---
 

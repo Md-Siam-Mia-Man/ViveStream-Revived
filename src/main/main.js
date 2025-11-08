@@ -34,12 +34,26 @@ const getResourcePath = (subfolder, fileName) => {
   return path.join(basePath, fileName);
 };
 
-const bundledYtDlpPath = getResourcePath("vendor", `yt-dlp${exeSuffix}`);
+// Function to find the correct binary path for each tool
+function findBinaryPath(subfolder, baseName, extension = "") {
+  const expectedPath = getResourcePath(subfolder, baseName + extension);
+  const altLinuxPath = getResourcePath(subfolder, baseName + "_linux");
+  
+  // Check if the expected path exists, otherwise try the Linux variant
+  if (fs.existsSync(expectedPath)) {
+    return expectedPath;
+  } else if (platform === "linux" && fs.existsSync(altLinuxPath)) {
+    return altLinuxPath;
+  }
+  return expectedPath; // Return the expected path even if it doesn't exist, to maintain original behavior
+}
+
+const bundledYtDlpPath = findBinaryPath("vendor", "yt-dlp", exeSuffix);
 const userYtDlpPath = path.join(app.getPath("userData"), `yt-dlp${exeSuffix}`);
 let ytDlpPath = userYtDlpPath;
 
-const ffmpegPath = getResourcePath("vendor", `ffmpeg${exeSuffix}`);
-const ffprobePath = getResourcePath("vendor", `ffprobe${exeSuffix}`);
+const ffmpegPath = findBinaryPath("vendor", "ffmpeg", exeSuffix);
+const ffprobePath = findBinaryPath("vendor", "ffprobe", exeSuffix);
 const iconPath = getResourcePath("assets", "icon.ico");
 
 const userHomePath = app.getPath("home");
@@ -81,6 +95,10 @@ async function initializeYtDlp() {
     const userPathExists = await fse.pathExists(userYtDlpPath);
     if (!userPathExists) {
       await fse.copy(bundledYtDlpPath, userYtDlpPath);
+      // Make the copied binary executable on Linux
+      if (process.platform === "linux") {
+        await fse.chmod(userYtDlpPath, 0o755);
+      }
     }
     ytDlpPath = userYtDlpPath;
   } catch (error) {
