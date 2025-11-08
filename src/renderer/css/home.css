@@ -7,7 +7,7 @@
 
 #home-page .video-grid,
 #favorites-page .video-grid {
-     padding: 0 24px 24px 24px;
+     padding: 10px 3px;
 }
 
 .video-grid {
@@ -163,8 +163,6 @@
 }
 
 .filter-panel {
-     background-color: var(--secondary-background);
-     border: 1px solid var(--border-color);
      display: flex;
      gap: 24px;
      align-items: center;
@@ -182,7 +180,7 @@
      opacity: 1;
      transform: translateY(0);
      padding: 24px;
-     margin-bottom: 24px;
+     margin: 10px 0px;
 }
 
 .filter-group {
@@ -192,6 +190,7 @@
      position: relative;
      background-color: var(--primary-background);
      padding: 4px;
+     border: 1px solid var(--border-color);
      border-radius: 20px;
 }
 
