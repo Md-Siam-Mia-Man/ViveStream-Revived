@@ -226,7 +226,7 @@ button,
      gap: 12px;
      color: var(--primary-text);
      cursor: pointer;
-     padding: 3px;
+     padding: 2px;
      border-radius: 8px;
      transition: background-color 0.2s;
      height: 48px;
