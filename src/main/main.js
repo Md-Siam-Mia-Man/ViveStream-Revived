@@ -16,6 +16,14 @@ const crypto = require("crypto");
 const db = require("./database");
 
 const isDev = !app.isPackaged;
+
+if (isDev) {
+  app.commandLine.appendSwitch(
+    "disable-features",
+    "Autofill,ComponentUpdateServices"
+  );
+}
+
 const platform = process.platform;
 const exeSuffix = platform === "win32" ? ".exe" : "";
 
