@@ -228,9 +228,12 @@
                                                 class="total-time">0:00</span></div>
                                     </div>
                                     <div class="right-controls">
-                                        <div class="autoplay-container"><label class="switch"><input type="checkbox"
-                                                    id="autoplay-toggle" checked><span
-                                                    class="slider round"></span></label></div>
+                                        <div class="autoplay-container">
+                                            <label class="switch" title="Autoplay">
+                                                <input type="checkbox" id="autoplay-toggle" checked>
+                                                <span class="slider round"></span>
+                                            </label>
+                                        </div>
                                         <button class="control-button" id="settings-btn" title="Settings"><span
                                                 class="material-symbols-outlined">settings</span></button>
                                         <button class="control-button" id="miniplayer-btn" title="Miniplayer"><span
@@ -278,19 +281,11 @@
                             </div>
                         </div>
                     </div>
-                    <div class="secondary-column">
-                        <div class="up-next-container" id="up-next-context-box">
-                            <div class="up-next-header">
-                                <span id="up-next-context-header-text">Up Next</span>
-                            </div>
-                            <ul id="persistent-queue-list"></ul>
+                    <div class="up-next-container" id="up-next-container">
+                        <div class="up-next-header">
+                            <span id="up-next-header-text">Up Next</span>
                         </div>
-                        <div class="up-next-container" id="up-next-recommendations">
-                            <div class="up-next-header">
-                                <span id="recommendations-header-text">Recommendations</span>
-                            </div>
-                            <ul id="recommendations-list"></ul>
-                        </div>
+                        <ul id="up-next-list"></ul>
                     </div>
                 </main>
             </div>
@@ -638,23 +633,6 @@
                     </button>
                 </div>
             </div>
-        </div>
-    </template>
-
-    <template id="recommendation-item-template">
-        <li class="recommendation-item">
-            <img class="thumbnail lazy" alt="thumbnail">
-            <div class="item-info">
-                <p class="item-title"></p>
-                <p class="item-uploader"></p>
-            </div>
-        </li>
-    </template>
-
-    <template id="search-results-section-template">
-        <div class="search-results-section">
-            <h2 class="search-section-title"></h2>
-            <div class="search-section-grid"></div>
         </div>
     </template>
 
