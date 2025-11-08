@@ -1,6 +1,6 @@
 {
   "name": "vivestream",
-  "version": "5.1.0",
+  "version": "5.5.0",
   "description": "A beautiful YouTube downloader and player.",
   "main": "src/main/main.js",
   "author": "Md. Siam Mia",
@@ -13,7 +13,7 @@
   "keywords": [],
   "devDependencies": {
     "@electron/packager": "^19.0.1",
-    "electron": "^39.0.0",
+    "electron": "^39.1.1",
     "electron-rebuild": "^3.2.9"
   },
   "dependencies": {
