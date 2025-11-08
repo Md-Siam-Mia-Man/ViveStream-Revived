@@ -168,6 +168,7 @@
      display: flex;
      gap: 24px;
      align-items: center;
+     justify-content: center;
      overflow: hidden;
      border-radius: 16px;
      max-height: 0;
