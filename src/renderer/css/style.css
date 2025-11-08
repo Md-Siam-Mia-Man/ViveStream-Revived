@@ -17,20 +17,28 @@
 
      --primary-accent: #ef233c;
      --primary-accent-dark: #d90429;
+
      --primary-background: #121212;
      --secondary-background: #1e1e1e;
      --tertiary-background: #2c2c2c;
+
      --primary-text: #f1f1f1;
      --secondary-text: #a0a0a0;
+
      --border-color: #2c2c2c;
+
      --glass-bg: rgba(44, 44, 44, 0.6);
      --glass-border: rgba(255, 255, 255, 0.1);
+
      --shadow-color-heavy: rgba(0, 0, 0, 0.5);
      --shadow-color-light: rgba(0, 0, 0, 0.3);
+
      --button-hover-bg: #2c2c2c;
+
      --positive-accent: limegreen;
      --negative-accent: crimson;
      --warning-accent: #f0c32f;
+
      --sidebar-collapsed-width: 72px;
      --sidebar-expanded-width: 240px;
 }
@@ -38,16 +46,22 @@
 body.light-theme {
      --primary-accent: #d90429;
      --primary-accent-dark: #b80022;
+
      --primary-background: #f4f4f4;
      --secondary-background: #ffffff;
      --tertiary-background: #e0e0e0;
+
      --primary-text: #121212;
      --secondary-text: #555555;
+
      --border-color: #e0e0e0;
+
      --glass-bg: rgba(255, 255, 255, 0.7);
      --glass-border: rgba(0, 0, 0, 0.1);
+
      --shadow-color-heavy: rgba(0, 0, 0, 0.15);
      --shadow-color-light: rgba(0, 0, 0, 0.1);
+
      --button-hover-bg: #e9e9e9;
 }
 
@@ -267,6 +281,7 @@ button,
      width: 480px;
      outline: none;
      border-color: var(--primary-accent);
+     box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-accent) 30%, transparent);
 }
 
 .sleep-timer-status {
