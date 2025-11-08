@@ -123,12 +123,12 @@
 .playlist-detail-header-container {
      display: flex;
      gap: 24px;
-     align-items: center;
+     align-items: flex-end;
      margin: 10px;
-     padding: 24px;
-     background: var(--secondary-background);
-     border-bottom: 1px solid var(--border-color);
+     padding: 32px;
      border-radius: 24px;
+     background: linear-gradient(to top, var(--secondary-background) 50%, color-mix(in srgb, var(--secondary-background) 40%, transparent) 100%);
+     border-bottom: 1px solid var(--border-color);
 }
 
 .playlist-detail-cover-container {
@@ -138,6 +138,7 @@
      flex-shrink: 0;
      border-radius: 12px;
      overflow: hidden;
+     box-shadow: 0 5px 20px var(--shadow-color-heavy);
 }
 
 .playlist-detail-cover {
