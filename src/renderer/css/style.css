@@ -6,13 +6,13 @@
 }
 
 @font-face {
-     font-family: 'Orbitron';
-     src: url('../../../assets/fonts/Orbitron.ttf') format('truetype-variations');
+     font-family: 'MajorMonoDisplay';
+     src: url('../../../assets/fonts/MajorMonoDisplay.ttf') format('truetype-variations');
      font-weight: 400 900;
 }
 
 :root {
-     --font-display: 'Orbitron', sans-serif;
+     --font-display: 'MajorMonoDisplay', sans-serif;
      --font-body: 'Poppins', sans-serif;
 
      --primary-accent: #ef233c;
@@ -39,7 +39,7 @@
      --negative-accent: crimson;
      --warning-accent: #f0c32f;
 
-     --sidebar-collapsed-width: 72px;
+     --sidebar-collapsed-width: 57px;
      --sidebar-expanded-width: 240px;
 }
 
@@ -179,7 +179,7 @@ button,
      display: flex;
      align-items: center;
      justify-content: space-between;
-     padding: 0 12px 0 12px;
+     padding: 0px 4px;
      height: 56px;
      background-color: var(--primary-background);
      flex-shrink: 0;
@@ -226,11 +226,11 @@ button,
      gap: 12px;
      color: var(--primary-text);
      cursor: pointer;
-     padding: 8px;
+     padding: 3px;
      border-radius: 8px;
      transition: background-color 0.2s;
      height: 48px;
-     width: 100%;
+     width: 300px;
 }
 
 .logo-container:hover {
@@ -238,17 +238,16 @@ button,
 }
 
 .logo-svg {
-     width: 32px;
-     height: 32px;
+     width: 45px;
+     height: 45px;
      flex-shrink: 0;
 }
 
 .app-title {
      font-family: var(--font-display);
-     font-size: 1.4rem;
+     font-size: 1.6rem;
      font-weight: 700;
      white-space: nowrap;
-     overflow: hidden;
 }
 
 .search-container {
@@ -480,7 +479,7 @@ button,
 }
 
 .page-header {
-     padding: 18px 24px;
+     padding: 0px 3px;
      display: flex;
      justify-content: space-between;
      align-items: center;
@@ -490,7 +489,7 @@ button,
 
 .page-header-title {
      font-family: var(--font-display);
-     font-size: 1.8rem;
+     font-size: 1.5rem;
      font-weight: 600;
 }
 
