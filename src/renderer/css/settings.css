@@ -1,4 +1,3 @@
-/* src/css/settings.css */
 #settings-page {
      padding: 32px;
      justify-content: flex-start;
@@ -16,7 +15,7 @@
      font-weight: 700;
      margin-bottom: 24px;
      padding-bottom: 16px;
-     border-bottom: 1px solid var(--yt-border);
+     border-bottom: 1px solid var(--border-color);
 }
 
 .settings-section {
@@ -27,7 +26,7 @@
      font-size: 1.2rem;
      font-weight: 600;
      margin-bottom: 20px;
-     color: var(--yt-red);
+     color: var(--primary-accent);
 }
 
 .setting-item {
@@ -35,7 +34,7 @@
      justify-content: space-between;
      align-items: center;
      padding: 16px 0;
-     border-bottom: 1px solid var(--yt-border);
+     border-bottom: 1px solid var(--border-color);
 }
 
 .setting-item:last-child {
@@ -50,7 +49,7 @@
 
 .setting-text p {
      font-size: 0.9rem;
-     color: var(--yt-light-grey);
+     color: var(--secondary-text);
      margin-top: 4px;
 }
 
@@ -65,7 +64,7 @@
      appearance: none;
      width: 150px;
      height: 4px;
-     background: var(--yt-dark-grey);
+     background: var(--tertiary-background);
      border-radius: 4px;
      cursor: pointer;
 }
@@ -75,7 +74,7 @@
      appearance: none;
      width: 16px;
      height: 16px;
-     background: var(--yt-red);
+     background: var(--primary-accent);
      border-radius: 50%;
      cursor: pointer;
      transition: background-color 0.2s;
@@ -84,7 +83,7 @@
 .setting-control input[type="range"]::-moz-range-thumb {
      width: 16px;
      height: 16px;
-     background: var(--yt-red);
+     background: var(--primary-accent);
      border-radius: 50%;
      cursor: pointer;
      border: none;
@@ -92,45 +91,45 @@
 }
 
 .setting-control input[type="range"]:hover::-webkit-slider-thumb {
-     background: var(--yt-red-dark);
+     background: var(--primary-accent-dark);
 }
 
 .setting-control input[type="range"]:hover::-moz-range-thumb {
-     background: var(--yt-red-dark);
+     background: var(--primary-accent-dark);
 }
 
 .setting-control span {
      font-weight: 600;
      font-size: 1rem;
      text-align: center;
-     color: var(--yt-red);
+     color: var(--primary-accent);
 }
 
 .text-input-control {
-     background: var(--yt-black);
-     border: 1px solid var(--yt-border);
-     color: var(--yt-white);
+     background: var(--primary-background);
+     border: 1px solid var(--border-color);
+     color: var(--primary-text);
      padding: 8px 12px;
      border-radius: 6px;
      font-size: 0.9rem;
-     font-family: 'Poppins';
+     font-family: var(--font-body);
      width: 300px;
      transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .text-input-control:focus {
      outline: none;
-     border-color: var(--yt-red);
-     box-shadow: 0 0 0 3px rgba(255, 11, 85, 0.3);
+     border-color: var(--primary-accent);
+     box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-accent) 30%, transparent);
 }
 
 .setting-btn {
-     background-color: var(--yt-dark-grey);
-     color: var(--yt-white);
-     border: 1px solid var(--yt-border);
+     background-color: var(--tertiary-background);
+     color: var(--primary-text);
+     border: 1px solid var(--border-color);
      padding: 8px 16px;
      border-radius: 6px;
-     font-family: 'Poppins';
+     font-family: var(--font-body);
      font-weight: 500;
      font-size: 0.9rem;
      cursor: pointer;
@@ -147,13 +146,13 @@
 }
 
 .setting-btn:hover:not(:disabled) {
-     background-color: var(--yt-border);
+     background-color: var(--border-color);
 }
 
 #updater-console-container {
      margin-top: -16px;
      padding-bottom: 16px;
-     border-bottom: 1px solid var(--yt-border);
+     border-bottom: 1px solid var(--border-color);
 }
 
 #updater-console-container.hidden {
@@ -161,13 +160,13 @@
 }
 
 #updater-console {
-     background-color: var(--yt-black);
-     border: 1px solid var(--yt-border);
+     background-color: var(--primary-background);
+     border: 1px solid var(--border-color);
      border-radius: 8px;
      padding: 12px;
      font-family: monospace;
      font-size: 0.8rem;
-     color: var(--yt-light-grey);
+     color: var(--secondary-text);
      max-height: 200px;
      overflow-y: auto;
      white-space: pre-wrap;
@@ -175,37 +174,37 @@
 }
 
 .danger-zone {
-     border: 2px solid var(--yt-red-dark);
+     border: 2px solid var(--primary-accent-dark);
      border-radius: 12px;
      padding: 24px;
-     background-color: rgba(255, 11, 85, 0.05);
+     background-color: color-mix(in srgb, var(--primary-accent) 5%, transparent);
 }
 
 .danger-zone .settings-section-title {
-     color: var(--yt-red);
+     color: var(--primary-accent);
 }
 
 .danger-btn {
      display: flex;
      align-items: center;
      gap: 8px;
-     background-color: var(--yt-red);
-     color: var(--yt-white);
+     background-color: var(--primary-accent);
+     color: #fff;
      border: none;
      padding: 8px 16px;
      border-radius: 6px;
-     font-family: 'Poppins';
+     font-family: var(--font-body);
      font-weight: 500;
      cursor: pointer;
      transition: background-color 0.2s;
 }
 
-.danger-btn i {
-     font-size: 14px;
+.danger-btn .material-symbols-outlined {
+     font-size: 18px;
 }
 
 .danger-btn:hover {
-     background-color: var(--yt-red-dark);
+     background-color: var(--primary-accent-dark);
 }
 
 .about-section {
@@ -234,16 +233,16 @@
 }
 
 .about-version {
-     background-color: var(--yt-dark-grey);
+     background-color: var(--tertiary-background);
      padding: 2px 8px;
      border-radius: 6px;
      font-size: 0.8rem;
-     color: var(--yt-light-grey);
+     color: var(--secondary-text);
 }
 
 .about-dev {
      margin-top: 8px;
-     color: var(--yt-white);
+     color: var(--primary-text);
 }
 
 .about-links {
@@ -261,23 +260,23 @@
      border-radius: 6px;
      font-weight: 500;
      transition: all 0.2s ease;
-     border: 1px solid var(--yt-border);
+     border: 1px solid var(--border-color);
      cursor: pointer;
 }
 
 .github-view-btn {
-     background-color: var(--yt-dark-grey);
-     color: var(--yt-white);
+     background-color: var(--tertiary-background);
+     color: var(--primary-text);
 }
 
 .github-view-btn:hover {
-     background-color: var(--yt-border);
+     background-color: var(--border-color);
 }
 
 .github-star-btn {
-     background-color: #f0c32f;
-     color: var(--yt-black);
-     border-color: #f0c32f;
+     background-color: var(--warning-accent);
+     color: var(--primary-background);
+     border-color: var(--warning-accent);
 }
 
 .github-star-btn:hover {
