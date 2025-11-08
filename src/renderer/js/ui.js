@@ -179,28 +179,54 @@ function createFilterPanel() {
   panel.className = "filter-panel";
   panel.id = "filter-panel";
   panel.innerHTML = `
-        <div class="filter-group">
+        <div class="filter-group" data-filter="type">
+            <div class="filter-selection-indicator"></div>
             <label>Type:</label>
-            <button class="filter-btn active" data-filter="type" data-value="all">All</button>
-            <button class="filter-btn" data-filter="type" data-value="video">Video</button>
-            <button class="filter-btn" data-filter="type" data-value="audio">Audio</button>
+            <button class="filter-btn" data-value="all">All</button>
+            <button class="filter-btn" data-value="video">Video</button>
+            <button class="filter-btn" data-value="audio">Audio</button>
         </div>
-        <div class="filter-group">
+        <div class="filter-group" data-filter="duration">
+            <div class="filter-selection-indicator"></div>
             <label>Duration:</label>
-            <button class="filter-btn active" data-filter="duration" data-value="all">All</button>
-            <button class="filter-btn" data-filter="duration" data-value="<5">&lt; 5 min</button>
-            <button class="filter-btn" data-filter="duration" data-value="5-20">5-20 min</button>
-            <button class="filter-btn" data-filter="duration" data-value=">20">&gt; 20 min</button>
+            <button class="filter-btn" data-value="all">All</button>
+            <button class="filter-btn" data-value="<5">&lt; 5 min</button>
+            <button class="filter-btn" data-value="5-20">5-20 min</button>
+            <button class="filter-btn" data-value=">20">&gt; 20 min</button>
         </div>
-        <div class="filter-group">
+        <div class="filter-group" data-filter="source">
+            <div class="filter-selection-indicator"></div>
             <label>Source:</label>
-            <button class="filter-btn active" data-filter="source" data-value="all">All</button>
-            <button class="filter-btn" data-filter="source" data-value="youtube">YouTube</button>
-            <button class="filter-btn" data-filter="source" data-value="local">Local</button>
+            <button class="filter-btn" data-value="all">All</button>
+            <button class="filter-btn" data-value="youtube">YouTube</button>
+            <button class="filter-btn" data-value="local">Local</button>
         </div>
     `;
-  panel.style.display = "none";
   return panel;
+}
+
+function updateFilterIndicators() {
+  const panel = document.getElementById("filter-panel");
+  if (!panel) return;
+
+  panel.querySelectorAll(".filter-group").forEach((group) => {
+    const filterType = group.dataset.filter;
+    const activeValue = AppState.currentFilters[filterType];
+    const activeButton = group.querySelector(
+      `.filter-btn[data-value="${activeValue}"]`
+    );
+
+    group
+      .querySelectorAll(".filter-btn")
+      .forEach((btn) => btn.classList.remove("active"));
+
+    if (activeButton) {
+      activeButton.classList.add("active");
+      const indicator = group.querySelector(".filter-selection-indicator");
+      indicator.style.left = `${activeButton.offsetLeft}px`;
+      indicator.style.width = `${activeButton.offsetWidth}px`;
+    }
+  });
 }
 
 function updateSortUI() {
@@ -220,8 +246,20 @@ function updateSortUI() {
 function reapplyCurrentView() {
   const activePage =
     document.querySelector(".nav-item.active")?.dataset.page || "home";
-  if (activePage === "home") renderHomePageGrid();
-  if (activePage === "favorites") renderFavoritesPage();
+  let gridContainer;
+  let librarySource;
+
+  if (activePage === "home") {
+    gridContainer = document.getElementById("video-grid-home");
+    librarySource = AppState.library;
+  } else if (activePage === "favorites") {
+    gridContainer = document.getElementById("video-grid-favorites");
+    librarySource = AppState.library.filter((video) => video.isFavorite);
+  }
+
+  if (gridContainer && librarySource) {
+    renderGrid(gridContainer, librarySource);
+  }
 }
 
 export function renderHomePageGrid() {
@@ -237,6 +275,7 @@ export function renderHomePageGrid() {
     grid.id = "video-grid-home";
     homePage.appendChild(grid);
     renderGrid(grid, AppState.library);
+    updateFilterIndicators();
   }
   updateSortUI();
   hideLoader();
@@ -255,6 +294,7 @@ export function renderFavoritesPage() {
     grid.id = "video-grid-favorites";
     favoritesPage.appendChild(grid);
     renderGrid(grid, favoritesLibrary);
+    updateFilterIndicators();
   } else {
     favoritesPage.innerHTML = `<div class="page-header"><h1 class="page-header-title">Favorites</h1></div><div class="placeholder-page"><span class="material-symbols-outlined placeholder-icon">heart_broken</span><h2 class="placeholder-title">No Favorites Yet</h2><p class="placeholder-text">Click the heart icon on any video to add it to your favorites.</p></div>`;
   }
@@ -302,7 +342,7 @@ function updateFavoriteUI(videoId, isFavorite) {
 
   const activePage = document.querySelector(".nav-item.active")?.dataset.page;
   if (activePage === "favorites") {
-    renderFavoritesPage();
+    reapplyCurrentView();
   }
 }
 
@@ -396,20 +436,18 @@ function initializeMainEventListeners() {
     if (e.target.closest("#filter-btn")) {
       const panel = document.getElementById("filter-panel");
       if (panel) {
-        panel.style.display = panel.style.display === "none" ? "flex" : "none";
+        panel.classList.toggle("visible");
       }
     }
 
     if (e.target.closest(".filter-btn")) {
       const btn = e.target.closest(".filter-btn");
-      const filterType = btn.dataset.filter;
+      const group = btn.closest(".filter-group");
+      const filterType = group.dataset.filter;
       const value = btn.dataset.value;
-      setFilters({ [filterType]: value });
 
-      btn.parentElement
-        .querySelectorAll(".filter-btn")
-        .forEach((b) => b.classList.remove("active"));
-      btn.classList.add("active");
+      setFilters({ [filterType]: value });
+      updateFilterIndicators();
       reapplyCurrentView();
     }
 
