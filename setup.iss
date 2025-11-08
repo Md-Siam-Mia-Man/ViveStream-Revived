@@ -15,7 +15,7 @@
 ; Step 4: Inno Setup checks if 'MyAppVersion' was defined by the compiler command.
 ; If it was, this block is skipped. If not, it uses the fallback.
 #ifndef MyAppVersion
-#define MyAppVersion "5.1.0"
+#define MyAppVersion "5.5.0"
 #endif
 
 #ifndef SourceAppPath
