@@ -1,58 +1,49 @@
 #player-page .main-content {
-     display: flex;
-     padding: 24px 10px;
+     display: grid;
+     grid-template-columns: minmax(0, 1fr) minmax(320px, 400px);
+     grid-template-rows: auto 1fr;
      gap: 24px;
      height: 100%;
-     max-height: 100%;
+     padding: 24px;
 }
 
 #player-page .primary-column {
-     flex: 3;
+     grid-column: 1 / 2;
      display: flex;
      flex-direction: column;
      min-width: 0;
      gap: 16px;
 }
 
-#player-page .secondary-column {
-     flex: 1;
-     min-width: 320px;
-     max-width: 400px;
-     display: flex;
-     flex-direction: column;
-     gap: 16px;
-     overflow: hidden;
-}
-
-#player-page.theater-mode {
-     padding: 0;
-     overflow-x: hidden;
+#player-page #up-next-container {
+     grid-column: 2 / 3;
+     grid-row: 1 / 2;
+     align-self: start;
 }
 
 #player-page.theater-mode .main-content {
+     display: flex;
      flex-direction: column;
      padding: 0;
      gap: 0;
-     margin: 0 auto;
      width: 100%;
+     height: auto;
+}
+
+#player-page.theater-mode .primary-column,
+#player-page.theater-mode #up-next-container {
+     grid-area: auto;
+     max-width: none;
 }
 
 #player-page.theater-mode .primary-column {
-     flex: 1;
+     padding: 0;
      width: 100%;
      gap: 0;
-}
-
-#player-page.theater-mode .secondary-column {
-     flex-basis: auto;
-     max-width: none;
-     padding: 16px;
-     gap: 24px;
 }
 
 #player-page.theater-mode .video-info-section {
      padding: 16px 24px;
-     max-width: 100%;
 }
 
 #player-page.theater-mode .player-section {
@@ -61,18 +52,36 @@
      height: 75vh;
 }
 
-#player-page.theater-mode #persistent-queue-list {
-     display: flex;
-     flex-direction: row;
-     overflow-x: auto;
-     overflow-y: hidden;
-     padding-bottom: 10px;
-     gap: 10px;
+#player-page.theater-mode #up-next-container {
+     min-height: 150px;
+     margin: 5px 0;
+     padding: 16px;
+}
+
+#player-page.theater-mode #up-next-list {
+     display: grid;
+     grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+     gap: 16px;
+     overflow-x: hidden;
+     overflow-y: auto;
+     padding: 8px;
 }
 
 #player-page.theater-mode .up-next-item {
-     width: 250px;
-     flex-shrink: 0;
+     flex-direction: column;
+     width: auto;
+     gap: 8px;
+     padding: 0;
+}
+
+#player-page.theater-mode .up-next-item .item-info {
+     padding: 0 4px 4px;
+}
+
+#player-page.theater-mode .up-next-item .thumbnail {
+     width: 100%;
+     height: auto;
+     aspect-ratio: 16/9;
 }
 
 .player-section {
@@ -284,7 +293,7 @@
      flex-direction: column;
 }
 
-#up-next-recommendations.hidden {
+.up-next-container.hidden {
      display: none;
 }
 
@@ -301,8 +310,7 @@
      vertical-align: bottom;
 }
 
-#persistent-queue-list,
-#recommendations-list {
+#up-next-list {
      list-style-type: none;
      overflow-y: auto;
 }
@@ -338,12 +346,6 @@
      background-color: var(--primary-background);
 }
 
-#player-page.theater-mode .up-next-item .thumbnail {
-     width: 100%;
-     height: auto;
-     aspect-ratio: 16/9;
-}
-
 .up-next-item .item-info {
      display: flex;
      flex-direction: column;
@@ -365,35 +367,6 @@
 .up-next-item .item-uploader {
      font-size: 0.8rem;
      color: var(--secondary-text);
-}
-
-#recommendations-list {
-     display: flex;
-     flex-direction: column;
-     gap: 8px;
-     padding: 8px;
-}
-
-.recommendation-item {
-     display: flex;
-     gap: 10px;
-     cursor: pointer;
-     border-radius: 6px;
-     transition: background-color 0.2s;
-     padding: 6px;
-}
-
-.recommendation-item:hover {
-     background-color: var(--button-hover-bg);
-}
-
-.recommendation-item .thumbnail {
-     width: 160px;
-     height: 90px;
-     object-fit: cover;
-     border-radius: 4px;
-     flex-shrink: 0;
-     background-color: var(--primary-background);
 }
 
 #video-player {
@@ -507,7 +480,7 @@
      height: 12px;
      background: #fff;
      border-radius: 50%;
-     transform: scale(0);
+     transform: scale(1);
      transition: transform 0.2s ease;
 }
 
@@ -517,7 +490,7 @@
      background: #fff;
      border-radius: 50%;
      border: none;
-     transform: scale(0);
+     transform: scale(1);
      transition: transform 0.2s ease;
 }
 
@@ -756,17 +729,12 @@ body.light-theme .submenu-item:hover {
 
 @media (max-width: 1100px) {
      #player-page:not(.theater-mode) .main-content {
+          display: flex;
           flex-direction: column;
           padding: 16px;
      }
 
-     #player-page:not(.theater-mode) .secondary-column {
-          max-width: none;
-          min-width: 0;
-          flex-direction: row;
-     }
-
-     #player-page:not(.theater-mode) .up-next-container {
-          flex: 1;
+     #player-page:not(.theater-mode) #up-next-container {
+          min-height: 300px;
      }
 }
