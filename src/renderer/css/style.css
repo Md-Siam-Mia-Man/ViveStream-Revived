@@ -266,7 +266,7 @@ button,
 }
 
 #home-search-input {
-     width: 220px;
+     width: 300px;
      padding: 10px 16px 10px 42px;
      background-color: var(--secondary-background);
      border: 1px solid var(--border-color);
