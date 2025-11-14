@@ -3,7 +3,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "ViveStream"
-#define MyAppPublisher "Md. Siam Mia"
+#define MyAppPublisher "Md Siam Mia"
 #define MyAppURL "https://github.com/Md-Siam-Mia-Main/ViveStream-Revived"
 #define MyAppExeName "vivestream.exe"
 
