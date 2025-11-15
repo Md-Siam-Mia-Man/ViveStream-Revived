@@ -13,6 +13,7 @@ const fs = require("fs");
 const fse = require("fs-extra");
 const { spawn } = require("child_process");
 const crypto = require("crypto");
+const url = require("url");
 const db = require("./database");
 
 const isDev = !app.isPackaged;
@@ -72,7 +73,6 @@ const defaultSettings = {
   downloadAutoSubs: false,
   removeSponsors: false,
   concurrentFragments: 1,
-  outputTemplate: "%(id)s.%(ext)s",
   speedLimit: "",
 };
 
@@ -185,12 +185,12 @@ class Downloader {
       splitChapters,
       downloadSubs,
     } = job;
-    const url =
+    const requestUrl =
       videoInfo.webpage_url ||
       `https://www.youtube.com/watch?v=${videoInfo.id}`;
 
     let args = [
-      url,
+      requestUrl,
       "--ffmpeg-location",
       ffmpegPath,
       "--progress",
@@ -210,17 +210,15 @@ class Downloader {
       path.join(app.getPath("userData"), "download-archive.txt"),
     ];
 
-    const outputTemplate =
-      this.settings.outputTemplate || defaultSettings.outputTemplate;
     if (splitChapters) {
       const chapterTemplate = path.join(
         videoPath,
         "%(playlist_title,title)s",
-        "%(chapter_number)s - %(chapter)s.%(ext)s"
+        "%(chapter_number)s - %(chapter)s"
       );
       args.push("-o", chapterTemplate, "--split-chapters");
     } else {
-      args.push("-o", path.join(videoPath, outputTemplate));
+      args.push("-o", path.join(videoPath, "%(id)s"));
     }
 
     const qualityFilter = quality === "best" ? "" : `[height<=${quality}]`;
@@ -324,74 +322,46 @@ class Downloader {
       return;
     }
     try {
-      const files = fs.readdirSync(videoPath);
-      const infoJsonFile = files.find((file) => {
-        if (!file.endsWith(".info.json")) return false;
-        try {
-          const content = JSON.parse(
-            fs.readFileSync(path.join(videoPath, file))
-          );
-          return content.id === videoInfo.id;
-        } catch {
-          return false;
-        }
-      });
-
-      if (!infoJsonFile)
+      const infoJsonPath = path.join(videoPath, `${videoInfo.id}.info.json`);
+      if (!fs.existsSync(infoJsonPath)) {
         throw new Error(
           `Post-processing failed: Could not find .info.json for video ID ${videoInfo.id}`
         );
+      }
 
-      const infoJsonPath = path.join(videoPath, infoJsonFile);
       const info = JSON.parse(fs.readFileSync(infoJsonPath, "utf-8"));
-      const baseNameWithInfoExt = path.parse(infoJsonFile).name;
-      const baseName = path.parse(baseNameWithInfoExt).name;
+      const mediaFilePath = path.join(videoPath, `${info.id}.${info.ext}`);
 
-      const mediaFile = files.find(
-        (f) =>
-          path.parse(f).name === baseName &&
-          [
-            ".mp4",
-            ".mkv",
-            ".webm",
-            ".mp3",
-            ".m4a",
-            ".flac",
-            ".opus",
-            ".wav",
-          ].some((ext) => f.endsWith(ext))
-      );
-
-      if (!mediaFile)
+      if (!fs.existsSync(mediaFilePath)) {
         throw new Error(
-          `Post-processing failed: Could not find media file for basename ${baseName}`
+          `Post-processing failed: Media file not found for video ID ${info.id}`
         );
+      }
 
-      const mediaFilePath = path.join(videoPath, mediaFile);
       fs.unlinkSync(infoJsonPath);
 
       let finalCoverPath = null;
-      const tempCoverPath = path.join(videoPath, `${baseName}.jpg`);
+      const tempCoverPath = path.join(videoPath, `${videoInfo.id}.jpg`);
       if (fs.existsSync(tempCoverPath)) {
         finalCoverPath = path.join(coverPath, `${info.id}.jpg`);
-        fse.moveSync(tempCoverPath, finalCoverPath, { overwrite: true });
+        await fse.move(tempCoverPath, finalCoverPath, { overwrite: true });
       }
       const finalCoverUri = finalCoverPath
-        ? `file://${finalCoverPath.replace(/\\/g, "/")}`
+        ? url.pathToFileURL(finalCoverPath).href
         : null;
 
       let subFileUri = null;
-      const tempSubFile = files.find(
-        (f) => path.parse(f).name === baseName && f.endsWith(".vtt")
-      );
-      if (tempSubFile) {
-        const tempSubPath = path.join(videoPath, tempSubFile);
+      const tempSubPath = path.join(videoPath, `${videoInfo.id}.en.vtt`);
+      if (fs.existsSync(tempSubPath)) {
         const finalSubPath = path.join(subtitlePath, `${info.id}.vtt`);
         fs.renameSync(tempSubPath, finalSubPath);
-        subFileUri = `file://${finalSubPath.replace(/\\/g, "/")}`;
+        subFileUri = url.pathToFileURL(finalSubPath).href;
       }
 
-      const descriptionPath = path.join(videoPath, `${baseName}.description`);
+      const descriptionPath = path.join(
+        videoPath,
+        `${videoInfo.id}.description`
+      );
       if (fs.existsSync(descriptionPath)) fs.unlinkSync(descriptionPath);
 
       const artistString = info.artist || info.creator || info.uploader;
@@ -416,7 +386,7 @@ class Downloader {
         duration: info.duration,
         upload_date: info.upload_date,
         originalUrl: info.webpage_url,
-        filePath: `file://${mediaFilePath.replace(/\\/g, "/")}`,
+        filePath: url.pathToFileURL(mediaFilePath).href,
         coverPath: finalCoverUri,
         subtitlePath: subFileUri,
         hasEmbeddedSubs: !!subFileUri,
@@ -426,6 +396,7 @@ class Downloader {
         isFavorite: false,
         source: "youtube",
       };
+
       await db.addOrUpdateVideo(videoData);
       if (job.playlistId) {
         await db.addVideoToPlaylist(job.playlistId, videoData.id);
@@ -463,6 +434,7 @@ function createWindow() {
     },
     frame: false,
     icon: iconPath,
+    title: "ViveStream",
   });
   win.loadFile(path.join(__dirname, "..", "renderer", "index.html"));
   win.on("maximize", () => win.webContents.send("window-maximized", true));
@@ -754,7 +726,7 @@ ipcMain.handle("media:import-files", async () => {
           const ffmpegProc = spawn(ffmpegPath, ffmpegCoverArgs);
           ffmpegProc.on("close", (code) => {
             if (code === 0)
-              coverUri = `file://${finalCoverPath.replace(/\\/g, "/")}`;
+              coverUri = url.pathToFileURL(finalCoverPath).href;
             else console.error("Cover extraction failed for", newFileName);
             resolve();
           });
@@ -772,7 +744,7 @@ ipcMain.handle("media:import-files", async () => {
         creator: artistString,
         description: format.comment || format.COMMENT || "",
         duration: parseFloat(meta.format.duration),
-        filePath: `file://${newFilePath.replace(/\\/g, "/")}`,
+        filePath: url.pathToFileURL(newFilePath).href,
         coverPath: coverUri,
         type: videoStream ? "video" : "audio",
         downloadedAt: new Date().toISOString(),
@@ -905,7 +877,7 @@ ipcMain.handle("playlist:update-cover", async (e, playlistId) => {
     const newFileName = `${playlistId}${path.extname(sourcePath)}`;
     const destPath = path.join(playlistCoverPath, newFileName);
     await fse.copy(sourcePath, destPath, { overwrite: true });
-    const fileUri = `file://${destPath.replace(/\\/g, "/")}`;
+    const fileUri = url.pathToFileURL(destPath).href;
     return await db.updatePlaylistCover(playlistId, fileUri);
   } catch (error) {
     return { success: false, error: error.message };
@@ -926,7 +898,7 @@ ipcMain.handle("artist:update-thumbnail", async (e, artistId) => {
     const newFileName = `${artistId}${path.extname(sourcePath)}`;
     const destPath = path.join(artistCoverPath, newFileName);
     await fse.copy(sourcePath, destPath, { overwrite: true });
-    const fileUri = `file://${destPath.replace(/\\/g, "/")}`;
+    const fileUri = url.pathToFileURL(destPath).href;
     return await db.updateArtistThumbnail(artistId, fileUri);
   } catch (error) {
     return { success: false, error: error.message };
