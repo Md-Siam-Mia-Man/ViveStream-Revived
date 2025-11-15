@@ -21,8 +21,6 @@ const concurrentFragmentsValue = document.getElementById(
   "concurrent-fragments-value"
 );
 const speedLimitInput = document.getElementById("speed-limit-input");
-const outputTemplateInput = document.getElementById("output-template-input");
-const templateHelpLink = document.getElementById("template-help-link");
 const cookieBrowserSelect = document.getElementById(
   "cookie-browser-select-container"
 );
@@ -48,7 +46,6 @@ function updateSettingsUI(settings) {
   sponsorblockToggle.checked = !!settings.removeSponsors;
   concurrentFragmentsSlider.value = settings.concurrentFragments;
   concurrentFragmentsValue.textContent = settings.concurrentFragments;
-  outputTemplateInput.value = settings.outputTemplate || "";
   speedLimitInput.value = settings.speedLimit || "";
 
   const selectedBrowser = settings.cookieBrowser || "none";
@@ -105,9 +102,6 @@ export function initializeSettingsPage() {
 
   speedLimitInput.addEventListener("change", (e) =>
     saveSetting("speedLimit", e.target.value.trim())
-  );
-  outputTemplateInput.addEventListener("change", (e) =>
-    saveSetting("outputTemplate", e.target.value.trim())
   );
   autoSubsToggle.addEventListener("change", (e) =>
     saveSetting("downloadAutoSubs", e.target.checked)
@@ -235,11 +229,6 @@ export function initializeSettingsPage() {
     );
   });
 
-  templateHelpLink.addEventListener("click", () =>
-    window.electronAPI.openExternal(
-      "https://github.com/yt-dlp/yt-dlp#output-template"
-    )
-  );
   document
     .getElementById("github-view-link")
     ?.addEventListener("click", () =>
