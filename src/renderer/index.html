@@ -398,20 +398,6 @@
                         </div>
                     </div>
                     <div class="settings-section">
-                        <h2 class="settings-section-title">File Naming</h2>
-                        <div class="setting-item">
-                            <div class="setting-text">
-                                <label for="output-template-input">Custom Output Template</label>
-                                <p>Define how your files are named. <a id="template-help-link" class="link-style">See
-                                        documentation for available fields.</a></p>
-                            </div>
-                            <div class="setting-control">
-                                <input type="text" id="output-template-input" class="text-input-control"
-                                    placeholder="Default: %(id)s.%(ext)s">
-                            </div>
-                        </div>
-                    </div>
-                    <div class="settings-section">
                         <h2 class="settings-section-title">Maintenance</h2>
                         <div class="setting-item">
                             <div class="setting-text">
@@ -633,6 +619,13 @@
                     </button>
                 </div>
             </div>
+        </div>
+    </template>
+
+    <template id="search-results-section-template">
+        <div class="search-results-section">
+            <h2 class="search-section-title"></h2>
+            <div class="search-section-grid"></div>
         </div>
     </template>
 
