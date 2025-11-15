@@ -1,26 +1,68 @@
 {
-  "name": "vivestream",
+  "name": "vivestream-revived",
   "version": "5.6.0",
-  "description": "A beautiful YouTube downloader and player.",
+  "description": "Your personal, offline, and stylish media sanctuary. Revived.",
   "main": "src/main/main.js",
   "author": "Md Siam Mia",
   "license": "MIT",
   "scripts": {
     "start": "electron .",
     "rebuild": "electron-rebuild -f -w sqlite3",
-    "build": "npm run rebuild && node build-installer.js"
+    "dist": "npm run rebuild && electron-builder --win"
   },
   "keywords": [],
   "devDependencies": {
-    "@electron/packager": "^19.0.1",
     "electron": "^39.2.0",
+    "electron-builder": "^26.0.12",
     "electron-rebuild": "^3.2.9"
   },
   "dependencies": {
     "fs-extra": "^11.3.2",
-    "innosetup-compiler": "^6.3.1",
     "knex": "^3.1.0",
     "sortablejs": "^1.15.6",
     "sqlite3": "^5.1.7"
+  },
+  "build": {
+    "appId": "com.siam.vivestream",
+    "productName": "ViveStream",
+    "copyright": "Copyright © 2025 Md Siam Mia",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "src/**/*",
+      "assets/**/*",
+      "vendor/**/*",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "vendor",
+        "to": "vendor"
+      },
+      {
+        "from": "assets",
+        "to": "assets"
+      }
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "build/icons/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": true,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "ViveStream",
+      "installerIcon": "build/icons/icon.ico",
+      "uninstallerIcon": "build/icons/uninstallIcon.ico",
+      "installerHeader": "build/installer/installerHeader.bmp",
+      "installerSidebar": "build/installer/installerSidebar.bmp",
+      "license": "build/license.rtf"
+    }
   }
 }
