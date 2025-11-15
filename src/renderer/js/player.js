@@ -116,9 +116,8 @@ const SleepTimer = {
   },
   updateDisplay() {
     if (this.type === "tracks") {
-      this.statusTextEl.textContent = `${this.remaining} track${
-        this.remaining > 1 ? "s" : ""
-      } left`;
+      this.statusTextEl.textContent = `${this.remaining} track${this.remaining > 1 ? "s" : ""
+        } left`;
     } else {
       this.statusTextEl.textContent = formatTime(this.remaining);
     }
@@ -240,8 +239,8 @@ export function updateVideoDetails(item) {
   };
   videoInfoDate.textContent = item.upload_date
     ? ` • ${new Date(
-        item.upload_date.replace(/(\d{4})(\d{2})(\d{2})/, "$1-$2-$3")
-      ).toLocaleDateString()}`
+      item.upload_date.replace(/(\d{4})(\d{2})(\d{2})/, "$1-$2-$3")
+    ).toLocaleDateString()}`
     : "";
 
   eventBus.emit("ui:favorite_toggled", item.id, !!item.isFavorite);
@@ -252,7 +251,7 @@ export function updateVideoDetails(item) {
     setTimeout(() => {
       showMoreDescBtn.style.display =
         descriptionContent.scrollHeight > descriptionContent.clientHeight &&
-        !playerPage.classList.contains("edit-mode")
+          !playerPage.classList.contains("edit-mode")
           ? "block"
           : "none";
     }, 100);
@@ -303,9 +302,8 @@ export function renderUpNextList() {
       artist: "artist",
       favorites: "favorite",
     }[context.type];
-    upNextHeaderText.innerHTML = `<span class="material-symbols-outlined">${
-      icon || "list"
-    }</span> ${context.name}`;
+    upNextHeaderText.innerHTML = `<span class="material-symbols-outlined">${icon || "list"
+      }</span> ${context.name}`;
   } else {
     upNextHeaderText.innerHTML = "Up Next";
   }
@@ -353,11 +351,13 @@ function playPrevious() {
 
 function updateVolume(newVolume) {
   const vol = Math.max(0, Math.min(1, newVolume));
+  if (vol > 0) {
+    localStorage.setItem("playerVolume", vol);
+  }
   videoPlayer.volume = vol;
   videoPlayerPreload.volume = vol;
   videoPlayer.muted = vol === 0;
   videoPlayerPreload.muted = vol === 0;
-  localStorage.setItem("playerVolume", vol);
   localStorage.setItem("playerMuted", vol === 0);
 }
 
@@ -398,14 +398,12 @@ export function loadSettings() {
 
 function buildSettingsMenu() {
   settingsMenu.innerHTML = `
-        <div class="settings-item" data-setting="speed"><span class="material-symbols-outlined">speed</span><span>Playback Speed</span><span class="setting-value" id="speed-value">${
-          videoPlayer.playbackRate === 1
-            ? "Normal"
-            : videoPlayer.playbackRate + "x"
-        }</span><span class="chevron material-symbols-outlined">arrow_forward_ios</span></div>
-        <div class="settings-item" data-setting="sleep"><span class="material-symbols-outlined">bedtime</span><span>Sleep Timer</span><span class="setting-value" id="sleep-value">${
-          SleepTimer.type ? "On" : "Off"
-        }</span><span class="chevron material-symbols-outlined">arrow_forward_ios</span></div>`;
+        <div class="settings-item" data-setting="speed"><span class="material-symbols-outlined">speed</span><span>Playback Speed</span><span class="setting-value" id="speed-value">${videoPlayer.playbackRate === 1
+      ? "Normal"
+      : videoPlayer.playbackRate + "x"
+    }</span><span class="chevron material-symbols-outlined">arrow_forward_ios</span></div>
+        <div class="settings-item" data-setting="sleep"><span class="material-symbols-outlined">bedtime</span><span>Sleep Timer</span><span class="setting-value" id="sleep-value">${SleepTimer.type ? "On" : "Off"
+    }</span><span class="chevron material-symbols-outlined">arrow_forward_ios</span></div>`;
 }
 
 function handleSubmenu(mainSel, subMenuEl, values, type, labelFormatter) {
@@ -418,15 +416,13 @@ function handleSubmenu(mainSel, subMenuEl, values, type, labelFormatter) {
     subMenuEl.innerHTML = `
       <div class="submenu-item" data-action="back">
           <span class="chevron material-symbols-outlined">arrow_back_ios</span>
-          <span>${
-            mainItem.querySelector("span:nth-child(2)").textContent
-          }</span>
+          <span>${mainItem.querySelector("span:nth-child(2)").textContent
+      }</span>
       </div>
       ${values
         .map(
           (v) =>
-            `<div class="submenu-item ${
-              v == currentVal ? "active" : ""
+            `<div class="submenu-item ${v == currentVal ? "active" : ""
             }" data-${type}="${v}"><span class="check material-symbols-outlined">done</span><span>${labelFormatter(
               v
             )}</span></div>`
@@ -528,9 +524,9 @@ playPauseBtn.addEventListener("click", togglePlay);
 nextBtn.addEventListener("click", playNext);
 prevBtn.addEventListener("click", playPrevious);
 muteBtn.addEventListener("click", () => {
-  updateVolume(
-    videoPlayer.muted ? localStorage.getItem("playerVolume") || 1 : 0
-  );
+  const lastVolume = parseFloat(localStorage.getItem("playerVolume")) || 1;
+  const isCurrentlyMuted = videoPlayer.muted || videoPlayer.volume === 0;
+  updateVolume(isCurrentlyMuted ? lastVolume : 0);
 });
 volumeSlider.addEventListener("input", (e) =>
   updateVolume(parseFloat(e.target.value))
@@ -605,9 +601,8 @@ videoMenuBtn.addEventListener("click", (e) => {
   const currentVideo = AppState.playbackQueue[AppState.currentlyPlayingIndex];
   if (!currentVideo) return;
   const rect = videoMenuBtn.getBoundingClientRect();
-  videoContextMenu.style.left = `${
-    rect.left - videoContextMenu.offsetWidth + rect.width
-  }px`;
+  videoContextMenu.style.left = `${rect.left - videoContextMenu.offsetWidth + rect.width
+    }px`;
   videoContextMenu.style.top = `${rect.bottom + 5}px`;
   videoContextMenu.dataset.videoId = currentVideo.id;
   videoContextMenu.classList.add("visible");
