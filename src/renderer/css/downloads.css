@@ -524,11 +524,16 @@
      box-shadow: 0 4px 12px var(--shadow-color-heavy);
      max-height: 200px;
      overflow-y: auto;
-     display: none;
+     opacity: 0;
+     visibility: hidden;
+     transform: translateY(-10px);
+     transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s ease;
 }
 
 .custom-select-container.open .options-list {
-     display: block;
+     opacity: 1;
+     visibility: visible;
+     transform: translateY(0);
 }
 
 .option-item {
