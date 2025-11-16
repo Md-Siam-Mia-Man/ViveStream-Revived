@@ -18,22 +18,6 @@ export function debounce(func, wait) {
   };
 }
 
-export function fuzzySearch(term, items, keys) {
-  const lowerTerm = term.toLowerCase();
-  if (!lowerTerm) return items;
-
-  const threshold = Math.floor(lowerTerm.length / 4);
-
-  return items.filter((item) => {
-    return keys.some((key) => {
-      const value = item[key]?.toLowerCase();
-      if (!value) return false;
-      if (value.includes(lowerTerm)) return true;
-      return levenshtein(lowerTerm, value) <= threshold;
-    });
-  });
-}
-
 function levenshtein(s1, s2) {
   if (s1.length < s2.length) {
     return levenshtein(s2, s1);
@@ -56,4 +40,47 @@ function levenshtein(s1, s2) {
     previousRow = currentRow;
   }
   return previousRow[previousRow.length - 1];
+}
+
+export function fuzzySearch(term, items, keys) {
+  const lowerTerm = term.toLowerCase();
+  if (!lowerTerm) return items;
+
+  const results = items
+    .map((item) => {
+      let bestScore = 0;
+
+      for (const key of keys) {
+        const value = item[key]?.toLowerCase();
+        if (!value) continue;
+
+        let score = 0;
+        if ((key === "title" || key === "name") && value === lowerTerm) {
+          score = 100;
+        } else if (value.includes(lowerTerm)) {
+          score = 80 - value.length / 10;
+          if (key !== "title" && key !== "name") {
+            score -= 20;
+          }
+        } else {
+          const distance = levenshtein(lowerTerm, value);
+          const similarity =
+            1 - distance / Math.max(lowerTerm.length, value.length);
+          if (similarity > 0.4) {
+            score = similarity * 40;
+          }
+        }
+        if (score > bestScore) {
+          bestScore = score;
+        }
+      }
+
+      if (bestScore > 0) {
+        return { ...item, score: bestScore };
+      }
+      return null;
+    })
+    .filter(Boolean);
+
+  return results.sort((a, b) => b.score - a.score);
 }
