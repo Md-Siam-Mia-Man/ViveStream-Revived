@@ -69,33 +69,50 @@
      box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-accent) 30%, transparent);
 }
 
-#download-form .download-options {
-     display: flex;
+.download-options-grid {
+     display: grid;
+     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+     gap: 16px 24px;
      align-items: center;
-     gap: 16px;
-     width: 100%;
+     padding: 16px;
+     background-color: var(--primary-background);
+     border: 1px solid var(--border-color);
+     border-radius: 8px;
 }
 
 .option-group {
      display: flex;
-     align-items: center;
-     gap: 12px;
+     flex-direction: column;
+     gap: 8px;
+}
+
+.option-group label:not(.switch) {
+     font-size: 0.9rem;
+     color: var(--secondary-text);
+     font-weight: 500;
+}
+
+.option-group.full-width {
+     grid-column: 1 / -1;
 }
 
 .option-group.hidden {
      display: none;
 }
 
-.option-group label {
-     font-size: 0.9rem;
-     color: var(--secondary-text);
-     font-weight: 500;
-     flex-shrink: 0;
+.option-group-row {
+     display: flex;
+     align-items: center;
+     justify-content: space-between;
+}
+
+.option-group-row label {
+     color: var(--primary-text);
 }
 
 .radio-group {
      display: flex;
-     background-color: var(--primary-background);
+     background-color: var(--secondary-background);
      border-radius: 6px;
      padding: 4px;
      border: 1px solid var(--border-color);
@@ -103,6 +120,7 @@
 
 .radio-label {
      position: relative;
+     flex: 1;
 }
 
 .radio-label input[type="radio"] {
@@ -113,8 +131,11 @@
 }
 
 .radio-label span {
-     display: block;
-     padding: 6px 16px;
+     display: flex;
+     align-items: center;
+     justify-content: center;
+     gap: 8px;
+     padding: 8px 16px;
      border-radius: 4px;
      font-size: 0.9rem;
      cursor: pointer;
@@ -128,76 +149,21 @@
      font-weight: 500;
 }
 
-.custom-select-container {
-     position: relative;
-     user-select: none;
-     min-width: 180px;
-}
-
-.selected-option {
-     display: flex;
-     justify-content: space-between;
-     align-items: center;
-     padding: 10px 12px;
-     background-color: var(--primary-background);
-     border: 1px solid var(--border-color);
-     border-radius: 6px;
-     cursor: pointer;
-     font-size: 0.9rem;
-     transition: border-color 0.2s;
-}
-
-.custom-select-container.open .selected-option {
-     border-color: var(--primary-accent);
-}
-
-.selected-option .chevron {
-     color: var(--secondary-text);
-     transition: transform 0.2s ease;
-}
-
-.custom-select-container.open .selected-option .chevron {
-     transform: rotate(180deg);
-}
-
-.options-list {
-     position: absolute;
-     top: calc(100% + 5px);
-     left: 0;
-     right: 0;
+.text-input-control {
+     width: 100%;
      background-color: var(--secondary-background);
      border: 1px solid var(--border-color);
+     color: var(--primary-text);
      border-radius: 6px;
-     z-index: 100;
-     max-height: 300px;
-     overflow-y: auto;
-     opacity: 0;
-     transform: scaleY(0.9);
-     transform-origin: top;
-     pointer-events: none;
-     transition: opacity 0.2s ease, transform 0.2s ease;
-}
-
-.custom-select-container.open .options-list {
-     opacity: 1;
-     transform: scaleY(1);
-     pointer-events: auto;
-}
-
-.option-item {
      padding: 10px 12px;
-     cursor: pointer;
      font-size: 0.9rem;
-     transition: background-color 0.2s;
 }
 
-.option-item:hover {
-     background-color: var(--border-color);
-}
-
-.option-item.selected {
-     background-color: var(--primary-accent-dark);
-     font-weight: 500;
+.download-button-container {
+     grid-column: 1 / -1;
+     display: flex;
+     justify-content: flex-end;
+     margin-top: 8px;
 }
 
 .download-button {
@@ -214,70 +180,11 @@
      color: #fff;
      cursor: pointer;
      transition: background-color 0.2s;
-     margin-left: auto;
+     min-width: 200px;
 }
 
 .download-button:hover {
      background-color: var(--primary-accent-dark);
-}
-
-.advanced-options-toggle {
-     font-size: 0.9rem;
-     font-weight: 500;
-     color: var(--secondary-text);
-     cursor: pointer;
-     transition: color 0.2s;
-     display: flex;
-     align-items: center;
-     gap: 8px;
-}
-
-.advanced-options-toggle:hover {
-     color: var(--primary-text);
-}
-
-.advanced-options-panel {
-     display: flex;
-     flex-wrap: wrap;
-     gap: 16px 24px;
-     align-items: center;
-     padding: 16px;
-     background-color: var(--primary-background);
-     border: 1px solid var(--border-color);
-     border-radius: 8px;
-     overflow: hidden;
-     max-height: 150px;
-     transition: max-height 0.3s ease-out, padding 0.3s ease-out;
-}
-
-.advanced-options-panel.hidden {
-     max-height: 0;
-     padding-top: 0;
-     padding-bottom: 0;
-     border-color: transparent;
-}
-
-.time-input {
-     background-color: var(--secondary-background);
-     border: 1px solid var(--border-color);
-     border-radius: 6px;
-     color: var(--primary-text);
-     padding: 8px 12px;
-     font-size: 0.9rem;
-     width: 120px;
-}
-
-.time-input:focus {
-     outline: none;
-     border-color: var(--primary-accent);
-}
-
-.advanced-options-note {
-     font-size: 0.8rem;
-     color: var(--secondary-text);
-     margin-left: auto;
-     flex-shrink: 0;
-     max-width: 300px;
 }
 
 .download-queue-header {
@@ -308,7 +215,7 @@
      padding: 6px 12px;
      border-radius: 6px;
      cursor: pointer;
-     font-family: 'Poppins';
+     font-family: "Poppins";
      font-size: 0.8rem;
      transition: all 0.2s ease;
 }
@@ -572,13 +479,161 @@
      color: var(--primary-text);
 }
 
-@media (max-width: 768px) {
-     #download-form .download-options {
-          flex-wrap: wrap;
-     }
+/* Custom select container styles */
+.custom-select-container {
+     position: relative;
+     width: 100%;
+     background-color: var(--secondary-background);
+     border: 1px solid var(--border-color);
+     border-radius: 6px;
+     cursor: pointer;
+     font-size: 0.9rem;
+}
 
-     .download-button {
-          width: 100%;
-          margin-top: 8px;
-     }
+.selected-option {
+     display: flex;
+     justify-content: space-between;
+     align-items: center;
+     padding: 10px 12px;
+     transition: background-color 0.2s;
+}
+
+.selected-option:hover {
+     background-color: var(--border-color);
+}
+
+.selected-option .chevron {
+     transition: transform 0.2s ease;
+}
+
+.custom-select-container.open .selected-option .chevron {
+     transform: rotate(180deg);
+}
+
+.options-list {
+     position: absolute;
+     top: 100%;
+     left: 0;
+     right: 0;
+     background: var(--secondary-background);
+     border: 1px solid var(--border-color);
+     border-radius: 6px;
+     z-index: 100;
+     overflow: hidden;
+     margin-top: 4px;
+     box-shadow: 0 4px 12px var(--shadow-color-heavy);
+     max-height: 200px;
+     overflow-y: auto;
+     display: none;
+}
+
+.custom-select-container.open .options-list {
+     display: block;
+}
+
+.option-item {
+     padding: 10px 12px;
+     transition: background-color 0.2s;
+     cursor: pointer;
+}
+
+.option-item:hover {
+     background-color: var(--border-color);
+}
+
+.option-item.selected {
+     background-color: var(--primary-accent);
+     color: #fff;
+}
+
+.option-item:not(:last-child) {
+     border-bottom: 1px solid var(--border-color);
+}
+
+/* Range slider styles (for audio quality) */
+.setting-control input[type="range"] {
+     width: 100%;
+     height: 4px;
+     border-radius: 2px;
+     background: var(--border-color);
+     outline: none;
+     appearance: none;
+     -webkit-appearance: none;
+}
+
+.setting-control input[type="range"]::-webkit-slider-thumb {
+     -webkit-appearance: none;
+     width: 16px;
+     height: 16px;
+     border-radius: 50%;
+     background: var(--primary-accent);
+     cursor: pointer;
+     transition: all 0.2s;
+}
+
+.setting-control input[type="range"]::-webkit-slider-thumb:hover {
+     transform: scale(1.2);
+     box-shadow: 0 0 8px var(--primary-accent);
+}
+
+/* Switch styles - already defined in style.css but let's add download-specific overrides if needed */
+.switch {
+     --switch-width: 44px;
+     --switch-height: 24px;
+     --thumb-size: 18px;
+     position: relative;
+     display: inline-block;
+     width: var(--switch-width);
+     height: var(--switch-height);
+}
+
+.switch input {
+     opacity: 0;
+     width: 0;
+     height: 0;
+}
+
+.slider {
+     position: absolute;
+     cursor: pointer;
+     top: 0;
+     left: 0;
+     right: 0;
+     bottom: 0;
+     background-color: var(--glass-bg);
+     border: 1px solid var(--glass-border);
+     transition: background-color .3s;
+     border-radius: var(--switch-height);
+}
+
+.slider:before {
+     position: absolute;
+     content: "";
+     height: var(--thumb-size);
+     width: var(--thumb-size);
+     left: 2px;
+     bottom: 2px;
+     background-color: white;
+     transition: transform .3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+     border-radius: 50%;
+}
+
+input:checked+.slider {
+     background-color: var(--primary-accent);
+     border-color: transparent;
+}
+
+input:checked+.slider:before {
+     transform: translateX(calc(var(--switch-width) - var(--switch-height)));
+}
+
+/* Text input control (for playlist items) */
+.text-input-control {
+     width: 100%;
+     background-color: var(--secondary-background);
+     border: 1px solid var(--border-color);
+     color: var(--primary-text);
+     border-radius: 6px;
+     padding: 10px 12px;
+     font-size: 0.9rem;
 }
