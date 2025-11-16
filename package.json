@@ -8,7 +8,7 @@
   "scripts": {
     "start": "electron .",
     "rebuild": "electron-rebuild -f -w sqlite3",
-    "dist": "npm run rebuild && electron-builder --win"
+    "build": "npm run rebuild && electron-builder --win"
   },
   "keywords": [],
   "devDependencies": {
