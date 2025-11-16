@@ -64,6 +64,23 @@ const contentWrapper = document.querySelector(".content-wrapper");
 
 let currentPlaylistId = null;
 
+const lazyLoadObserver = new IntersectionObserver(
+  (entries, observer) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) {
+        const img = entry.target;
+        const src = img.dataset.src;
+        if (src) {
+          img.src = src;
+        }
+        img.classList.remove("lazy");
+        observer.unobserve(img);
+      }
+    });
+  },
+  { rootMargin: "0px 0px 200px 0px" }
+);
+
 export function showLoader() {
   loaderOverlay.classList.remove("hidden");
 }
@@ -211,6 +228,10 @@ export function renderSearchPage(term) {
     content.innerHTML = `<p class="empty-message">No results found for "<strong>${term}</strong>".</p>`;
   }
 
+  content
+    .querySelectorAll("img.lazy")
+    .forEach((img) => lazyLoadObserver.observe(img));
+
   hideLoader();
 }
 
@@ -285,7 +306,7 @@ function initializeContextMenu() {
             if (
               AppState.currentlyPlayingIndex > -1 &&
               AppState.playbackQueue[AppState.currentlyPlayingIndex]?.id ===
-                videoId
+              videoId
             ) {
               closeMiniplayer();
               handleNav("home");
