@@ -5,14 +5,24 @@ import { AppState } from "./state.js";
 const downloadForm = document.getElementById("download-form");
 const urlInput = document.getElementById("url-input");
 const downloadQueueArea = document.getElementById("download-queue-area");
-const videoQualitySelect = document.getElementById(
-  "video-quality-select-container"
+
+const downloadTypeRadios = document.querySelectorAll(
+  'input[name="download-type"]'
 );
-const downloadSubsToggle = document.getElementById("download-subs-toggle");
-const advancedOptionsToggle = document.getElementById(
-  "advanced-options-toggle"
+const videoOptionsContainer = document.getElementById(
+  "video-options-container"
 );
-const advancedOptionsPanel = document.getElementById("advanced-options-panel");
+const videoSubsContainer = document.getElementById("video-subs-container");
+const audioOptionsContainer = document.getElementById(
+  "audio-options-container"
+);
+const audioQualityContainer = document.getElementById(
+  "audio-quality-container"
+);
+const audioThumbContainer = document.getElementById("audio-thumb-container");
+const playlistOptionsContainer = document.getElementById(
+  "playlist-options-container"
+);
 
 const downloadJobs = new Map();
 const pendingInfoJobs = new Map();
@@ -62,19 +72,65 @@ function createFetchingPlaceholder(url, jobId) {
   updateQueuePlaceholder();
 }
 
+function updateDownloadOptionsUI() {
+  const downloadType = document.querySelector(
+    'input[name="download-type"]:checked'
+  ).value;
+  const isVideo = downloadType === "video";
+
+  videoOptionsContainer.classList.toggle("hidden", !isVideo);
+  videoSubsContainer.classList.toggle("hidden", !isVideo);
+  audioOptionsContainer.classList.toggle("hidden", isVideo);
+  audioQualityContainer.classList.toggle("hidden", isVideo);
+  audioThumbContainer.classList.toggle("hidden", isVideo);
+
+  const url = urlInput.value;
+  const isPlaylist = url.includes("playlist?list=");
+  playlistOptionsContainer.classList.toggle("hidden", !isPlaylist);
+}
+
+urlInput.addEventListener("input", updateDownloadOptionsUI);
+downloadTypeRadios.forEach((radio) => {
+  radio.addEventListener("change", updateDownloadOptionsUI);
+});
+
 downloadForm.addEventListener("submit", (e) => {
   e.preventDefault();
   const url = urlInput.value.trim();
   if (!url) return;
 
+  const downloadType = document.querySelector(
+    'input[name="download-type"]:checked'
+  ).value;
+
   const downloadOptions = {
     url,
-    quality: videoQualitySelect.querySelector(".selected-option").dataset.value,
-    downloadSubs: downloadSubsToggle.checked,
-    startTime: document.getElementById("start-time-input").value.trim(),
-    endTime: document.getElementById("end-time-input").value.trim(),
-    splitChapters: document.getElementById("split-chapters-toggle").checked,
+    downloadType,
+    playlistItems: document
+      .getElementById("playlist-items-input")
+      .value.trim(),
+    liveFromStart: document.getElementById("live-from-start-toggle").checked,
   };
+
+  if (downloadType === "video") {
+    Object.assign(downloadOptions, {
+      quality: document.getElementById("video-quality-select-container")
+        .querySelector(".selected-option")
+        .dataset.value,
+      downloadSubs: document.getElementById("download-subs-toggle").checked,
+    });
+  } else {
+    Object.assign(downloadOptions, {
+      audioFormat: document.getElementById("audio-format-select-container")
+        .querySelector(".selected-option")
+        .dataset.value,
+      audioQuality:
+        10 -
+        parseInt(document.getElementById("audio-quality-slider").value, 10),
+      embedThumbnail: document.getElementById("embed-thumbnail-toggle")
+        .checked,
+    });
+  }
 
   const jobId = Date.now().toString();
   pendingInfoJobs.set(jobId, downloadOptions);
@@ -82,6 +138,7 @@ downloadForm.addEventListener("submit", (e) => {
   window.electronAPI.downloadVideo(downloadOptions, jobId);
 
   urlInput.value = "";
+  updateDownloadOptionsUI();
 });
 
 downloadQueueArea.addEventListener("click", (e) => {
@@ -138,10 +195,6 @@ document.getElementById("clear-all-btn").addEventListener("click", () => {
     item.remove();
   });
   updateQueuePlaceholder();
-});
-
-advancedOptionsToggle.addEventListener("click", () => {
-  advancedOptionsPanel.classList.toggle("hidden");
 });
 
 function updateItemActions(item, status) {
@@ -201,7 +254,8 @@ window.electronAPI.onDownloadQueueStart(({ infos, jobId }) => {
         </div>
         <div class="download-item-info">
             <p class="download-item-title">${video.title}</p>
-            <p class="download-item-uploader">${video.uploader || "Unknown"}</p>
+            <p class="download-item-uploader">${video.uploader || "Unknown"
+      }</p>
             <div class="download-item-progress-bar-container"><div class="download-item-progress-bar"></div></div>
             <div class="download-item-stats">
                 <span class="download-item-status"><span class="material-symbols-outlined">schedule</span> Queued</span>
@@ -240,9 +294,8 @@ window.electronAPI.onDownloadProgress((data) => {
     1
   )}%)`;
   item.querySelector(".download-item-speed").textContent = data.currentSpeed;
-  item.querySelector(".download-item-eta").textContent = `ETA: ${
-    data.eta || "N/A"
-  }`;
+  item.querySelector(".download-item-eta").textContent = `ETA: ${data.eta || "N/A"
+    }`;
 });
 
 window.electronAPI.onDownloadComplete((data) => {
@@ -301,3 +354,4 @@ window.electronAPI.onDownloadInfoError(({ jobId, error }) => {
 });
 
 updateQueuePlaceholder();
+updateDownloadOptionsUI();
