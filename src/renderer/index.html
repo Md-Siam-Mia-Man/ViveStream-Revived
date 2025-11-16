@@ -2,33 +2,37 @@
 <html>
 
 <head>
-    <meta charset="UTF-8">
-    <meta http-equiv="Content-Security-Policy" content="font-src 'self' data:; script-src 'self' 'unsafe-inline';">
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="font-src 'self' data:; script-src 'self' 'unsafe-inline';" />
     <title>ViveStream</title>
-    <link rel="stylesheet" href="../../assets/icons/index.css">
-    <link rel="stylesheet" href="./css/style.css">
-    <link rel="stylesheet" href="./css/home.css">
-    <link rel="stylesheet" href="./css/downloads.css">
-    <link rel="stylesheet" href="./css/player.css">
-    <link rel="stylesheet" href="./css/miniplayer.css">
-    <link rel="stylesheet" href="./css/settings.css">
-    <link rel="stylesheet" href="./css/notifications.css">
-    <link rel="stylesheet" href="./css/playlists.css">
-    <link rel="stylesheet" href="./css/artists.css">
+    <link rel="stylesheet" href="../../assets/icons/index.css" />
+    <link rel="stylesheet" href="./css/style.css" />
+    <link rel="stylesheet" href="./css/home.css" />
+    <link rel="stylesheet" href="./css/downloads.css" />
+    <link rel="stylesheet" href="./css/player.css" />
+    <link rel="stylesheet" href="./css/miniplayer.css" />
+    <link rel="stylesheet" href="./css/settings.css" />
+    <link rel="stylesheet" href="./css/notifications.css" />
+    <link rel="stylesheet" href="./css/playlists.css" />
+    <link rel="stylesheet" href="./css/artists.css" />
 </head>
 
 <body>
     <div class="title-bar">
         <div class="title-bar-drag-region"></div>
         <div class="window-controls-container">
-            <button id="tray-btn" class="window-control-btn" title="Minimize to Tray"><span
-                    class="material-symbols-outlined">close_fullscreen</span></button>
-            <button id="minimize-btn" class="window-control-btn" title="Minimize"><span
-                    class="material-symbols-outlined">remove</span></button>
-            <button id="maximize-btn" class="window-control-btn" title="Maximize"><span
-                    class="material-symbols-outlined">crop_square</span></button>
-            <button id="close-btn" class="window-control-btn close-btn" title="Close"><span
-                    class="material-symbols-outlined">close</span></button>
+            <button id="tray-btn" class="window-control-btn" title="Minimize to Tray">
+                <span class="material-symbols-outlined">close_fullscreen</span>
+            </button>
+            <button id="minimize-btn" class="window-control-btn" title="Minimize">
+                <span class="material-symbols-outlined">remove</span>
+            </button>
+            <button id="maximize-btn" class="window-control-btn" title="Maximize">
+                <span class="material-symbols-outlined">crop_square</span>
+            </button>
+            <button id="close-btn" class="window-control-btn close-btn" title="Close">
+                <span class="material-symbols-outlined">close</span>
+            </button>
         </div>
     </div>
     <div class="header-bar">
@@ -40,19 +44,19 @@
                             0% {
                                 stroke-dashoffset: 1000;
                                 stroke: #fff;
-                                filter: drop-shadow(0 0 2px #fff) drop-shadow(0 0 5px #fff)
+                                filter: drop-shadow(0 0 2px #fff) drop-shadow(0 0 5px #fff);
                             }
 
                             50% {
                                 stroke-dashoffset: 500;
                                 stroke: #f1f1f1;
-                                filter: drop-shadow(0 0 4px #fff) drop-shadow(0 0 8px #f1f1f1)
+                                filter: drop-shadow(0 0 4px #fff) drop-shadow(0 0 8px #f1f1f1);
                             }
 
                             to {
                                 stroke-dashoffset: 0;
                                 stroke: #fff;
-                                filter: drop-shadow(0 0 2px #fff) drop-shadow(0 0 5px #fff)
+                                filter: drop-shadow(0 0 2px #fff) drop-shadow(0 0 5px #fff);
                             }
                         }
                     </style>
@@ -62,8 +66,11 @@
                         stroke-linecap="round" />
                     <path
                         d="M375 125c-241.667 62.5 -270.833 -41.667 -225 0 8.333 41.667 16.667 -20.833 25 0s16.667 -62.5 25 0 16.667 -33.333 25 0 16.667 -8.333 25 0c8.333 50 16.667 -58.333 25 0 8.333 20.833 16.667 -41.667 25 0 8.333 62.5 16.667 -20.833 25 0 8.333 41.667 16.667 -50 25 0 8.333 25 16.667 -33.333 25 0"
-                        stroke="#fff" stroke-width="5.208333333333334" fill="none" stroke-linecap="round"
-                        style="stroke-dasharray:1000;stroke-dashoffset:1000;animation:pulse-glow 5s ease-in-out infinite" />
+                        stroke="#fff" stroke-width="5.208333333333334" fill="none" stroke-linecap="round" style="
+                stroke-dasharray: 1000;
+                stroke-dashoffset: 1000;
+                animation: pulse-glow 5s ease-in-out infinite;
+              " />
                 </svg>
                 <span class="app-title">ViveStream</span>
             </div>
@@ -71,7 +78,7 @@
         <div class="header-center">
             <div class="search-container">
                 <span class="material-symbols-outlined search-icon">search</span>
-                <input type="text" id="home-search-input" placeholder="Search everything...">
+                <input type="text" id="home-search-input" placeholder="Search everything..." />
             </div>
         </div>
         <div class="header-right">
@@ -84,23 +91,26 @@
     <div class="app-body">
         <nav class="sidebar">
             <ul class="sidebar-nav">
-                <li class="nav-item active" data-page="home"><span
-                        class="material-symbols-outlined">home</span><span>Home</span></li>
-                <li class="nav-item" data-page="favorites"><span
-                        class="material-symbols-outlined">favorite</span><span>Favorites</span></li>
-                <li class="nav-item" data-page="playlists"><span
-                        class="material-symbols-outlined">playlist_play</span><span>Playlists</span>
+                <li class="nav-item active" data-page="home">
+                    <span class="material-symbols-outlined">home</span><span>Home</span>
                 </li>
-                <li class="nav-item" data-page="artists"><span
-                        class="material-symbols-outlined">artist</span><span>Artists</span>
+                <li class="nav-item" data-page="favorites">
+                    <span class="material-symbols-outlined">favorite</span><span>Favorites</span>
                 </li>
-                <li class="nav-item" data-page="downloads"><span
-                        class="material-symbols-outlined">download</span><span>Downloads</span>
+                <li class="nav-item" data-page="playlists">
+                    <span class="material-symbols-outlined">playlist_play</span><span>Playlists</span>
+                </li>
+                <li class="nav-item" data-page="artists">
+                    <span class="material-symbols-outlined">artist</span><span>Artists</span>
+                </li>
+                <li class="nav-item" data-page="downloads">
+                    <span class="material-symbols-outlined">download</span><span>Downloads</span>
                 </li>
             </ul>
             <ul class="sidebar-nav-bottom">
-                <li class="nav-item" data-page="settings"><span
-                        class="material-symbols-outlined">settings</span><span>Settings</span></li>
+                <li class="nav-item" data-page="settings">
+                    <span class="material-symbols-outlined">settings</span><span>Settings</span>
+                </li>
             </ul>
         </nav>
         <div class="content-wrapper">
@@ -112,14 +122,31 @@
                 <div class="downloads-container">
                     <div class="download-card">
                         <h2>Download New Media</h2>
-                        <p class="download-card-subtitle">Paste a YouTube video or playlist URL to begin.</p>
+                        <p class="download-card-subtitle">
+                            Paste a YouTube video or playlist URL to begin.
+                        </p>
                         <form id="download-form">
                             <div class="url-input-container">
                                 <span class="material-symbols-outlined url-icon">link</span>
-                                <input type="text" id="url-input" placeholder="Enter YouTube URL..." required>
+                                <input type="text" id="url-input" placeholder="Enter YouTube URL..." required />
                             </div>
-                            <div class="download-options">
-                                <div id="video-options-container" class="option-group select-group">
+                            <div class="download-options-grid">
+                                <div class="option-group full-width">
+                                    <label>Download Type</label>
+                                    <div class="radio-group">
+                                        <label class="radio-label">
+                                            <input type="radio" name="download-type" value="video" checked />
+                                            <span><span class="material-symbols-outlined">smart_display</span>
+                                                Video</span>
+                                        </label>
+                                        <label class="radio-label">
+                                            <input type="radio" name="download-type" value="audio" />
+                                            <span><span class="material-symbols-outlined">headphones</span>
+                                                Audio Only</span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div id="video-options-container" class="option-group">
                                     <label>Video Quality</label>
                                     <div class="custom-select-container" id="video-quality-select-container">
                                         <div class="selected-option" data-value="1080">
@@ -129,58 +156,100 @@
                                         </div>
                                         <div class="options-list">
                                             <div class="option-item" data-value="best">Best</div>
-                                            <div class="option-item" data-value="2160">4K (2160p)</div>
+                                            <div class="option-item" data-value="2160">
+                                                4K (2160p)
+                                            </div>
                                             <div class="option-item" data-value="1440">1440p</div>
-                                            <div class="option-item selected" data-value="1080">1080p</div>
+                                            <div class="option-item selected" data-value="1080">
+                                                1080p
+                                            </div>
                                             <div class="option-item" data-value="720">720p</div>
                                             <div class="option-item" data-value="480">480p</div>
                                         </div>
                                     </div>
                                 </div>
-                                <div class="option-group">
-                                    <label for="download-subs-toggle">Subtitles</label>
+                                <div id="audio-options-container" class="option-group hidden">
+                                    <label>Audio Format</label>
+                                    <div class="custom-select-container" id="audio-format-select-container">
+                                        <div class="selected-option" data-value="mp3">
+                                            <span>MP3</span>
+                                            <span class="chevron"><span
+                                                    class="material-symbols-outlined">expand_more</span></span>
+                                        </div>
+                                        <div class="options-list">
+                                            <div class="option-item selected" data-value="mp3">
+                                                MP3 (Compatible)
+                                            </div>
+                                            <div class="option-item" data-value="opus">
+                                                Opus (High Quality)
+                                            </div>
+                                            <div class="option-item" data-value="best">
+                                                Best Available
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="audio-quality-container" class="option-group hidden">
+                                    <label>Audio Quality (VBR)</label>
+                                    <div class="setting-control" style="
+                        justify-content: space-between;
+                        padding-top: 8px;
+                      ">
+                                        <span>Best</span>
+                                        <input type="range" id="audio-quality-slider" min="0" max="10" value="5"
+                                            step="1" />
+                                        <span>Smallest</span>
+                                    </div>
+                                </div>
+                                <div id="video-subs-container" class="option-group">
+                                    <div class="option-group-row">
+                                        <label for="download-subs-toggle">Subtitles</label>
+                                        <label class="switch">
+                                            <input type="checkbox" id="download-subs-toggle" />
+                                            <span class="slider round"></span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div id="audio-thumb-container" class="option-group hidden">
+                                    <div class="option-group-row">
+                                        <label for="embed-thumbnail-toggle">Embed Thumbnail</label>
+                                        <label class="switch">
+                                            <input type="checkbox" id="embed-thumbnail-toggle" checked />
+                                            <span class="slider round"></span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div id="playlist-options-container" class="option-group hidden full-width">
+                                    <label>Playlist Items</label>
+                                    <input type="text" id="playlist-items-input" class="text-input-control"
+                                        placeholder="E.g., 1-5, 8, 12-">
+                                </div>
+                                <div class="option-group-row full-width">
+                                    <label for="live-from-start-toggle">Download Livestream from Start</label>
                                     <label class="switch">
-                                        <input type="checkbox" id="download-subs-toggle">
+                                        <input type="checkbox" id="live-from-start-toggle" />
                                         <span class="slider round"></span>
                                     </label>
                                 </div>
-                                <button type="submit" class="download-button"><span
-                                        class="material-symbols-outlined">download</span><span>Download</span></button>
-                            </div>
-                            <div class="advanced-options-toggle" id="advanced-options-toggle">
-                                <span class="material-symbols-outlined">tune</span> Advanced Options
-                            </div>
-                            <div class="advanced-options-panel hidden" id="advanced-options-panel">
-                                <div class="option-group">
-                                    <label for="start-time-input">Start Time</label>
-                                    <input type="text" id="start-time-input" class="time-input"
-                                        placeholder="e.g., 1:23">
+                                <div class="download-button-container">
+                                    <button type="submit" class="download-button">
+                                        <span class="material-symbols-outlined">download</span><span>Download</span>
+                                    </button>
                                 </div>
-                                <div class="option-group">
-                                    <label for="end-time-input">End Time</label>
-                                    <input type="text" id="end-time-input" class="time-input" placeholder="e.g., 2:45">
-                                </div>
-                                <div class="option-group">
-                                    <label for="split-chapters-toggle">Split by Chapters</label>
-                                    <label class="switch">
-                                        <input type="checkbox" id="split-chapters-toggle">
-                                        <span class="slider round"></span>
-                                    </label>
-                                </div>
-                                <p class="advanced-options-note">Download a clip OR split by chapters. Cannot be used at
-                                    the same time.</p>
                             </div>
                         </form>
                     </div>
                     <div class="download-queue-header">
                         <h3>Download Queue</h3>
                         <div class="queue-actions">
-                            <button id="clear-completed-btn" class="queue-action-btn"><span
-                                    class="material-symbols-outlined">done_all</span>
-                                Clear Completed</button>
-                            <button id="clear-all-btn" class="queue-action-btn"><span
-                                    class="material-symbols-outlined">delete</span>
-                                Clear All</button>
+                            <button id="clear-completed-btn" class="queue-action-btn">
+                                <span class="material-symbols-outlined">done_all</span>
+                                Clear Completed
+                            </button>
+                            <button id="clear-all-btn" class="queue-action-btn">
+                                <span class="material-symbols-outlined">delete</span>
+                                Clear All
+                            </button>
                         </div>
                     </div>
                     <div id="download-queue-area"></div>
@@ -196,11 +265,11 @@
                     <div class="primary-column">
                         <div class="player-section" id="player-section">
                             <video id="video-player">
-                                <track kind="subtitles" srclang="en" id="subtitle-track">
+                                <track kind="subtitles" srclang="en" id="subtitle-track" />
                             </video>
                             <video id="video-player-preload"></video>
                             <div class="audio-artwork-container">
-                                <img id="audio-artwork-img" src="" alt="Artwork">
+                                <img id="audio-artwork-img" src="" alt="Artwork" />
                             </div>
                             <div class="video-controls-container">
                                 <div class="timeline-container">
@@ -210,38 +279,48 @@
                                 </div>
                                 <div class="bottom-controls">
                                     <div class="left-controls">
-                                        <button class="control-button prev-btn"><span
-                                                class="material-symbols-outlined">skip_previous</span></button>
-                                        <button class="control-button play-pause-btn"><span
-                                                class="material-symbols-outlined">play_arrow</span></button>
-                                        <button class="control-button next-btn"><span
-                                                class="material-symbols-outlined">skip_next</span></button>
+                                        <button class="control-button prev-btn">
+                                            <span class="material-symbols-outlined">skip_previous</span>
+                                        </button>
+                                        <button class="control-button play-pause-btn">
+                                            <span class="material-symbols-outlined">play_arrow</span>
+                                        </button>
+                                        <button class="control-button next-btn">
+                                            <span class="material-symbols-outlined">skip_next</span>
+                                        </button>
                                         <div class="volume-container">
-                                            <button class="control-button mute-btn"><span
-                                                    class="material-symbols-outlined">volume_up</span></button>
+                                            <button class="control-button mute-btn">
+                                                <span class="material-symbols-outlined">volume_up</span>
+                                            </button>
                                             <div class="volume-slider-container">
                                                 <input class="volume-slider" type="range" min="0" max="1" step="0.01"
-                                                    value="1">
+                                                    value="1" />
                                             </div>
                                         </div>
-                                        <div class="time-container"><span class="current-time">0:00</span> / <span
-                                                class="total-time">0:00</span></div>
+                                        <div class="time-container">
+                                            <span class="current-time">0:00</span> /
+                                            <span class="total-time">0:00</span>
+                                        </div>
                                     </div>
                                     <div class="right-controls">
                                         <div class="autoplay-container">
                                             <label class="switch" title="Autoplay">
-                                                <input type="checkbox" id="autoplay-toggle" checked>
+                                                <input type="checkbox" id="autoplay-toggle" checked />
                                                 <span class="slider round"></span>
                                             </label>
                                         </div>
-                                        <button class="control-button" id="settings-btn" title="Settings"><span
-                                                class="material-symbols-outlined">settings</span></button>
-                                        <button class="control-button" id="miniplayer-btn" title="Miniplayer"><span
-                                                class="material-symbols-outlined">picture_in_picture_alt</span></button>
-                                        <button class="control-button" id="theater-btn" title="Theater Mode"><span
-                                                class="material-symbols-outlined">width_wide</span></button>
-                                        <button class="control-button" id="fullscreen-btn" title="Fullscreen"><span
-                                                class="material-symbols-outlined">fullscreen</span></button>
+                                        <button class="control-button" id="settings-btn" title="Settings">
+                                            <span class="material-symbols-outlined">settings</span>
+                                        </button>
+                                        <button class="control-button" id="miniplayer-btn" title="Miniplayer">
+                                            <span class="material-symbols-outlined">picture_in_picture_alt</span>
+                                        </button>
+                                        <button class="control-button" id="theater-btn" title="Theater Mode">
+                                            <span class="material-symbols-outlined">width_wide</span>
+                                        </button>
+                                        <button class="control-button" id="fullscreen-btn" title="Fullscreen">
+                                            <span class="material-symbols-outlined">fullscreen</span>
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -251,33 +330,43 @@
                         </div>
                         <div class="video-info-section">
                             <h1 id="video-info-title"></h1>
-                            <input type="text" id="editable-title-input" class="editable-input">
+                            <input type="text" id="editable-title-input" class="editable-input" />
                             <div class="video-actions-meta">
                                 <div class="uploader-info">
-                                    <div class="channel-thumb-container"><img id="channel-thumb" src=""
-                                            alt="channel thumbnail" /></div>
+                                    <div class="channel-thumb-container">
+                                        <img id="channel-thumb" src="" alt="channel thumbnail" />
+                                    </div>
                                     <div class="uploader-text">
                                         <span id="video-info-uploader"></span>
                                         <span id="video-info-date"></span>
-                                        <input type="text" id="editable-creator-input" class="editable-input">
+                                        <input type="text" id="editable-creator-input" class="editable-input" />
                                     </div>
                                 </div>
                                 <div class="action-buttons">
-                                    <button class="action-button favorite-btn" id="favorite-btn"><span
-                                            class="material-symbols-outlined">favorite</span><span>Favorite</span></button>
-                                    <button class="action-button" id="add-to-playlist-btn"><span
-                                            class="material-symbols-outlined">playlist_add</span><span>Add to
-                                            Playlist</span></button>
-                                    <button class="action-button" id="video-menu-btn"><span
-                                            class="material-symbols-outlined">more_vert</span></button>
-                                    <button class="action-button edit-action" id="cancel-edit-btn">Cancel</button>
-                                    <button class="action-button edit-action" id="save-edit-btn">Save</button>
+                                    <button class="action-button favorite-btn" id="favorite-btn">
+                                        <span class="material-symbols-outlined">favorite</span><span>Favorite</span>
+                                    </button>
+                                    <button class="action-button" id="add-to-playlist-btn">
+                                        <span class="material-symbols-outlined">playlist_add</span><span>Add to
+                                            Playlist</span>
+                                    </button>
+                                    <button class="action-button" id="video-menu-btn">
+                                        <span class="material-symbols-outlined">more_vert</span>
+                                    </button>
+                                    <button class="action-button edit-action" id="cancel-edit-btn">
+                                        Cancel
+                                    </button>
+                                    <button class="action-button edit-action" id="save-edit-btn">
+                                        Save
+                                    </button>
                                 </div>
                             </div>
                             <div class="video-description-box" id="video-description-box">
                                 <div class="description-content" id="description-content"></div>
                                 <textarea id="editable-description-textarea" class="editable-textarea"></textarea>
-                                <button class="show-more-btn" id="show-more-desc-btn">Show more</button>
+                                <button class="show-more-btn" id="show-more-desc-btn">
+                                    Show more
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -307,7 +396,7 @@
                             </div>
                             <div class="setting-control">
                                 <label class="switch">
-                                    <input type="checkbox" id="theme-toggle">
+                                    <input type="checkbox" id="theme-toggle" />
                                     <span class="slider round"></span>
                                 </label>
                             </div>
@@ -321,17 +410,19 @@
                                 <p>Maximum number of videos to download at the same time.</p>
                             </div>
                             <div class="setting-control">
-                                <input type="range" id="concurrent-downloads-slider" min="1" max="10" value="3">
+                                <input type="range" id="concurrent-downloads-slider" min="1" max="10" value="3" />
                                 <span id="concurrent-downloads-value">3</span>
                             </div>
                         </div>
                         <div class="setting-item">
                             <div class="setting-text">
                                 <label for="concurrent-fragments-slider">Concurrent Fragments</label>
-                                <p>Speeds up HLS/DASH downloads by fetching parts in parallel.</p>
+                                <p>
+                                    Speeds up HLS/DASH downloads by fetching parts in parallel.
+                                </p>
                             </div>
                             <div class="setting-control">
-                                <input type="range" id="concurrent-fragments-slider" min="1" max="10" value="1">
+                                <input type="range" id="concurrent-fragments-slider" min="1" max="10" value="1" />
                                 <span id="concurrent-fragments-value">1</span>
                             </div>
                         </div>
@@ -342,13 +433,15 @@
                             </div>
                             <div class="setting-control">
                                 <input type="text" id="speed-limit-input" class="text-input-control"
-                                    placeholder="No limit">
+                                    placeholder="No limit" />
                             </div>
                         </div>
                         <div class="setting-item">
                             <div class="setting-text">
                                 <label>Browser Cookies</label>
-                                <p>Use cookies from a browser to bypass login/age restrictions.</p>
+                                <p>
+                                    Use cookies from a browser to bypass login/age restrictions.
+                                </p>
                             </div>
                             <div class="setting-control">
                                 <div class="custom-select-container" id="cookie-browser-select-container">
@@ -358,15 +451,23 @@
                                                 class="material-symbols-outlined">expand_more</span></span>
                                     </div>
                                     <div class="options-list">
-                                        <div class="option-item selected" data-value="none">None</div>
+                                        <div class="option-item selected" data-value="none">
+                                            None
+                                        </div>
                                         <div class="option-item" data-value="brave">Brave</div>
                                         <div class="option-item" data-value="chrome">Chrome</div>
-                                        <div class="option-item" data-value="chromium">Chromium</div>
+                                        <div class="option-item" data-value="chromium">
+                                            Chromium
+                                        </div>
                                         <div class="option-item" data-value="edge">Edge</div>
-                                        <div class="option-item" data-value="firefox">Firefox</div>
+                                        <div class="option-item" data-value="firefox">
+                                            Firefox
+                                        </div>
                                         <div class="option-item" data-value="opera">Opera</div>
                                         <div class="option-item" data-value="safari">Safari</div>
-                                        <div class="option-item" data-value="vivaldi">Vivaldi</div>
+                                        <div class="option-item" data-value="vivaldi">
+                                            Vivaldi
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -374,12 +475,14 @@
                         <div class="setting-item">
                             <div class="setting-text">
                                 <label for="auto-subs-toggle">Download Automatic Subtitles</label>
-                                <p>If official subtitles aren't found, download auto-generated ones (when available).
+                                <p>
+                                    If official subtitles aren't found, download auto-generated
+                                    ones (when available).
                                 </p>
                             </div>
                             <div class="setting-control">
                                 <label class="switch">
-                                    <input type="checkbox" id="auto-subs-toggle">
+                                    <input type="checkbox" id="auto-subs-toggle" />
                                     <span class="slider round"></span>
                                 </label>
                             </div>
@@ -387,11 +490,14 @@
                         <div class="setting-item">
                             <div class="setting-text">
                                 <label for="sponsorblock-toggle">Remove Sponsored Segments</label>
-                                <p>Automatically cut sponsored sections, intros, outros, etc., from videos.</p>
+                                <p>
+                                    Automatically cut sponsored sections, intros, outros, etc.,
+                                    from videos.
+                                </p>
                             </div>
                             <div class="setting-control">
                                 <label class="switch">
-                                    <input type="checkbox" id="sponsorblock-toggle">
+                                    <input type="checkbox" id="sponsorblock-toggle" />
                                     <span class="slider round"></span>
                                 </label>
                             </div>
@@ -402,36 +508,49 @@
                         <div class="setting-item">
                             <div class="setting-text">
                                 <label>Import & Export</label>
-                                <p>Add local files or export your entire library to a folder.</p>
+                                <p>
+                                    Add local files or export your entire library to a folder.
+                                </p>
                             </div>
                             <div class="setting-control">
-                                <button class="setting-btn" id="import-files-btn"><span
-                                        class="material-symbols-outlined">upload_file</span> Import Files</button>
-                                <button class="setting-btn" id="export-all-btn"><span
-                                        class="material-symbols-outlined">folder_open</span>
-                                    Export Library</button>
+                                <button class="setting-btn" id="import-files-btn">
+                                    <span class="material-symbols-outlined">upload_file</span>
+                                    Import Files
+                                </button>
+                                <button class="setting-btn" id="export-all-btn">
+                                    <span class="material-symbols-outlined">folder_open</span>
+                                    Export Library
+                                </button>
                             </div>
                         </div>
                         <div class="setting-item">
                             <div class="setting-text">
                                 <label>Reinitialize App</label>
-                                <p>Rescan media files, clear cache, and remove dead entries from the database.</p>
+                                <p>
+                                    Rescan media files, clear cache, and remove dead entries
+                                    from the database.
+                                </p>
                             </div>
                             <div class="setting-control">
-                                <button class="setting-btn" id="reinitialize-app-btn"><span
-                                        class="material-symbols-outlined">sync</span>
-                                    Reinitialize</button>
+                                <button class="setting-btn" id="reinitialize-app-btn">
+                                    <span class="material-symbols-outlined">sync</span>
+                                    Reinitialize
+                                </button>
                             </div>
                         </div>
                         <div class="setting-item">
                             <div class="setting-text">
                                 <label>Update Downloader</label>
-                                <p>Keep the internal downloader (yt-dlp) up-to-date to prevent download errors.</p>
+                                <p>
+                                    Keep the internal downloader (yt-dlp) up-to-date to prevent
+                                    download errors.
+                                </p>
                             </div>
                             <div class="setting-control">
-                                <button class="setting-btn" id="update-ytdlp-btn"><span
-                                        class="material-symbols-outlined">system_update</span> Check for
-                                    Updates</button>
+                                <button class="setting-btn" id="update-ytdlp-btn">
+                                    <span class="material-symbols-outlined">system_update</span>
+                                    Check for Updates
+                                </button>
                             </div>
                         </div>
                         <div id="updater-console-container" class="hidden">
@@ -443,20 +562,30 @@
                         <div class="setting-item">
                             <div class="setting-text">
                                 <label>Reset ViveStream</label>
-                                <p>Resets all settings to their defaults. Your downloaded media will not be affected.
+                                <p>
+                                    Resets all settings to their defaults. Your downloaded
+                                    media will not be affected.
                                 </p>
                             </div>
-                            <div class="setting-control"><button class="danger-btn" id="reset-app-btn">Reset
-                                    Now</button></div>
+                            <div class="setting-control">
+                                <button class="danger-btn" id="reset-app-btn">
+                                    Reset Now
+                                </button>
+                            </div>
                         </div>
                         <div class="setting-item">
                             <div class="setting-text">
                                 <label>Clear All Local Media</label>
-                                <p><strong>Warning:</strong> This will permanently delete all your downloaded videos,
-                                    audio, and metadata.</p>
+                                <p>
+                                    <strong>Warning:</strong> This will permanently delete all
+                                    your downloaded videos, audio, and metadata.
+                                </p>
                             </div>
-                            <div class="setting-control"><button class="danger-btn" id="clear-media-btn"><span
-                                        class="material-symbols-outlined">delete_forever</span> Clear Media</button>
+                            <div class="setting-control">
+                                <button class="danger-btn" id="clear-media-btn">
+                                    <span class="material-symbols-outlined">delete_forever</span>
+                                    Clear Media
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -470,19 +599,19 @@
                                         0% {
                                             stroke-dashoffset: 1000;
                                             stroke: #fff;
-                                            filter: drop-shadow(0 0 2px #fff) drop-shadow(0 0 5px #fff)
+                                            filter: drop-shadow(0 0 2px #fff) drop-shadow(0 0 5px #fff);
                                         }
 
                                         50% {
                                             stroke-dashoffset: 500;
                                             stroke: #f1f1f1;
-                                            filter: drop-shadow(0 0 4px #fff) drop-shadow(0 0 8px #f1f1f1)
+                                            filter: drop-shadow(0 0 4px #fff) drop-shadow(0 0 8px #f1f1f1);
                                         }
 
                                         to {
                                             stroke-dashoffset: 0;
                                             stroke: #fff;
-                                            filter: drop-shadow(0 0 2px #fff) drop-shadow(0 0 5px #fff)
+                                            filter: drop-shadow(0 0 2px #fff) drop-shadow(0 0 5px #fff);
                                         }
                                     }
                                 </style>
@@ -493,66 +622,82 @@
                                 <path
                                     d="M375 125c-241.667 62.5 -270.833 -41.667 -225 0 8.333 41.667 16.667 -20.833 25 0s16.667 -62.5 25 0 16.667 -33.333 25 0 16.667 -8.333 25 0c8.333 50 16.667 -58.333 25 0 8.333 20.833 16.667 -41.667 25 0 8.333 62.5 16.667 -20.833 25 0 8.333 41.667 16.667 -50 25 0 8.333 25 16.667 -33.333 25 0"
                                     stroke="#fff" stroke-width="5.208333333333334" fill="none" stroke-linecap="round"
-                                    style="stroke-dasharray:1000;stroke-dashoffset:1000;animation:pulse-glow 5s ease-in-out infinite" />
+                                    style="
+                      stroke-dasharray: 1000;
+                      stroke-dashoffset: 1000;
+                      animation: pulse-glow 5s ease-in-out infinite;
+                    " />
                             </svg>
                             <h3 class="about-app-name">ViveStream</h3>
                             <p class="about-version" id="app-version"></p>
                             <p class="about-dev">Developed by Md Siam Mia</p>
                             <div class="about-links">
                                 <a id="github-view-link" class="about-btn github-view-btn"><span
-                                        class="material-symbols-outlined">code</span> View on GitHub</a>
+                                        class="material-symbols-outlined">code</span> View on
+                                    GitHub</a>
                                 <a id="github-star-link" class="about-btn github-star-btn"><span
-                                        class="material-symbols-outlined">star</span> Star on GitHub</a>
+                                        class="material-symbols-outlined">star</span> Star on
+                                    GitHub</a>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
             <div class="context-menu" id="video-item-context-menu">
-                <div class="context-menu-item" id="context-edit-btn"><span class="material-symbols-outlined">edit</span>
+                <div class="context-menu-item" id="context-edit-btn">
+                    <span class="material-symbols-outlined">edit</span>
                     Edit Metadata
                 </div>
-                <div class="context-menu-item" id="context-export-btn"><span
-                        class="material-symbols-outlined">download</span> Export
-                    File</div>
+                <div class="context-menu-item" id="context-export-btn">
+                    <span class="material-symbols-outlined">download</span> Export File
+                </div>
                 <div class="context-menu-divider"></div>
-                <div class="context-menu-item" id="context-remove-from-playlist-btn"><span
-                        class="material-symbols-outlined">playlist_remove</span>
-                    Remove from Playlist</div>
-                <div class="context-menu-item" id="context-delete-btn"><span
-                        class="material-symbols-outlined">delete</span> Delete
-                    from Library</div>
+                <div class="context-menu-item" id="context-remove-from-playlist-btn">
+                    <span class="material-symbols-outlined">playlist_remove</span>
+                    Remove from Playlist
+                </div>
+                <div class="context-menu-item" id="context-delete-btn">
+                    <span class="material-symbols-outlined">delete</span> Delete from
+                    Library
+                </div>
             </div>
             <div class="context-menu" id="playlist-item-context-menu">
-                <div class="context-menu-item" id="context-playlist-rename-btn"><span
-                        class="material-symbols-outlined">edit</span>
-                    Rename</div>
-                <div class="context-menu-item" id="context-playlist-delete-btn"><span
-                        class="material-symbols-outlined">delete</span>
-                    Delete</div>
+                <div class="context-menu-item" id="context-playlist-rename-btn">
+                    <span class="material-symbols-outlined">edit</span>
+                    Rename
+                </div>
+                <div class="context-menu-item" id="context-playlist-delete-btn">
+                    <span class="material-symbols-outlined">delete</span>
+                    Delete
+                </div>
             </div>
         </div>
     </div>
     <div id="miniplayer" class="hidden">
         <div id="miniplayer-video-container"></div>
-        <img id="miniplayer-artwork-img" class="miniplayer-artwork hidden" src="" alt="Artwork">
+        <img id="miniplayer-artwork-img" class="miniplayer-artwork hidden" src="" alt="Artwork" />
         <div class="miniplayer-info">
             <p class="miniplayer-title">Video Title</p>
             <p class="miniplayer-uploader">Uploader</p>
         </div>
         <div class="miniplayer-controls">
-            <button class="mini-control-button" id="miniplayer-prev-btn"><span
-                    class="material-symbols-outlined">skip_previous</span></button>
-            <button class="mini-control-button" id="miniplayer-play-pause-btn"><span
-                    class="material-symbols-outlined">play_arrow</span></button>
-            <button class="mini-control-button" id="miniplayer-next-btn"><span
-                    class="material-symbols-outlined">skip_next</span></button>
+            <button class="mini-control-button" id="miniplayer-prev-btn">
+                <span class="material-symbols-outlined">skip_previous</span>
+            </button>
+            <button class="mini-control-button" id="miniplayer-play-pause-btn">
+                <span class="material-symbols-outlined">play_arrow</span>
+            </button>
+            <button class="mini-control-button" id="miniplayer-next-btn">
+                <span class="material-symbols-outlined">skip_next</span>
+            </button>
         </div>
         <div class="miniplayer-actions">
-            <button class="mini-action-button" id="miniplayer-expand-btn"><span
-                    class="material-symbols-outlined">expand_less</span></button>
-            <button class="mini-action-button" id="miniplayer-close-btn"><span
-                    class="material-symbols-outlined">close</span></button>
+            <button class="mini-action-button" id="miniplayer-expand-btn">
+                <span class="material-symbols-outlined">expand_less</span>
+            </button>
+            <button class="mini-action-button" id="miniplayer-close-btn">
+                <span class="material-symbols-outlined">close</span>
+            </button>
         </div>
         <div class="miniplayer-progress-container">
             <div class="miniplayer-progress-bar"></div>
@@ -565,12 +710,14 @@
                 <h3>Add to Playlist</h3>
                 <div class="modal-header-input-container">
                     <span class="material-symbols-outlined">search</span>
-                    <input type="text" id="add-to-playlist-input" placeholder="Find or create playlist...">
+                    <input type="text" id="add-to-playlist-input" placeholder="Find or create playlist..." />
                 </div>
             </div>
             <div class="add-playlist-list"></div>
             <div class="modal-actions">
-                <button id="add-to-playlist-close-btn" class="modal-btn">Close</button>
+                <button id="add-to-playlist-close-btn" class="modal-btn">
+                    Close
+                </button>
             </div>
         </div>
     </div>
@@ -580,7 +727,9 @@
             <p id="modal-text">This action cannot be undone.</p>
             <div class="modal-actions">
                 <button id="modal-cancel-btn" class="modal-btn">Cancel</button>
-                <button id="modal-confirm-btn" class="modal-btn danger-btn">Confirm</button>
+                <button id="modal-confirm-btn" class="modal-btn danger-btn">
+                    Confirm
+                </button>
             </div>
         </div>
     </div>
@@ -588,7 +737,7 @@
         <div class="modal-content prompt-modal-content">
             <h3 id="prompt-title">Prompt</h3>
             <p id="prompt-text">Enter a value:</p>
-            <input type="text" id="prompt-input">
+            <input type="text" id="prompt-input" />
             <div class="modal-actions">
                 <button id="prompt-cancel-btn" class="modal-btn">Cancel</button>
                 <button id="prompt-confirm-btn" class="modal-btn">Confirm</button>
@@ -599,7 +748,7 @@
     <template id="video-grid-item-template">
         <div class="video-grid-item">
             <div class="grid-thumbnail-container">
-                <img class="grid-thumbnail lazy" alt="thumbnail">
+                <img class="grid-thumbnail lazy" alt="thumbnail" />
                 <div class="thumbnail-overlay-icon"></div>
                 <span class="thumbnail-duration"></span>
             </div>
@@ -612,8 +761,9 @@
                     <button class="grid-item-action-btn favorite-btn">
                         <span class="material-symbols-outlined">favorite</span>
                     </button>
-                    <button class="grid-item-action-btn add-to-playlist-grid-btn" title="Add to Playlist"><span
-                            class="material-symbols-outlined">playlist_add</span></button>
+                    <button class="grid-item-action-btn add-to-playlist-grid-btn" title="Add to Playlist">
+                        <span class="material-symbols-outlined">playlist_add</span>
+                    </button>
                     <button class="grid-item-action-btn menu-btn" title="More">
                         <span class="material-symbols-outlined">more_vert</span>
                     </button>
