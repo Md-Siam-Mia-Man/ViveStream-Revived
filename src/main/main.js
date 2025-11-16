@@ -177,20 +177,15 @@ class Downloader {
   }
 
   startDownload(job) {
-    const {
-      videoInfo,
-      quality,
-      startTime,
-      endTime,
-      splitChapters,
-      downloadSubs,
-    } = job;
+    const { videoInfo } = job;
     const requestUrl =
       videoInfo.webpage_url ||
       `https://www.youtube.com/watch?v=${videoInfo.id}`;
 
     let args = [
       requestUrl,
+      "-o",
+      path.join(videoPath, "%(id)s.%(ext)s"),
       "--ffmpeg-location",
       ffmpegPath,
       "--progress",
@@ -210,40 +205,32 @@ class Downloader {
       path.join(app.getPath("userData"), "download-archive.txt"),
     ];
 
-    if (splitChapters) {
-      const chapterTemplate = path.join(
-        videoPath,
-        "%(playlist_title,title)s",
-        "%(chapter_number)s - %(chapter)s"
-      );
-      args.push("-o", chapterTemplate, "--split-chapters");
-    } else {
-      args.push("-o", path.join(videoPath, "%(id)s"));
-    }
+    if (job.downloadType === "video") {
+      const qualityFilter =
+        job.quality === "best" ? "" : `[height<=${job.quality}]`;
+      const formatString = `bestvideo[ext=mp4]${qualityFilter}+bestaudio[ext=m4a]/bestvideo[vcodec^=avc]${qualityFilter}+bestaudio/best[ext=mp4]/best`;
+      args.push("-f", formatString, "--merge-output-format", "mp4");
 
-    const qualityFilter = quality === "best" ? "" : `[height<=${quality}]`;
-    const formatString = `bestvideo[ext=mp4]${qualityFilter}+bestaudio[ext=m4a]/bestvideo[vcodec^=avc]${qualityFilter}+bestaudio/best[ext=mp4]/best`;
-    args.push("-f", formatString, "--merge-output-format", "mp4");
-
-    if (downloadSubs) {
+      if (job.downloadSubs) {
+        args.push("--write-subs", "--sub-langs", "en.*,-live_chat");
+        if (this.settings.downloadAutoSubs) args.push("--write-auto-subs");
+      }
+    } else if (job.downloadType === "audio") {
       args.push(
-        "--write-subs",
-        "--sub-langs",
-        "en.*,-live_chat",
-        "--embed-subs"
+        "-x",
+        "--audio-format",
+        job.audioFormat,
+        "--audio-quality",
+        job.audioQuality.toString()
       );
-      if (this.settings.downloadAutoSubs) args.push("--write-auto-subs");
+      if (job.embedThumbnail) {
+        args.push("--embed-thumbnail");
+      }
     }
 
+    if (job.playlistItems) args.push("--playlist-items", job.playlistItems);
+    if (job.liveFromStart) args.push("--live-from-start");
     if (this.settings.removeSponsors) args.push("--sponsorblock-remove", "all");
-    if (!splitChapters && (startTime || endTime)) {
-      const timeRange = `${startTime || "0:00"}-${endTime || "inf"}`;
-      args.push(
-        "--download-sections",
-        `*${timeRange}`,
-        "--force-keyframes-at-cuts"
-      );
-    }
     if (this.settings.concurrentFragments > 1)
       args.push(
         "--concurrent-fragments",
@@ -310,17 +297,6 @@ class Downloader {
   }
 
   async postProcess(videoInfo, job) {
-    if (job.splitChapters) {
-      if (win)
-        win.webContents.send("download-complete", {
-          id: videoInfo.id,
-          videoData: {
-            title: `${videoInfo.title} (Chapters)`,
-            isChapterSplit: true,
-          },
-        });
-      return;
-    }
     try {
       const infoJsonPath = path.join(videoPath, `${videoInfo.id}.info.json`);
       if (!fs.existsSync(infoJsonPath)) {
@@ -330,7 +306,15 @@ class Downloader {
       }
 
       const info = JSON.parse(fs.readFileSync(infoJsonPath, "utf-8"));
-      const mediaFilePath = path.join(videoPath, `${info.id}.${info.ext}`);
+
+      let mediaFilePath;
+      if (job.downloadType === "audio") {
+        const expectedExt =
+          job.audioFormat === "best" ? info.aext : job.audioFormat;
+        mediaFilePath = path.join(videoPath, `${info.id}.${expectedExt}`);
+      } else {
+        mediaFilePath = path.join(videoPath, `${info.id}.${info.ext}`);
+      }
 
       if (!fs.existsSync(mediaFilePath)) {
         throw new Error(
@@ -351,11 +335,13 @@ class Downloader {
         : null;
 
       let subFileUri = null;
-      const tempSubPath = path.join(videoPath, `${videoInfo.id}.en.vtt`);
-      if (fs.existsSync(tempSubPath)) {
-        const finalSubPath = path.join(subtitlePath, `${info.id}.vtt`);
-        fs.renameSync(tempSubPath, finalSubPath);
-        subFileUri = url.pathToFileURL(finalSubPath).href;
+      if (job.downloadType === "video") {
+        const tempSubPath = path.join(videoPath, `${videoInfo.id}.en.vtt`);
+        if (fs.existsSync(tempSubPath)) {
+          const finalSubPath = path.join(subtitlePath, `${info.id}.vtt`);
+          fs.renameSync(tempSubPath, finalSubPath);
+          subFileUri = url.pathToFileURL(finalSubPath).href;
+        }
       }
 
       const descriptionPath = path.join(
@@ -390,8 +376,7 @@ class Downloader {
         coverPath: finalCoverUri,
         subtitlePath: subFileUri,
         hasEmbeddedSubs: !!subFileUri,
-        type:
-          info.acodec !== "none" && info.vcodec === "none" ? "audio" : "video",
+        type: job.downloadType === "audio" ? "audio" : "video",
         downloadedAt: new Date().toISOString(),
         isFavorite: false,
         source: "youtube",
