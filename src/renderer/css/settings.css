@@ -105,6 +105,10 @@
      color: var(--primary-accent);
 }
 
+#clear-media-btn span {
+     color: var(--primary-text);
+}
+
 .text-input-control {
      background: var(--primary-background);
      border: 1px solid var(--border-color);
