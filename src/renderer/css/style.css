@@ -328,7 +328,6 @@ button,
 .sidebar:hover,
 .sidebar.pinned {
      width: var(--sidebar-expanded-width);
-     padding: 0 12px;
 }
 
 .sidebar-nav {
