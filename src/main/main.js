@@ -426,6 +426,13 @@ function createWindow() {
   win.on("maximize", () => win.webContents.send("window-maximized", true));
   win.on("unmaximize", () => win.webContents.send("window-maximized", false));
   win.on("closed", () => (win = null));
+  win.on("close", (event) => {
+    if (!app.isQuitting) {
+      event.preventDefault();
+      win.hide();
+    }
+    return false;
+  });
   if (isDev) win.webContents.openDevTools({ mode: "detach" });
 }
 
@@ -545,9 +552,7 @@ ipcMain.handle("delete-video", async (e, id) => {
     .filter(Boolean)
     .forEach((uri) => {
       try {
-        const p = path.normalize(
-          decodeURIComponent(uri.replace("file://", ""))
-        );
+        const p = url.fileURLToPath(uri);
         if (fs.existsSync(p)) fs.unlinkSync(p);
       } catch (err) {
         console.error(`Failed to delete file ${uri}:`, err);
@@ -732,14 +737,32 @@ ipcMain.handle("media:import-files", async () => {
         videoStream.disposition.attached_pic;
 
       if (hasEmbeddedPic) {
-        const ffmpegCoverArgs = ["-i", newFilePath, "-map", "0:v", "-map", "-0:V", "-c", "copy", finalCoverPath,];
+        const ffmpegCoverArgs = [
+          "-i",
+          newFilePath,
+          "-map",
+          "0:v",
+          "-map",
+          "-0:V",
+          "-c",
+          "copy",
+          finalCoverPath,
+        ];
         await new Promise((resolve) => {
           spawn(ffmpegPath, ffmpegCoverArgs)
             .on("close", () => resolve())
             .on("error", () => resolve());
         });
       } else if (videoStream) {
-        const ffmpegThumbArgs = ["-i", newFilePath, "-ss", "00:00:05", "-vframes", "1", finalCoverPath,];
+        const ffmpegThumbArgs = [
+          "-i",
+          newFilePath,
+          "-ss",
+          "00:00:05",
+          "-vframes",
+          "1",
+          finalCoverPath,
+        ];
         await new Promise((resolve) => {
           spawn(ffmpegPath, ffmpegThumbArgs)
             .on("close", () => resolve())
@@ -788,9 +811,7 @@ ipcMain.handle("media:export-file", async (e, videoId) => {
   const video = await db.getVideoById(videoId);
   if (!video) return { success: false, error: "Video not found." };
 
-  const sourcePath = path.normalize(
-    decodeURIComponent(video.filePath.replace("file://", ""))
-  );
+  const sourcePath = url.fileURLToPath(video.filePath);
   const extension = path.extname(sourcePath);
   const defaultFilename = `${sanitizeFilename(video.title)}${extension}`;
 
@@ -828,9 +849,7 @@ ipcMain.handle("media:export-all", async () => {
   for (let i = 0; i < library.length; i++) {
     const video = library[i];
     try {
-      const sourcePath = path.normalize(
-        decodeURIComponent(video.filePath.replace("file://", ""))
-      );
+      const sourcePath = url.fileURLToPath(video.filePath);
       const extension = path.extname(sourcePath);
       const filename = `${sanitizeFilename(video.title)}${extension}`;
       const destPath = path.join(destFolder, filename);
@@ -856,7 +875,7 @@ ipcMain.handle("app:reinitialize", async () => {
     const dbVideos = await db.getLibrary();
     const diskFiles = new Set(fs.readdirSync(videoPath));
     const deadDbEntries = dbVideos.filter(
-      (v) => !diskFiles.has(path.basename(decodeURIComponent(v.filePath)))
+      (v) => !diskFiles.has(path.basename(url.fileURLToPath(v.filePath)))
     );
     for (const entry of deadDbEntries) {
       await db.deleteVideo(entry.id);
