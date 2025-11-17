@@ -6,11 +6,9 @@ import {
   hideLoader,
   renderSearchPage,
 } from "./renderer.js";
-import { formatTime, debounce, fuzzySearch } from "./utils.js";
+import { formatTime, debounce } from "./utils.js";
 import { eventBus } from "./event-bus.js";
 import { openAddToPlaylistModal } from "./playlists.js";
-import { renderArtistsPage } from "./artists.js";
-import { renderPlaylistsPage } from "./playlists.js";
 
 const homeSearchInput = document.getElementById("home-search-input");
 const videoContextMenu = document.getElementById("video-item-context-menu");
@@ -19,8 +17,10 @@ const contextRemoveFromPlaylistBtn = document.getElementById(
 );
 const gridItemTemplate = document.getElementById("video-grid-item-template");
 const sidebar = document.querySelector(".sidebar");
+const searchPage = document.getElementById("search-page");
 
 let currentSort = localStorage.getItem("librarySort") || "downloadedAt-desc";
+let lastActivePageId = "home";
 
 const lazyLoadObserver = new IntersectionObserver(
   (entries, observer) => {
@@ -359,6 +359,7 @@ export function updateSearchPlaceholder(pageId) {
     ? "Search videos, artists, playlists..."
     : "Search is unavailable";
   homeSearchInput.disabled = !isSearchable;
+  lastActivePageId = pageId;
 }
 
 const debouncedSearchHandler = debounce((term) => {
@@ -401,9 +402,8 @@ function initializeMainEventListeners() {
         e.stopPropagation();
         const menuBtn = e.target.closest(".menu-btn");
         const rect = menuBtn.getBoundingClientRect();
-        videoContextMenu.style.left = `${
-          rect.left - videoContextMenu.offsetWidth + rect.width
-        }px`;
+        videoContextMenu.style.left = `${rect.left - videoContextMenu.offsetWidth + rect.width
+          }px`;
         videoContextMenu.style.top = `${rect.bottom + 5}px`;
         videoContextMenu.dataset.videoId = videoId;
         contextRemoveFromPlaylistBtn.style.display = itemEl.dataset.playlistItem
@@ -491,9 +491,8 @@ function initializeMainEventListeners() {
     if (homeSearchInput.disabled) return;
     const searchTerm = e.target.value;
     if (searchTerm.trim() === "") {
-      const activePage =
-        document.querySelector(".nav-item.active")?.dataset.page || "home";
-      handleNav(activePage);
+      showPage(lastActivePageId);
+      if (searchPage) searchPage.innerHTML = "";
       return;
     }
     showLoader();
