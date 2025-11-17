@@ -46,6 +46,14 @@ export function fuzzySearch(term, items, keys) {
   const lowerTerm = term.toLowerCase();
   if (!lowerTerm) return items;
 
+  const weights = {
+    EXACT_MATCH: 100,
+    INCLUDES_PRIMARY: 80,
+    INCLUDES_SECONDARY: 60,
+    SIMILARITY_THRESHOLD: 0.4,
+    SIMILARITY_SCORE_MULTIPLIER: 40,
+  };
+
   const results = items
     .map((item) => {
       let bestScore = 0;
@@ -55,19 +63,21 @@ export function fuzzySearch(term, items, keys) {
         if (!value) continue;
 
         let score = 0;
-        if ((key === "title" || key === "name") && value === lowerTerm) {
-          score = 100;
+        const isPrimaryField = key === "title" || key === "name";
+
+        if (value === lowerTerm) {
+          score = weights.EXACT_MATCH;
         } else if (value.includes(lowerTerm)) {
-          score = 80 - value.length / 10;
-          if (key !== "title" && key !== "name") {
-            score -= 20;
-          }
+          score = isPrimaryField
+            ? weights.INCLUDES_PRIMARY
+            : weights.INCLUDES_SECONDARY;
+          score -= value.length / 10;
         } else {
           const distance = levenshtein(lowerTerm, value);
           const similarity =
             1 - distance / Math.max(lowerTerm.length, value.length);
-          if (similarity > 0.4) {
-            score = similarity * 40;
+          if (similarity > weights.SIMILARITY_THRESHOLD) {
+            score = similarity * weights.SIMILARITY_SCORE_MULTIPLIER;
           }
         }
         if (score > bestScore) {
