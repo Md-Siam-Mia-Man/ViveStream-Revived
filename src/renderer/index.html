@@ -80,12 +80,12 @@
                 <span class="material-symbols-outlined search-icon">search</span>
                 <input type="text" id="home-search-input" placeholder="Search everything..." />
             </div>
-        </div>
-        <div class="header-right">
             <div class="sleep-timer-status hidden" id="sleep-timer-status">
                 <span class="material-symbols-outlined">bedtime</span>
                 <span id="sleep-timer-status-text"></span>
             </div>
+        </div>
+        <div class="header-right">
         </div>
     </div>
     <div class="app-body">
@@ -523,16 +523,11 @@
                                 </button>
                             </div>
                         </div>
-                        <div id="file-op-progress-container" class="setting-item hidden">
-                            <div class="setting-text">
-                                <label id="file-op-progress-label">Importing...</label>
-                                <p id="file-op-progress-filename"></p>
-                                <div class="progress-bar-container">
-                                    <div id="file-op-progress-bar" class="progress-bar"></div>
-                                </div>
-                            </div>
-                            <div class="setting-control">
-                                <span id="file-op-progress-value">0%</span>
+                        <div id="file-op-progress-container" class="hidden">
+                            <label id="file-op-progress-label">Importing...</label>
+                            <p id="file-op-progress-filename"></p>
+                            <div class="progress-bar-container">
+                                <div id="file-op-progress-bar" class="progress-bar"></div>
                             </div>
                         </div>
                         <div class="setting-item">
