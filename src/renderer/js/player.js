@@ -60,13 +60,16 @@ const mainContent = playerPage.querySelector(".main-content");
 
 let hideControlsTimeout;
 
-const SleepTimer = {
-  id: null,
-  type: null,
-  value: 0,
-  remaining: 0,
-  statusEl: document.getElementById("sleep-timer-status"),
-  statusTextEl: document.getElementById("sleep-timer-status-text"),
+class SleepTimerManager {
+  constructor() {
+    this.id = null;
+    this.type = null;
+    this.value = 0;
+    this.remaining = 0;
+    this.statusEl = document.getElementById("sleep-timer-status");
+    this.statusTextEl = document.getElementById("sleep-timer-status-text");
+    this.onTrackChange = this.onTrackChange.bind(this);
+  }
 
   start(type, value) {
     this.stop();
@@ -91,29 +94,34 @@ const SleepTimer = {
     this.updateDisplay();
     this.statusEl.classList.remove("hidden");
     showNotification(`Sleep timer set.`, "info");
-  },
+  }
+
   stop() {
     clearInterval(this.id);
+    eventBus.off("playback:trackchange", this.onTrackChange);
     this.id = null;
     this.type = null;
-    eventBus.off("playback:trackchange", this.onTrackChange);
     this.statusEl.classList.add("hidden");
-  },
+  }
+
   onTrackChange() {
-    SleepTimer.remaining--;
-    SleepTimer.updateDisplay();
-    if (SleepTimer.remaining <= 0) SleepTimer.trigger();
-  },
+    this.remaining--;
+    this.updateDisplay();
+    if (this.remaining <= 0) this.trigger();
+  }
+
   update() {
     this.remaining--;
     this.updateDisplay();
-    if (this.remaining <= 0) SleepTimer.trigger();
-  },
+    if (this.remaining <= 0) this.trigger();
+  }
+
   trigger() {
     videoPlayer.pause();
     showNotification(`Sleep timer ended. Playback paused.`, "info");
     this.stop();
-  },
+  }
+
   updateDisplay() {
     if (this.type === "tracks") {
       this.statusTextEl.textContent = `${this.remaining} track${this.remaining > 1 ? "s" : ""
@@ -121,16 +129,17 @@ const SleepTimer = {
     } else {
       this.statusTextEl.textContent = formatTime(this.remaining);
     }
-  },
+  }
+
   clear() {
     if (this.id || this.type) {
       this.stop();
       showNotification(`Sleep timer cleared.`, "info");
     }
-  },
-};
+  }
+}
 
-SleepTimer.onTrackChange = SleepTimer.onTrackChange.bind(SleepTimer);
+const sleepTimer = new SleepTimerManager();
 
 const lazyLoadObserver = new IntersectionObserver(
   (entries, observer) => {
@@ -402,7 +411,7 @@ function buildSettingsMenu() {
       ? "Normal"
       : videoPlayer.playbackRate + "x"
     }</span><span class="chevron material-symbols-outlined">arrow_forward_ios</span></div>
-        <div class="settings-item" data-setting="sleep"><span class="material-symbols-outlined">bedtime</span><span>Sleep Timer</span><span class="setting-value" id="sleep-value">${SleepTimer.type ? "On" : "Off"
+        <div class="settings-item" data-setting="sleep"><span class="material-symbols-outlined">bedtime</span><span>Sleep Timer</span><span class="setting-value" id="sleep-value">${sleepTimer.type ? "On" : "Off"
     }</span><span class="chevron material-symbols-outlined">arrow_forward_ios</span></div>`;
 }
 
@@ -748,19 +757,19 @@ sleepSubmenu.addEventListener("click", (e) => {
     sleepSubmenu.classList.remove("active");
     settingsMenu.classList.add("active");
   } else if (target.dataset.minutes === "0") {
-    SleepTimer.clear();
+    sleepTimer.clear();
     sleepSubmenu.classList.remove("active");
   } else if (target.id === "sleep-tracks-btn") {
     const val = document.getElementById("sleep-tracks-input").value;
-    if (val) SleepTimer.start("tracks", val);
+    if (val) sleepTimer.start("tracks", val);
     sleepSubmenu.classList.remove("active");
   } else if (target.id === "sleep-minutes-btn") {
     const val = document.getElementById("sleep-minutes-input").value;
-    if (val) SleepTimer.start("minutes", val);
+    if (val) sleepTimer.start("minutes", val);
     sleepSubmenu.classList.remove("active");
   } else if (target.id === "sleep-time-btn") {
     const val = document.getElementById("sleep-time-input").value;
-    if (val) SleepTimer.start("time", val);
+    if (val) sleepTimer.start("time", val);
     sleepSubmenu.classList.remove("active");
   }
 });
@@ -779,7 +788,7 @@ document.addEventListener("click", (e) => {
 cancelEditBtn.addEventListener("click", exitEditMode);
 saveEditBtn.addEventListener("click", saveMetadataChanges);
 
-SleepTimer.statusEl.addEventListener("click", SleepTimer.clear);
+sleepTimer.statusEl.addEventListener("click", () => sleepTimer.clear());
 
 eventBus.on("player:play_request", playLibraryItem);
 eventBus.on("controls:toggle_play", togglePlay);
