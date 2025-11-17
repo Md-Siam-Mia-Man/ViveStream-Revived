@@ -52,12 +52,17 @@
       "icon": "build/icons/icon.ico"
     },
     "nsis": {
+      "guid": "FC44F321-AE31-46B5-B6B2-BA2671A4C86C",
+      "include": "build/installer.nsh",
       "oneClick": false,
       "perMachine": true,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "ViveStream",
+      "uninstallDisplayName": "${productName} ${version}",
+      "runAfterFinish": true,
+      "deleteAppDataOnUninstall": false,
       "installerIcon": "build/icons/icon.ico",
       "uninstallerIcon": "build/icons/uninstallIcon.ico",
       "installerHeader": "build/installer/installerHeader.bmp",
