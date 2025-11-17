@@ -38,6 +38,16 @@ const resetAppBtn = document.getElementById("reset-app-btn");
 const clearMediaBtn = document.getElementById("clear-media-btn");
 const videoPlayer = document.getElementById("video-player");
 
+const fileOpProgressContainer = document.getElementById(
+  "file-op-progress-container"
+);
+const fileOpProgressLabel = document.getElementById("file-op-progress-label");
+const fileOpProgressFilename = document.getElementById(
+  "file-op-progress-filename"
+);
+const fileOpProgressBar = document.getElementById("file-op-progress-bar");
+const fileOpProgressValue = document.getElementById("file-op-progress-value");
+
 function updateSettingsUI(settings) {
   currentSettings = settings;
   concurrentDownloadsSlider.value = settings.concurrentDownloads;
@@ -119,8 +129,12 @@ export function initializeSettingsPage() {
 
   importFilesBtn.addEventListener("click", async () => {
     importFilesBtn.disabled = true;
-    importFilesBtn.innerHTML = `<span class="material-symbols-outlined spin">progress_activity</span> Importing...`;
+    exportAllBtn.disabled = true;
+    fileOpProgressContainer.classList.remove("hidden");
+    fileOpProgressLabel.textContent = "Importing...";
+
     const result = await window.electronAPI.mediaImportFiles();
+
     if (result.success) {
       showNotification(
         `Successfully imported ${result.count} file(s).`,
@@ -130,14 +144,20 @@ export function initializeSettingsPage() {
     } else {
       showNotification(`Import failed: ${result.error}`, "error");
     }
+
     importFilesBtn.disabled = false;
-    importFilesBtn.innerHTML = `<span class="material-symbols-outlined">upload_file</span> Import Files`;
+    exportAllBtn.disabled = false;
+    fileOpProgressContainer.classList.add("hidden");
   });
 
   exportAllBtn.addEventListener("click", async () => {
+    importFilesBtn.disabled = true;
     exportAllBtn.disabled = true;
-    exportAllBtn.innerHTML = `<span class="material-symbols-outlined spin">progress_activity</span> Exporting...`;
+    fileOpProgressContainer.classList.remove("hidden");
+    fileOpProgressLabel.textContent = "Exporting...";
+
     const result = await window.electronAPI.mediaExportAll();
+
     if (result.success) {
       showNotification(
         `Successfully exported ${result.count} files.`,
@@ -146,8 +166,9 @@ export function initializeSettingsPage() {
     } else if (result.error !== "Export cancelled.") {
       showNotification(`Export failed: ${result.error}`, "error");
     }
+    importFilesBtn.disabled = false;
     exportAllBtn.disabled = false;
-    exportAllBtn.innerHTML = `<span class="material-symbols-outlined">folder_open</span> Export Library`;
+    fileOpProgressContainer.classList.add("hidden");
   });
 
   reinitializeAppBtn.addEventListener("click", () => {
@@ -257,3 +278,14 @@ window.electronAPI.onImportError(({ fileName, error }) => {
 window.electronAPI.onClearLocalStorage(() => {
   localStorage.clear();
 });
+
+window.electronAPI.onFileOperationProgress(
+  ({ type, fileName, currentFile, totalFiles, progress }) => {
+    fileOpProgressContainer.classList.remove("hidden");
+    fileOpProgressLabel.textContent =
+      type === "import" ? `Importing...` : `Exporting...`;
+    fileOpProgressFilename.textContent = `(${currentFile}/${totalFiles}) ${fileName}`;
+    fileOpProgressBar.style.width = `${progress}%`;
+    fileOpProgressValue.textContent = `${progress}%`;
+  }
+);
