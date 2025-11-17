@@ -287,6 +287,34 @@
      filter: brightness(1.1);
 }
 
+#file-op-progress-container {
+     padding-top: 0;
+     padding-bottom: 0;
+     border-bottom: none;
+     margin-top: -16px;
+     margin-bottom: 16px;
+}
+
+#file-op-progress-container.hidden {
+     display: none;
+}
+
+.progress-bar-container {
+     width: 100%;
+     height: 6px;
+     background-color: var(--tertiary-background);
+     border-radius: 3px;
+     margin-top: 8px;
+     overflow: hidden;
+}
+
+.progress-bar {
+     width: 0%;
+     height: 100%;
+     background-color: var(--primary-accent);
+     transition: width 0.2s linear;
+}
+
 @media (max-width: 600px) {
      .setting-item {
           flex-wrap: wrap;
