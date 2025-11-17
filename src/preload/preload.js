@@ -49,6 +49,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   mediaExportFile: (videoId) =>
     ipcRenderer.invoke("media:export-file", videoId),
   mediaExportAll: () => ipcRenderer.invoke("media:export-all"),
+  onFileOperationProgress: (cb) =>
+    ipcRenderer.on("file-operation-progress", (e, v) => cb(v)),
   appReinitialize: () => ipcRenderer.invoke("app:reinitialize"),
 
   playlistCreate: (name) => ipcRenderer.invoke("playlist:create", name),
