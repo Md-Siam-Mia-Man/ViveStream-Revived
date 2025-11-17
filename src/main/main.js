@@ -275,6 +275,7 @@ class Downloader {
     });
 
     proc.stderr.on("data", (data) => {
+      resetStallTimer();
       stderrOutput += data.toString();
       console.error(`Download Stderr (${videoInfo.id}): ${data}`);
     });
@@ -425,13 +426,6 @@ function createWindow() {
   win.on("maximize", () => win.webContents.send("window-maximized", true));
   win.on("unmaximize", () => win.webContents.send("window-maximized", false));
   win.on("closed", () => (win = null));
-  win.on("close", (event) => {
-    if (!app.isQuitting) {
-      event.preventDefault();
-      win.hide();
-    }
-    return false;
-  });
   if (isDev) win.webContents.openDevTools({ mode: "detach" });
 }
 
@@ -655,6 +649,30 @@ ipcMain.handle("updater:check-yt-dlp", () => {
   });
 });
 
+async function copyWithProgress(source, dest, eventPayload) {
+  const totalSize = (await fs.promises.stat(source)).size;
+  let copiedSize = 0;
+  const sourceStream = fs.createReadStream(source);
+  const destStream = fs.createWriteStream(dest);
+
+  sourceStream.on("data", (chunk) => {
+    copiedSize += chunk.length;
+    const progress = Math.round((copiedSize / totalSize) * 100);
+    win.webContents.send("file-operation-progress", {
+      ...eventPayload,
+      progress,
+    });
+  });
+
+  sourceStream.pipe(destStream);
+
+  return new Promise((resolve, reject) => {
+    destStream.on("finish", resolve);
+    destStream.on("error", reject);
+    sourceStream.on("error", reject);
+  });
+}
+
 ipcMain.handle("media:import-files", async () => {
   const { canceled, filePaths } = await dialog.showOpenDialog(win, {
     properties: ["openFile", "multiSelections"],
@@ -667,7 +685,8 @@ ipcMain.handle("media:import-files", async () => {
   });
   if (canceled || filePaths.length === 0) return { success: true, count: 0 };
   let importedCount = 0;
-  for (const filePath of filePaths) {
+  for (let i = 0; i < filePaths.length; i++) {
+    const filePath = filePaths[i];
     try {
       const ffprobeArgs = [
         "-v",
@@ -697,33 +716,39 @@ ipcMain.handle("media:import-files", async () => {
       const newId = crypto.randomUUID();
       const newFileName = `${newId}${path.extname(filePath)}`;
       const newFilePath = path.join(videoPath, newFileName);
-      await fse.copy(filePath, newFilePath);
+
+      await copyWithProgress(filePath, newFilePath, {
+        type: "import",
+        fileName: path.basename(filePath),
+        currentFile: i + 1,
+        totalFiles: filePaths.length,
+      });
 
       let coverUri = null;
-      if (
+      const finalCoverPath = path.join(coverPath, `${newId}.jpg`);
+      const hasEmbeddedPic =
         videoStream &&
         videoStream.disposition &&
-        videoStream.disposition.attached_pic
-      ) {
-        const finalCoverPath = path.join(coverPath, `${newId}.jpg`);
-        const ffmpegCoverArgs = [
-          "-i",
-          newFilePath,
-          "-an",
-          "-vcodec",
-          "copy",
-          finalCoverPath,
-        ];
+        videoStream.disposition.attached_pic;
+
+      if (hasEmbeddedPic) {
+        const ffmpegCoverArgs = ["-i", newFilePath, "-map", "0:v", "-map", "-0:V", "-c", "copy", finalCoverPath,];
         await new Promise((resolve) => {
-          const ffmpegProc = spawn(ffmpegPath, ffmpegCoverArgs);
-          ffmpegProc.on("close", (code) => {
-            if (code === 0)
-              coverUri = url.pathToFileURL(finalCoverPath).href;
-            else console.error("Cover extraction failed for", newFileName);
-            resolve();
-          });
-          ffmpegProc.on("error", () => resolve());
+          spawn(ffmpegPath, ffmpegCoverArgs)
+            .on("close", () => resolve())
+            .on("error", () => resolve());
         });
+      } else if (videoStream) {
+        const ffmpegThumbArgs = ["-i", newFilePath, "-ss", "00:00:05", "-vframes", "1", finalCoverPath,];
+        await new Promise((resolve) => {
+          spawn(ffmpegPath, ffmpegThumbArgs)
+            .on("close", () => resolve())
+            .on("error", () => resolve());
+        });
+      }
+
+      if (fs.existsSync(finalCoverPath)) {
+        coverUri = url.pathToFileURL(finalCoverPath).href;
       }
 
       const artistString =
@@ -778,7 +803,12 @@ ipcMain.handle("media:export-file", async (e, videoId) => {
     return { success: false, error: "Export cancelled." };
 
   try {
-    await fse.copy(sourcePath, destPath, { overwrite: true });
+    await copyWithProgress(sourcePath, destPath, {
+      type: "export",
+      fileName: path.basename(destPath),
+      currentFile: 1,
+      totalFiles: 1,
+    });
     return { success: true };
   } catch (error) {
     return { success: false, error: error.message };
@@ -795,7 +825,8 @@ ipcMain.handle("media:export-all", async () => {
   const destFolder = filePaths[0];
   const library = await db.getLibrary();
   let exportedCount = 0;
-  for (const video of library) {
+  for (let i = 0; i < library.length; i++) {
+    const video = library[i];
     try {
       const sourcePath = path.normalize(
         decodeURIComponent(video.filePath.replace("file://", ""))
@@ -803,7 +834,14 @@ ipcMain.handle("media:export-all", async () => {
       const extension = path.extname(sourcePath);
       const filename = `${sanitizeFilename(video.title)}${extension}`;
       const destPath = path.join(destFolder, filename);
-      await fse.copy(sourcePath, destPath);
+
+      await copyWithProgress(sourcePath, destPath, {
+        type: "export",
+        fileName: filename,
+        currentFile: i + 1,
+        totalFiles: library.length,
+      });
+
       exportedCount++;
     } catch (error) {
       console.error(`Failed to export ${video.title}:`, error);
