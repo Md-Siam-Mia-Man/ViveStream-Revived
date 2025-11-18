@@ -220,17 +220,36 @@ window.electronAPI.onDownloadQueueStart(({ infos, jobId }) => {
   if (!placeholder) return;
 
   const existingLibraryIds = new Set(AppState.library.map((v) => v.id));
-  const videosToTouch = infos
-    .filter((info) => existingLibraryIds.has(info.id))
-    .map((info) => info.id);
+  const videosToTouch = [];
+  const videosToDownload = [];
+
+  infos.forEach((info) => {
+    if (existingLibraryIds.has(info.id)) {
+      videosToTouch.push(info.id);
+    } else {
+      videosToDownload.push(info);
+    }
+  });
 
   if (videosToTouch.length > 0) {
     window.electronAPI.videosTouch(videosToTouch);
+    showNotification(
+      `${videosToTouch.length} video(s) already in library.`,
+      "info",
+      "Their 'date added' has been updated."
+    );
+  }
+
+  if (videosToDownload.length === 0) {
+    placeholder.remove();
+    pendingInfoJobs.delete(jobId);
+    updateQueuePlaceholder();
+    return;
   }
 
   const fragment = document.createDocumentFragment();
 
-  infos.forEach((video) => {
+  videosToDownload.forEach((video) => {
     if (downloadJobs.has(video.id)) return;
 
     const originalOptions = pendingInfoJobs.get(jobId);
@@ -328,9 +347,13 @@ window.electronAPI.onDownloadError((data) => {
     item.querySelector(
       ".download-item-status"
     ).innerHTML = `<span class="material-symbols-outlined">warning</span> Error`;
-    item.querySelector(".download-item-eta").textContent =
-      (data.error || "Unknown").substring(0, 50) + "...";
-    showNotification(`Download failed: ${data.error || "Unknown"}`, "error");
+    const etaEl = item.querySelector(".download-item-eta");
+    const errorText = data.error || "Unknown";
+    etaEl.textContent = errorText;
+    etaEl.title = errorText;
+    item.querySelector(".download-item-speed").textContent = "";
+
+    showNotification("Download failed", "error", errorText);
     if (data.job) downloadJobs.set(data.id, data.job);
     updateItemActions(item, "error");
   }
@@ -342,8 +365,10 @@ window.electronAPI.onDownloadInfoError(({ jobId, error }) => {
   );
   if (placeholder) {
     placeholder.dataset.status = "info-error";
+    const titleEl = placeholder.querySelector(".download-item-title");
+    titleEl.textContent = error;
+    titleEl.title = error;
     placeholder.querySelector(".spinner").style.display = "none";
-    placeholder.querySelector(".download-item-title").textContent = error;
     placeholder.querySelector(".download-item-uploader").textContent =
       "Failed to fetch details";
     placeholder.querySelector(
