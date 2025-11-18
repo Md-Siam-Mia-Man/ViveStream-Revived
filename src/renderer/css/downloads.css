@@ -385,6 +385,8 @@
      font-size: 0.8rem;
      color: var(--secondary-text);
      margin-top: 4px;
+     gap: 8px;
+     min-width: 0;
 }
 
 .download-item-status {
@@ -392,6 +394,21 @@
      display: flex;
      align-items: center;
      gap: 6px;
+     flex-shrink: 0;
+}
+
+.download-item-speed {
+     width: 90px;
+     text-align: center;
+     flex-shrink: 0;
+}
+
+.download-item-eta {
+     flex-grow: 1;
+     text-align: right;
+     white-space: nowrap;
+     overflow: hidden;
+     text-overflow: ellipsis;
 }
 
 .download-item-status .material-symbols-outlined {
