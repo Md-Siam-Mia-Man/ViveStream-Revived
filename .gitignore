@@ -3,4 +3,9 @@ package-lock.json
 /release
 *.txt
 *.exe
+ffmpeg
+ffprobe
+yt-dlp
+yt-dlp_linux
+yt-dlp_macos
 Release_Notes.md
