@@ -441,13 +441,6 @@ function createWindow() {
   win.on("maximize", () => win.webContents.send("window-maximized", true));
   win.on("unmaximize", () => win.webContents.send("window-maximized", false));
   win.on("closed", () => (win = null));
-  win.on("close", (event) => {
-    if (!app.isQuitting) {
-      event.preventDefault();
-      win.hide();
-    }
-    return false;
-  });
   if (isDev) win.webContents.openDevTools({ mode: "detach" });
 }
 
