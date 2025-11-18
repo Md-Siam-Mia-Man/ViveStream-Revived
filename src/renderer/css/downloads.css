@@ -499,7 +499,7 @@
 /* Custom select container styles */
 .custom-select-container {
      position: relative;
-     width: 100%;
+     width: 150px;
      background-color: var(--secondary-background);
      border: 1px solid var(--border-color);
      border-radius: 6px;
