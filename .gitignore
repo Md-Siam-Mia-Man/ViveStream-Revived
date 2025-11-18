@@ -2,4 +2,5 @@
 package-lock.json
 /release
 *.txt
+*.exe
 Release_Notes.md
