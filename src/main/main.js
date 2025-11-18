@@ -16,6 +16,13 @@ const crypto = require("crypto");
 const url = require("url");
 const db = require("./database");
 
+app.commandLine.appendSwitch("enable-begin-frame-scheduling");
+app.commandLine.appendSwitch("enable-native-gpu-memory-buffers");
+app.commandLine.appendSwitch("enable-gpu-rasterization");
+app.commandLine.appendSwitch("enable-oop-rasterization");
+app.commandLine.appendSwitch("enable-zero-copy");
+app.commandLine.appendSwitch("ignore-gpu-blocklist");
+
 const isDev = !app.isPackaged;
 
 if (isDev) {
