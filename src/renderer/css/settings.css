@@ -102,6 +102,7 @@
      font-weight: 600;
      font-size: 1rem;
      text-align: center;
+     vertical-align: middle;
      color: var(--primary-accent);
 }
 
