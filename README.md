@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="./assets/Banner.png" style="width: 75%" alt="ViveStream Banner">
+  <img src="./assets/Banner.png" alt="ViveStream Banner">
   <h2>Your personal, offline, and stylish media sanctuary.</h2>
   <p>
     <img src="https://img.shields.io/github/v/release/Md-Siam-Mia-Man/ViveStream-Revived?style=flat-square" alt="Latest Release Version">
