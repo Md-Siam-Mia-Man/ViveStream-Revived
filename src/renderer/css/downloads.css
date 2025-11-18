@@ -511,7 +511,7 @@
      display: flex;
      justify-content: space-between;
      align-items: center;
-     padding: 10px 12px;
+     padding: 10px 20px;
      transition: background-color 0.2s;
 }
 
@@ -539,7 +539,7 @@
      overflow: hidden;
      margin-top: 4px;
      box-shadow: 0 4px 12px var(--shadow-color-heavy);
-     max-height: 200px;
+     max-height: 260px;
      overflow-y: auto;
      opacity: 0;
      visibility: hidden;
