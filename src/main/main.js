@@ -122,6 +122,8 @@ function sanitizeFilename(filename) {
 }
 
 function parseYtDlpError(stderr) {
+  if (stderr.includes("Could not copy") && stderr.includes("cookie database"))
+    return "Failed to access browser cookies. Please close your browser completely and retry.";
   if (stderr.includes("Private video"))
     return "This video is private and cannot be downloaded.";
   if (stderr.includes("Video unavailable")) return "This video is unavailable.";
@@ -135,7 +137,17 @@ function parseYtDlpError(stderr) {
     return "Too many requests. YouTube may be temporarily limiting your connection.";
   if (stderr.includes("HTTP Error 403: Forbidden"))
     return "Download failed (403 Forbidden). YouTube may be blocking the request.";
-  return "An unknown download error occurred. Check the console for details.";
+
+  const errorMatch = stderr.match(/ERROR: (.*)/);
+  if (errorMatch && errorMatch[1]) {
+    return errorMatch[1].trim();
+  }
+
+  if (stderr.trim()) {
+    return stderr.trim().split("\n").pop();
+  }
+
+  return "An unknown error occurred. Try updating the downloader in Settings.";
 }
 
 class Downloader {
@@ -187,7 +199,7 @@ class Downloader {
       "-o",
       path.join(videoPath, "%(id)s.%(ext)s"),
       "--ffmpeg-location",
-      ffmpegPath,
+      path.dirname(ffmpegPath),
       "--progress",
       "--no-warnings",
       "--retries",
@@ -201,8 +213,6 @@ class Downloader {
       "--write-description",
       "--embed-metadata",
       "--embed-chapters",
-      "--download-archive",
-      path.join(app.getPath("userData"), "download-archive.txt"),
     ];
 
     if (job.downloadType === "video") {
@@ -278,6 +288,11 @@ class Downloader {
       resetStallTimer();
       stderrOutput += data.toString();
       console.error(`Download Stderr (${videoInfo.id}): ${data}`);
+    });
+
+    proc.on("error", (err) => {
+      console.error(`Failed to start download process for ${videoInfo.id}:`, err);
+      stderrOutput = `Failed to start yt-dlp process. Error: ${err.message}`;
     });
 
     proc.on("close", async (code) => {
@@ -426,6 +441,13 @@ function createWindow() {
   win.on("maximize", () => win.webContents.send("window-maximized", true));
   win.on("unmaximize", () => win.webContents.send("window-maximized", false));
   win.on("closed", () => (win = null));
+  win.on("close", (event) => {
+    if (!app.isQuitting) {
+      event.preventDefault();
+      win.hide();
+    }
+    return false;
+  });
   if (isDev) win.webContents.openDevTools({ mode: "detach" });
 }
 
@@ -595,6 +617,11 @@ ipcMain.on("download-video", (e, { downloadOptions, jobId }) => {
 
   proc.stdout.on("data", (d) => (j += d));
   proc.stderr.on("data", (d) => (errorOutput += d));
+
+  proc.on("error", (err) => {
+    console.error("Failed to start info process:", err);
+    errorOutput = `Failed to start yt-dlp process. Error: ${err.message}`;
+  });
 
   proc.on("close", async (c) => {
     clearTimeout(timeout);
