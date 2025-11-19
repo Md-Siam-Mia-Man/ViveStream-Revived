@@ -5,7 +5,7 @@ import {
   showLoader,
   hideLoader,
 } from "./renderer.js";
-import { createGridItem } from "./ui.js";
+import { createGridItem, setHeaderActions } from "./ui.js";
 import { showConfirmationModal, showPromptModal } from "./modals.js";
 import { showNotification } from "./notifications.js";
 import { eventBus } from "./event-bus.js";
@@ -45,19 +45,20 @@ export async function renderPlaylistsPage(playlistsToRender) {
   }
 
   playlistsPage.innerHTML = "";
+  setHeaderActions(null); // Clear previous header actions
 
-  const header = document.createElement("div");
-  header.className = "page-header";
-  header.innerHTML = `
-    <h1 class="page-header-title">Playlists</h1>
-    <div class="page-header-actions">
-        <button class="action-button" id="create-new-playlist-btn"><span class="material-symbols-outlined">add</span> Create Playlist</button>
-    </div>`;
-  playlistsPage.appendChild(header);
+  const createBtn = document.createElement("button");
+  createBtn.className = "action-button";
+  createBtn.id = "create-new-playlist-btn";
+  createBtn.innerHTML = `<span class="material-symbols-outlined">add</span> Create Playlist`;
 
   if (AppState.playlists.length === 0) {
-    header.querySelector("#create-new-playlist-btn").id =
-      "create-new-playlist-btn-placeholder";
+    // If empty, button is managed inside placeholder logic usually, 
+    // but per requirements moving actions to header. 
+    // Let's add the button to header anyway.
+    setHeaderActions(createBtn);
+
+    // Placeholder content in page
     const placeholder = document.createElement("div");
     placeholder.className = "placeholder-page";
     placeholder.innerHTML = `
@@ -66,6 +67,8 @@ export async function renderPlaylistsPage(playlistsToRender) {
         <p class="placeholder-text">Create your first playlist to organize your media.</p>`;
     playlistsPage.appendChild(placeholder);
   } else {
+    setHeaderActions(createBtn);
+
     const content = document.createElement("div");
     content.className = "page-content";
 
@@ -126,6 +129,9 @@ export function renderPlaylistCard(playlist) {
 
 export async function renderPlaylistDetailPage(playlistId) {
   showLoader();
+  // Header actions are usually specific to lists, clear for detail view unless needed
+  setHeaderActions(null);
+
   const playlist = await window.electronAPI.playlistGetDetails(playlistId);
 
   playlistDetailPage.innerHTML = "";
@@ -147,8 +153,8 @@ export async function renderPlaylistDetailPage(playlistId) {
   const coverSrc = playlist.coverPath
     ? decodeURIComponent(playlist.coverPath)
     : playlist.videos[0]?.coverPath
-    ? decodeURIComponent(playlist.videos[0].coverPath)
-    : placeholderSrc;
+      ? decodeURIComponent(playlist.videos[0].coverPath)
+      : placeholderSrc;
 
   const header = document.createElement("div");
   header.className = "playlist-detail-header-container";
@@ -228,17 +234,16 @@ export async function openAddToPlaylistModal(videoId) {
     playlists.length === 0
       ? `<p class="placeholder-text" style="text-align:center; padding: 20px 0;">No playlists exist. Create one above.</p>`
       : playlists
-          .map(
-            (p) => `
+        .map(
+          (p) => `
             <div class="add-playlist-item" data-id="${p.id}">
-                <input type="checkbox" id="playlist-check-${p.id}" ${
-              checkedIds.has(p.id) ? "checked" : ""
+                <input type="checkbox" id="playlist-check-${p.id}" ${checkedIds.has(p.id) ? "checked" : ""
             }>
                 <span class="custom-checkbox"><span class="material-symbols-outlined">done</span></span>
                 <label for="playlist-check-${p.id}">${p.name}</label>
             </div>`
-          )
-          .join("");
+        )
+        .join("");
 
   addToPlaylistModal.classList.remove("hidden");
   inputField.value = "";
@@ -251,9 +256,8 @@ playlistsPage.addEventListener("click", async (e) => {
     e.stopPropagation();
     const itemEl = e.target.closest(".playlist-grid-item");
     const rect = menuBtn.getBoundingClientRect();
-    playlistContextMenu.style.left = `${
-      rect.left - playlistContextMenu.offsetWidth + rect.width
-    }px`;
+    playlistContextMenu.style.left = `${rect.left - playlistContextMenu.offsetWidth + rect.width
+      }px`;
     playlistContextMenu.style.top = `${rect.bottom + 5}px`;
     playlistContextMenu.dataset.playlistId = itemEl.dataset.id;
     playlistContextMenu.dataset.playlistName = itemEl.dataset.name;
@@ -288,9 +292,10 @@ playlistsPage.addEventListener("click", async (e) => {
     return;
   }
 
+  // Note: Since buttons are now in header, we listen via bubbling, but we need to ensure 
+  // the logic handles them regardless of location if ID matches.
   if (
-    e.target.closest("#create-new-playlist-btn") ||
-    e.target.closest("#create-new-playlist-btn-placeholder")
+    e.target.closest("#create-new-playlist-btn")
   ) {
     const newName = await showPromptModal(
       "Create New Playlist",
@@ -307,6 +312,28 @@ playlistsPage.addEventListener("click", async (e) => {
     }
   }
 });
+
+document.addEventListener('click', async (e) => {
+  if (e.target.closest('#create-new-playlist-btn')) {
+    const newName = await showPromptModal(
+      "Create New Playlist",
+      "Enter a name for your new playlist:"
+    );
+    if (newName && newName.trim()) {
+      const result = await window.electronAPI.playlistCreate(newName.trim());
+      if (result.success) {
+        showNotification(`Playlist "${newName.trim()}" created.`, "success");
+        // Only re-render if we are on playlists page
+        if (document.querySelector('.nav-item.active[data-page="playlists"]')) {
+          await renderPlaylistsPage();
+        }
+      } else {
+        showNotification(`Error: ${result.error}`, "error");
+      }
+    }
+  }
+});
+
 
 addToPlaylistModal.addEventListener("click", (e) => {
   if (

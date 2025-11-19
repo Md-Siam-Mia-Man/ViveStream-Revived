@@ -39,6 +39,16 @@ const lazyLoadObserver = new IntersectionObserver(
   { rootMargin: "0px 0px 200px 0px" }
 );
 
+export function setHeaderActions(content) {
+  const container = document.getElementById("header-actions-container");
+  if (container) {
+    container.innerHTML = "";
+    if (content) {
+      container.appendChild(content);
+    }
+  }
+}
+
 export function createGridItem(item, isPlaylistItem = false) {
   const clone = gridItemTemplate.content.cloneNode(true);
   const element = clone.querySelector(".video-grid-item");
@@ -145,36 +155,40 @@ function renderGrid(container, library, isPlaylistItem = false) {
     .forEach((img) => lazyLoadObserver.observe(img));
 }
 
-function createPageHeader(title) {
-  const header = document.createElement("div");
-  header.className = "page-header";
-  header.innerHTML = `
-        <h1 class="page-header-title">${title}</h1>
-        <div class="page-header-actions">
-            <button class="action-button" id="filter-btn">
-                <span class="material-symbols-outlined">filter_list</span>
-                <span>Filter</span>
-            </button>
-            <div class="sort-dropdown-container" id="sort-dropdown">
-                <button class="sort-dropdown-btn">
-                    <span class="material-symbols-outlined">sort</span>
-                    <span id="sort-dropdown-label">Sort By</span>
-                    <span class="material-symbols-outlined chevron">expand_more</span>
-                </button>
-                <div class="sort-options-list">
-                    <div class="sort-option-item" data-value="downloadedAt-desc"><span class="check material-symbols-outlined">done</span>Date Added (Newest)</div>
-                    <div class="sort-option-item" data-value="downloadedAt-asc"><span class="check material-symbols-outlined">done</span>Date Added (Oldest)</div>
-                    <div class="sort-option-item" data-value="title-asc"><span class="check material-symbols-outlined">done</span>Title (A-Z)</div>
-                    <div class="sort-option-item" data-value="title-desc"><span class="check material-symbols-outlined">done</span>Title (Z-A)</div>
-                    <div class="sort-option-item" data-value="duration-desc"><span class="check material-symbols-outlined">done</span>Duration (Longest)</div>
-                    <div class="sort-option-item" data-value="duration-asc"><span class="check material-symbols-outlined">done</span>Duration (Shortest)</div>
-                </div>
+function createHeaderActionsElement() {
+  const fragment = document.createDocumentFragment();
+
+  const filterBtn = document.createElement("button");
+  filterBtn.className = "action-button";
+  filterBtn.id = "filter-btn";
+  filterBtn.innerHTML = `<span class="material-symbols-outlined">filter_list</span><span>Filter</span>`;
+  fragment.appendChild(filterBtn);
+
+  const sortDropdown = document.createElement("div");
+  sortDropdown.className = "sort-dropdown-container";
+  sortDropdown.id = "sort-dropdown";
+  sortDropdown.innerHTML = `
+        <button class="sort-dropdown-btn">
+            <span class="material-symbols-outlined">sort</span>
+            <span id="sort-dropdown-label">Sort By</span>
+            <span class="material-symbols-outlined chevron">expand_more</span>
+        </button>
+        <div class="sort-options-list">
+            <div class="sort-option-item" data-value="downloadedAt-desc">
+            Newest<span class="check material-symbols-outlined">done</span></div>
+            <div class="sort-option-item" data-value="downloadedAt-asc">Oldest<span class="check material-symbols-outlined">done</span></div>
+            <div class="sort-option-item" data-value="title-asc">A-Z<span class="check material-symbols-outlined">done</span></div>
+            <div class="sort-option-item" data-value="title-desc">Z-A<span class="check material-symbols-outlined">done</span></div>
+            <div class="sort-option-item" data-value="duration-desc">Longest<span class="check material-symbols-outlined">done</span>
             </div>
+            <div class="sort-option-item" data-value="duration-asc">Shortest<span class="check material-symbols-outlined">done</span></div>
         </div>`;
-  return header;
+  fragment.appendChild(sortDropdown);
+
+  return fragment;
 }
 
-function createFilterPanel() {
+export function createFilterPanel() {
   const panel = document.createElement("div");
   panel.className = "filter-panel";
   panel.id = "filter-panel";
@@ -265,11 +279,18 @@ function reapplyCurrentView() {
 export function renderHomePageGrid() {
   const homePage = document.getElementById("home-page");
   homePage.innerHTML = "";
+
+  // Clear header actions first in case we add them conditionally
+  setHeaderActions(null);
+
   if (AppState.library.length === 0) {
     homePage.innerHTML = `<div class="placeholder-page"><span class="material-symbols-outlined placeholder-icon">home</span><h2 class="placeholder-title">Your Library is Empty</h2><p class="placeholder-text">Go to the <span class="link-style" id="go-to-downloads-link">Downloads</span> page to get started.</p></div>`;
   } else {
-    homePage.appendChild(createPageHeader("Home"));
+    // Inject actions into the main header
+    setHeaderActions(createHeaderActionsElement());
+    // Inject filter panel into page content
     homePage.appendChild(createFilterPanel());
+
     const grid = document.createElement("div");
     grid.className = "video-grid";
     grid.id = "video-grid-home";
@@ -284,10 +305,12 @@ export function renderHomePageGrid() {
 export function renderFavoritesPage() {
   const favoritesPage = document.getElementById("favorites-page");
   favoritesPage.innerHTML = "";
+  setHeaderActions(null);
+
   const favoritesLibrary = AppState.library.filter((video) => video.isFavorite);
 
   if (favoritesLibrary.length > 0) {
-    favoritesPage.appendChild(createPageHeader("Favorites"));
+    setHeaderActions(createHeaderActionsElement());
     favoritesPage.appendChild(createFilterPanel());
     const grid = document.createElement("div");
     grid.className = "video-grid";
@@ -296,7 +319,7 @@ export function renderFavoritesPage() {
     renderGrid(grid, favoritesLibrary);
     updateFilterIndicators();
   } else {
-    favoritesPage.innerHTML = `<div class="page-header"><h1 class="page-header-title">Favorites</h1></div><div class="placeholder-page"><span class="material-symbols-outlined placeholder-icon">heart_broken</span><h2 class="placeholder-title">No Favorites Yet</h2><p class="placeholder-text">Click the heart icon on any video to add it to your favorites.</p></div>`;
+    favoritesPage.innerHTML = `<div class="placeholder-page"><span class="material-symbols-outlined placeholder-icon">heart_broken</span><h2 class="placeholder-title">No Favorites Yet</h2><p class="placeholder-text">Click the heart icon on any video to add it to your favorites.</p></div>`;
   }
   updateSortUI();
   hideLoader();

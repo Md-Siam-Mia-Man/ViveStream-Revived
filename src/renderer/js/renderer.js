@@ -12,6 +12,7 @@ import {
   updateSearchPlaceholder,
   initializeUI,
   createGridItem,
+  setHeaderActions,
 } from "./ui.js";
 import {
   renderPlaylistsPage,
@@ -124,6 +125,13 @@ export function showPage(pageId, isSubPage = false) {
   ) {
     eventBus.emit("controls:pause");
   }
+
+  // When switching to pages that don't explicitly set header actions in their render function, clear them.
+  // Note: The major render functions (Home, Favorites, Playlists, Artists) now handle this.
+  // Settings and Downloads should clear it too.
+  if (pageId === 'settings' || pageId === 'downloads') {
+    setHeaderActions(null);
+  }
 }
 
 export async function handleNav(pageId) {
@@ -189,6 +197,7 @@ export function renderSearchPage(term) {
   contentWrapper.appendChild(searchPage);
 
   showPage("search-page", true);
+  setHeaderActions(null); // Clear header on search
 
   const videoResults = fuzzySearch(term, AppState.library, [
     "title",

@@ -1,6 +1,6 @@
 import { AppState, setAllArtists } from "./state.js";
 import { showPage, showLoader, hideLoader } from "./renderer.js";
-import { createGridItem } from "./ui.js";
+import { createGridItem, setHeaderActions } from "./ui.js";
 import { eventBus } from "./event-bus.js";
 import { showNotification } from "./notifications.js";
 
@@ -32,11 +32,7 @@ export async function renderArtistsPage(artistsToRender) {
   }
 
   artistsPage.innerHTML = "";
-
-  const header = document.createElement("div");
-  header.className = "page-header";
-  header.innerHTML = `<h1 class="page-header-title">Artists</h1>`;
-  artistsPage.appendChild(header);
+  setHeaderActions(null); // Clear header actions
 
   if (AppState.artists.length === 0) {
     const placeholder = document.createElement("div");
@@ -94,6 +90,7 @@ export function renderArtistCard(artist) {
 
 export async function renderArtistDetailPage(artistId) {
   showLoader();
+  setHeaderActions(null);
   const artist = await window.electronAPI.artistGetDetails(artistId);
 
   artistDetailPage.innerHTML = "";
