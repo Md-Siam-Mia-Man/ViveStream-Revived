@@ -7,8 +7,8 @@
   "license": "MIT",
   "scripts": {
     "start": "electron .",
-    "build": "electron-builder --win",
-    "postinstall": "electron-builder install-app-deps"
+    "rebuild": "electron-rebuild -f -w sqlite3",
+    "build": "npm run rebuild && electron-builder --win"
   },
   "keywords": [],
   "devDependencies": {
