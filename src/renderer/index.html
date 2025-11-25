@@ -20,18 +20,19 @@
 <body>
     <div class="title-bar">
         <div class="title-bar-drag-region"></div>
-        <div class="window-controls-container">
-            <button id="tray-btn" class="window-control-btn" title="Minimize to Tray">
-                <span class="material-symbols-outlined">close_fullscreen</span>
-            </button>
-            <button id="minimize-btn" class="window-control-btn" title="Minimize">
-                <span class="material-symbols-outlined">remove</span>
-            </button>
-            <button id="maximize-btn" class="window-control-btn" title="Maximize">
-                <span class="material-symbols-outlined">crop_square</span>
-            </button>
+        <div class="window-controls-container" id="window-controls">
+            <!-- Order will be handled by CSS flex-direction based on OS -->
             <button id="close-btn" class="window-control-btn close-btn" title="Close">
                 <span class="material-symbols-outlined">close</span>
+            </button>
+            <button id="minimize-btn" class="window-control-btn minimize-btn" title="Minimize">
+                <span class="material-symbols-outlined">remove</span>
+            </button>
+            <button id="maximize-btn" class="window-control-btn maximize-btn" title="Maximize">
+                <span class="material-symbols-outlined">crop_square</span>
+            </button>
+            <button id="tray-btn" class="window-control-btn tray-btn" title="Minimize to Tray">
+                <span class="material-symbols-outlined">close_fullscreen</span>
             </button>
         </div>
     </div>
@@ -93,24 +94,30 @@
         <nav class="sidebar">
             <ul class="sidebar-nav">
                 <li class="nav-item active" data-page="home">
-                    <span class="material-symbols-outlined">home</span><span>Home</span>
+                    <div class="nav-icon-container"><span class="material-symbols-outlined">home</span></div>
+                    <span class="nav-text">Home</span>
                 </li>
                 <li class="nav-item" data-page="favorites">
-                    <span class="material-symbols-outlined">favorite</span><span>Favorites</span>
+                    <div class="nav-icon-container"><span class="material-symbols-outlined">favorite</span></div>
+                    <span class="nav-text">Favorites</span>
                 </li>
                 <li class="nav-item" data-page="playlists">
-                    <span class="material-symbols-outlined">playlist_play</span><span>Playlists</span>
+                    <div class="nav-icon-container"><span class="material-symbols-outlined">playlist_play</span></div>
+                    <span class="nav-text">Playlists</span>
                 </li>
                 <li class="nav-item" data-page="artists">
-                    <span class="material-symbols-outlined">artist</span><span>Artists</span>
+                    <div class="nav-icon-container"><span class="material-symbols-outlined">artist</span></div>
+                    <span class="nav-text">Artists</span>
                 </li>
                 <li class="nav-item" data-page="downloads">
-                    <span class="material-symbols-outlined">download</span><span>Downloads</span>
+                    <div class="nav-icon-container"><span class="material-symbols-outlined">download</span></div>
+                    <span class="nav-text">Downloads</span>
                 </li>
             </ul>
             <ul class="sidebar-nav-bottom">
                 <li class="nav-item" data-page="settings">
-                    <span class="material-symbols-outlined">settings</span><span>Settings</span>
+                    <div class="nav-icon-container"><span class="material-symbols-outlined">settings</span></div>
+                    <span class="nav-text">Settings</span>
                 </li>
             </ul>
         </nav>
@@ -682,6 +689,8 @@
                     Delete
                 </div>
             </div>
+            <!-- Infinite Scroll Sentinel -->
+            <div id="scroll-sentinel" style="height: 10px; width: 100%;"></div>
         </div>
     </div>
     <div id="miniplayer" class="hidden">
