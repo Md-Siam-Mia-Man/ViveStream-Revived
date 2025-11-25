@@ -1,20 +1,22 @@
 {
   "name": "vivestream-revived",
-  "version": "5.9.0",
+  "version": "6.2.0",
   "description": "Your personal, offline, and stylish media sanctuary. Revived.",
   "main": "src/main/main.js",
   "author": "Md Siam Mia",
   "license": "MIT",
   "scripts": {
     "start": "electron .",
-    "rebuild": "electron-rebuild -f -w sqlite3",
-    "build": "npm run rebuild && electron-builder --win"
+    "build": "node helpers/builder.js",
+    "postinstall": "electron-builder install-app-deps"
   },
   "keywords": [],
   "devDependencies": {
+    "@electron/rebuild": "^4.0.1",
     "electron": "^39.2.3",
     "electron-builder": "^26.0.12",
-    "electron-rebuild": "^3.2.9"
+    "electron-rebuild": "^3.2.9",
+    "rimraf": "^6.1.2"
   },
   "dependencies": {
     "fs-extra": "^11.3.2",
@@ -23,7 +25,7 @@
     "sqlite3": "^5.1.7"
   },
   "build": {
-    "appId": "com.siam.vivestream",
+    "appId": "com.vivestream.app",
     "productName": "ViveStream",
     "copyright": "Copyright © 2025 Md Siam Mia",
     "directories": {
