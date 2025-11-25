@@ -19,6 +19,7 @@ export const AppState = {
     type: "all", // 'all', 'video', 'audio'
     duration: "all", // 'all', '<5', '5-20', '>20'
     source: "all", // 'all', 'youtube', 'local'
+    uploadDate: "all", // 'all', 'this_month', 'this_year', 'older'
   },
 };
 
