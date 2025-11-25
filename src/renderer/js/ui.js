@@ -18,9 +18,16 @@ const contextRemoveFromPlaylistBtn = document.getElementById(
 const gridItemTemplate = document.getElementById("video-grid-item-template");
 const sidebar = document.querySelector(".sidebar");
 const searchPage = document.getElementById("search-page");
+const scrollSentinel = document.getElementById("scroll-sentinel");
 
 let currentSort = localStorage.getItem("librarySort") || "downloadedAt-desc";
 let lastActivePageId = "home";
+
+// Infinite Scroll State
+let pendingItems = [];
+let renderContainer = null;
+let isPlaylistItemState = false;
+const BATCH_SIZE = 50;
 
 const lazyLoadObserver = new IntersectionObserver(
   (entries, observer) => {
@@ -38,6 +45,14 @@ const lazyLoadObserver = new IntersectionObserver(
   },
   { rootMargin: "0px 0px 200px 0px" }
 );
+
+// Infinite Scroll Observer
+const scrollObserver = new IntersectionObserver((entries) => {
+  if (entries[0].isIntersecting && pendingItems.length > 0) {
+    renderNextBatch();
+  }
+}, { rootMargin: "400px" });
+
 
 export function setHeaderActions(content) {
   const container = document.getElementById("header-actions-container");
@@ -151,31 +166,60 @@ function applyFilters(library) {
   });
 }
 
+function renderNextBatch() {
+  if (!renderContainer || pendingItems.length === 0) return;
+
+  const batch = pendingItems.splice(0, BATCH_SIZE);
+  const fragment = document.createDocumentFragment();
+
+  batch.forEach(item => {
+    const gridItem = createGridItem(item, isPlaylistItemState);
+    fragment.appendChild(gridItem);
+  });
+
+  renderContainer.appendChild(fragment);
+
+  // Attach observers to new images
+  renderContainer.querySelectorAll("img.lazy:not(.observed)").forEach(img => {
+    img.classList.add('observed');
+    lazyLoadObserver.observe(img);
+  });
+
+  if (pendingItems.length === 0) {
+    scrollObserver.unobserve(scrollSentinel);
+  }
+}
+
 function renderGrid(container, library, isPlaylistItem = false) {
   if (!container) return;
+
+  // Reset scroll state
+  scrollObserver.unobserve(scrollSentinel);
   container.innerHTML = "";
-  const fragment = document.createDocumentFragment();
+  renderContainer = container;
+  isPlaylistItemState = isPlaylistItem;
+  pendingItems = [];
+
   if (library && library.length > 0) {
     const filteredLibrary = applyFilters(library);
     const sortedLibrary = sortLibrary(filteredLibrary, currentSort);
 
     if (sortedLibrary.length > 0) {
-      sortedLibrary.forEach((item) => {
-        const gridItem = createGridItem(item, isPlaylistItem);
-        fragment.appendChild(gridItem);
-      });
+      pendingItems = sortedLibrary;
+      // Render first batch immediately
+      renderNextBatch();
+
+      // Start observing sentinel if there are more items
+      if (pendingItems.length > 0) {
+        scrollObserver.observe(scrollSentinel);
+      }
     } else {
       const emptyMessage = document.createElement("p");
       emptyMessage.className = "empty-message";
       emptyMessage.textContent = "No media matches the current filters.";
-      fragment.appendChild(emptyMessage);
+      container.appendChild(emptyMessage);
     }
   }
-  container.appendChild(fragment);
-
-  container
-    .querySelectorAll("img.lazy")
-    .forEach((img) => lazyLoadObserver.observe(img));
 }
 
 function createHeaderActionsElement() {
@@ -423,6 +467,12 @@ const debouncedSearchHandler = debounce((term) => {
   renderSearchPage(term);
 }, 300);
 
+function initializePlatformStyles() {
+  // Detect platform via UA string
+  const isMac = navigator.userAgent.includes("Mac");
+  document.body.classList.add(isMac ? "platform-mac" : "platform-win");
+}
+
 function initializeMainEventListeners() {
   document.body.addEventListener("click", async (e) => {
     const itemEl = e.target.closest(".video-grid-item");
@@ -491,12 +541,13 @@ function initializeMainEventListeners() {
     }
 
     if (e.target.closest("#filter-btn")) {
+      const btn = e.target.closest("#filter-btn");
       const panel = document.getElementById("filter-panel");
       if (panel) {
         panel.classList.toggle("visible");
+        btn.classList.toggle("active"); // Toggle active state on filter button
+
         // Force recalculation of indicators when panel becomes visible
-        // This fixes the 76px vs 116px misalignment issue caused by 
-        // calculating layout on a hidden/collapsed element.
         if (panel.classList.contains("visible")) {
           requestAnimationFrame(() => {
             updateFilterIndicators();
@@ -566,6 +617,7 @@ function initializeMainEventListeners() {
 }
 
 export function initializeUI() {
+  initializePlatformStyles();
   if (localStorage.getItem("sidebarPinned") === "true") {
     sidebar.classList.add("pinned");
   }
