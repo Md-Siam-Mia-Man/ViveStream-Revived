@@ -102,46 +102,82 @@ body {
      -webkit-app-region: drag;
 }
 
+/* Window Controls Styles */
 .window-controls-container {
      position: absolute;
-     top: 0;
-     right: 0;
-     height: 100%;
+     top: 8px;
+     height: 16px;
      display: flex;
      align-items: center;
+     gap: 8px;
      -webkit-app-region: no-drag;
-     background-color: var(--primary-background);
+     background-color: transparent;
      opacity: 0;
      transition: opacity 0.2s ease-in-out;
-     border-top-right-radius: 8px;
+     padding: 0 10px;
 }
 
-body:hover .window-controls-container {
+.title-bar:hover .window-controls-container {
      opacity: 1;
 }
 
+/* Platform specific alignment */
+body.platform-win .window-controls-container {
+     right: 0;
+     flex-direction: row;
+}
+
+body.platform-mac .window-controls-container {
+     left: 0;
+     flex-direction: row-reverse;
+}
+
+/* Traffic Light Button Styles */
 .window-control-btn {
      background: none;
      border: none;
-     color: var(--secondary-text);
-     padding: 0 12px;
-     height: 100%;
-     font-size: 16px;
+     width: 14px;
+     height: 14px;
+     border-radius: 50%;
+     padding: 0;
      cursor: pointer;
-     transition: background-color 0.2s, color 0.2s;
      display: flex;
      align-items: center;
      justify-content: center;
+     overflow: hidden;
+     position: relative;
 }
 
-.window-control-btn:hover {
-     color: var(--primary-text);
-     background-color: var(--secondary-background);
+.window-control-btn .material-symbols-outlined {
+     font-size: 10px;
+     opacity: 0;
+     color: rgba(0, 0, 0, 0.6);
+     font-weight: 700;
 }
 
-.window-control-btn.close-btn:hover {
-     background-color: #E81123;
-     color: #fff;
+.window-control-btn:hover .material-symbols-outlined {
+     opacity: 1;
+}
+
+/* Colors */
+.window-control-btn.close-btn {
+     background-color: #ff5f56;
+     border: 1px solid #e0443e;
+}
+
+.window-control-btn.minimize-btn {
+     background-color: #ffbd2e;
+     border: 1px solid #dea123;
+}
+
+.window-control-btn.maximize-btn {
+     background-color: #27c93f;
+     border: 1px solid #1aab29;
+}
+
+.window-control-btn.tray-btn {
+     background-color: #9a9a9a;
+     border: 1px solid #808080;
 }
 
 
@@ -246,6 +282,13 @@ button,
      color: var(--primary-text);
 }
 
+/* Active Filter Button Style */
+#header-actions-container .action-button.active {
+     color: var(--primary-accent);
+     background-color: color-mix(in srgb, var(--primary-accent) 15%, transparent);
+     border-radius: 20px;
+}
+
 .logo-container {
      display: flex;
      align-items: center;
@@ -346,6 +389,7 @@ button,
      position: relative;
 }
 
+/* Updated Sidebar Styles */
 .sidebar {
      width: var(--sidebar-collapsed-width);
      padding: 0 4px;
@@ -354,8 +398,10 @@ button,
      display: flex;
      flex-direction: column;
      justify-content: space-between;
-     transition: width 0.3s ease, padding 0.3s ease;
+     transition: width 0.3s ease;
      z-index: 1000;
+     overflow: hidden;
+     /* Ensure content stays within */
 }
 
 .sidebar:hover,
@@ -376,9 +422,9 @@ button,
 .nav-item {
      display: flex;
      align-items: center;
-     justify-content: center;
      margin: 5px 0;
-     padding: 12px;
+     padding: 8px 0;
+     /* Padding handles container */
      min-height: 48px;
      border-radius: 10px;
      cursor: pointer;
@@ -387,47 +433,34 @@ button,
      overflow: hidden;
 }
 
+.nav-icon-container {
+     width: 48px;
+     /* Fixed width for icon */
+     height: 32px;
+     display: flex;
+     align-items: center;
+     justify-content: center;
+     flex-shrink: 0;
+}
+
 .nav-item .material-symbols-outlined {
      font-size: 24px;
-     min-width: 24px;
-     text-align: center;
-     flex-shrink: 0;
      transition: transform 0.2s ease;
 }
 
-.nav-item span:not(.material-symbols-outlined) {
+.nav-text {
      white-space: nowrap;
      opacity: 0;
-     max-width: 0;
-     overflow: hidden;
-     transition: max-width 0.2s ease, opacity 0.1s ease;
+     padding-left: 12px;
+     transform: translateX(-10px);
+     transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
-.sidebar:hover .nav-item,
-.sidebar.pinned .nav-item {
-     justify-content: flex-start;
-     gap: 24px;
-}
-
-.sidebar:hover .nav-item span:not(.material-symbols-outlined),
-.sidebar.pinned .nav-item span:not(.material-symbols-outlined) {
+.sidebar:hover .nav-text,
+.sidebar.pinned .nav-text {
      opacity: 1;
-     max-width: 150px;
-     transition: max-width 0.2s ease 0.1s, opacity 0.2s ease 0.1s;
-}
-
-.nav-item:hover {
-     background-color: var(--secondary-background);
-}
-
-.nav-item.active {
-     background-color: var(--primary-accent);
-     font-weight: 600;
-     color: #fff;
-}
-
-.nav-item.active:hover .material-symbols-outlined {
-     transform: scale(1.1);
+     transform: translateX(0);
+     transition-delay: 0.1s;
 }
 
 .nav-item:hover {
@@ -448,6 +481,7 @@ button,
      flex-grow: 1;
      overflow-y: auto;
      position: relative;
+     scroll-behavior: smooth;
 }
 
 .loader-overlay {
@@ -557,6 +591,14 @@ button,
      font-size: 0.9rem;
      font-weight: 500;
      transition: all 0.2s ease;
+}
+
+#sort-dropdown-label {
+     max-width: 150px;
+     white-space: nowrap;
+     overflow: hidden;
+     text-overflow: ellipsis;
+     display: inline-block;
 }
 
 .sort-dropdown-btn:hover {
