@@ -100,6 +100,9 @@ function sortLibrary(library, sortKey) {
     let valA = a[key];
     let valB = b[key];
 
+    if (valA === undefined || valA === null) valA = "";
+    if (valB === undefined || valB === null) valB = "";
+
     if (key === "title") {
       valA = valA.toLowerCase();
       valB = valB.toLowerCase();
@@ -112,7 +115,11 @@ function sortLibrary(library, sortKey) {
 }
 
 function applyFilters(library) {
-  const { type, duration, source } = AppState.currentFilters;
+  const { type, duration, source, uploadDate } = AppState.currentFilters;
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1;
+
   return library.filter((item) => {
     const typeMatch = type === "all" || item.type === type;
 
@@ -124,7 +131,23 @@ function applyFilters(library) {
 
     const sourceMatch = source === "all" || item.source === source;
 
-    return typeMatch && durationMatch && sourceMatch;
+    let uploadDateMatch = true;
+    if (uploadDate !== "all" && item.upload_date) {
+      const year = parseInt(item.upload_date.substring(0, 4), 10);
+      const month = parseInt(item.upload_date.substring(4, 6), 10);
+
+      if (uploadDate === "this_month") {
+        uploadDateMatch = year === currentYear && month === currentMonth;
+      } else if (uploadDate === "this_year") {
+        uploadDateMatch = year === currentYear;
+      } else if (uploadDate === "older") {
+        uploadDateMatch = year < currentYear;
+      }
+    } else if (uploadDate !== "all" && !item.upload_date) {
+      uploadDateMatch = false;
+    }
+
+    return typeMatch && durationMatch && sourceMatch && uploadDateMatch;
   });
 }
 
@@ -175,8 +198,12 @@ function createHeaderActionsElement() {
         </button>
         <div class="sort-options-list">
             <div class="sort-option-item" data-value="downloadedAt-desc">
-            Newest<span class="check material-symbols-outlined">done</span></div>
-            <div class="sort-option-item" data-value="downloadedAt-asc">Oldest<span class="check material-symbols-outlined">done</span></div>
+            Date Added (Newest)<span class="check material-symbols-outlined">done</span></div>
+            <div class="sort-option-item" data-value="downloadedAt-asc">Date Added (Oldest)<span class="check material-symbols-outlined">done</span></div>
+            <div class="sort-option-item" data-value="upload_date-desc">
+            Upload Date (Newest)<span class="check material-symbols-outlined">done</span></div>
+            <div class="sort-option-item" data-value="upload_date-asc">
+            Upload Date (Oldest)<span class="check material-symbols-outlined">done</span></div>
             <div class="sort-option-item" data-value="title-asc">A-Z<span class="check material-symbols-outlined">done</span></div>
             <div class="sort-option-item" data-value="title-desc">Z-A<span class="check material-symbols-outlined">done</span></div>
             <div class="sort-option-item" data-value="duration-desc">Longest<span class="check material-symbols-outlined">done</span>
@@ -215,6 +242,14 @@ export function createFilterPanel() {
             <button class="filter-btn" data-value="youtube">YouTube</button>
             <button class="filter-btn" data-value="local">Local</button>
         </div>
+        <div class="filter-group" data-filter="uploadDate">
+            <div class="filter-selection-indicator"></div>
+            <label>Upload Date:</label>
+            <button class="filter-btn" data-value="all">All</button>
+            <button class="filter-btn" data-value="this_month">This Month</button>
+            <button class="filter-btn" data-value="this_year">This Year</button>
+            <button class="filter-btn" data-value="older">Older</button>
+        </div>
     `;
   return panel;
 }
@@ -237,6 +272,8 @@ function updateFilterIndicators() {
     if (activeButton) {
       activeButton.classList.add("active");
       const indicator = group.querySelector(".filter-selection-indicator");
+
+      // Ensure calculation is based on the active button's current position
       indicator.style.left = `${activeButton.offsetLeft}px`;
       indicator.style.width = `${activeButton.offsetWidth}px`;
     }
@@ -280,15 +317,12 @@ export function renderHomePageGrid() {
   const homePage = document.getElementById("home-page");
   homePage.innerHTML = "";
 
-  // Clear header actions first in case we add them conditionally
   setHeaderActions(null);
 
   if (AppState.library.length === 0) {
     homePage.innerHTML = `<div class="placeholder-page"><span class="material-symbols-outlined placeholder-icon">home</span><h2 class="placeholder-title">Your Library is Empty</h2><p class="placeholder-text">Go to the <span class="link-style" id="go-to-downloads-link">Downloads</span> page to get started.</p></div>`;
   } else {
-    // Inject actions into the main header
     setHeaderActions(createHeaderActionsElement());
-    // Inject filter panel into page content
     homePage.appendChild(createFilterPanel());
 
     const grid = document.createElement("div");
@@ -460,6 +494,14 @@ function initializeMainEventListeners() {
       const panel = document.getElementById("filter-panel");
       if (panel) {
         panel.classList.toggle("visible");
+        // Force recalculation of indicators when panel becomes visible
+        // This fixes the 76px vs 116px misalignment issue caused by 
+        // calculating layout on a hidden/collapsed element.
+        if (panel.classList.contains("visible")) {
+          requestAnimationFrame(() => {
+            updateFilterIndicators();
+          });
+        }
       }
     }
 
