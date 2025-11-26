@@ -128,7 +128,7 @@ body.platform-win .window-controls-container {
 }
 
 body.platform-mac .window-controls-container {
-     left: 0;
+     right: 0;
      flex-direction: row-reverse;
 }
 
