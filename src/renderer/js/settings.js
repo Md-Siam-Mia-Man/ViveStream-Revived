@@ -3,11 +3,13 @@ import { showNotification } from "./notifications.js";
 import { loadLibrary, showPage } from "./renderer.js";
 import { resetPlaybackState } from "./state.js";
 import { closeMiniplayer } from "./miniplayer.js";
+import { toggleFPSCounter } from "./ui.js";
 
 let currentSettings = {};
 
 const appVersionEl = document.getElementById("app-version");
 const themeToggle = document.getElementById("theme-toggle");
+const fpsToggle = document.getElementById("fps-toggle");
 const concurrentDownloadsSlider = document.getElementById(
   "concurrent-downloads-slider"
 );
@@ -77,6 +79,10 @@ export async function loadSettings() {
   updateSettingsUI(settings);
   const savedTheme = localStorage.getItem("theme") || "dark";
   themeToggle.checked = savedTheme === "light";
+
+  const savedFps = localStorage.getItem("showFPS") === "true";
+  fpsToggle.checked = savedFps;
+  toggleFPSCounter(savedFps);
 }
 
 export function initializeSettingsPage() {
@@ -88,6 +94,11 @@ export function initializeSettingsPage() {
     const theme = e.target.checked ? "light" : "dark";
     document.body.classList.toggle("light-theme", e.target.checked);
     localStorage.setItem("theme", theme);
+  });
+
+  fpsToggle.addEventListener("change", (e) => {
+    localStorage.setItem("showFPS", e.target.checked);
+    toggleFPSCounter(e.target.checked);
   });
 
   const saveSetting = (key, value) => {
