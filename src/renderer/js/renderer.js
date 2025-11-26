@@ -126,9 +126,6 @@ export function showPage(pageId, isSubPage = false) {
     eventBus.emit("controls:pause");
   }
 
-  // When switching to pages that don't explicitly set header actions in their render function, clear them.
-  // Note: The major render functions (Home, Favorites, Playlists, Artists) now handle this.
-  // Settings and Downloads should clear it too.
   if (pageId === 'settings' || pageId === 'downloads') {
     setHeaderActions(null);
   }
@@ -197,7 +194,7 @@ export function renderSearchPage(term) {
   contentWrapper.appendChild(searchPage);
 
   showPage("search-page", true);
-  setHeaderActions(null); // Clear header on search
+  setHeaderActions(null);
 
   const videoResults = fuzzySearch(term, AppState.library, [
     "title",
@@ -260,10 +257,23 @@ function initializeWindowControls() {
 }
 
 function initializeContextMenu() {
-  document.addEventListener("click", () => {
-    videoContextMenu.classList.remove("visible");
-    playlistContextMenu.classList.remove("visible");
-  });
+  const hideContextMenus = () => {
+    if (videoContextMenu.classList.contains("visible")) {
+      videoContextMenu.classList.remove("visible");
+    }
+    if (playlistContextMenu.classList.contains("visible")) {
+      playlistContextMenu.classList.remove("visible");
+    }
+  };
+
+  document.addEventListener("click", hideContextMenus);
+
+  // KEY FIX: Use capture=true to catch scroll events from ANY element (content wrapper, lists, etc)
+  // This ensures the menu closes when scrolling starts anywhere.
+  document.addEventListener("scroll", hideContextMenus, true);
+
+  window.addEventListener("resize", hideContextMenus);
+
   videoContextMenu.addEventListener("click", (e) => e.stopPropagation());
   playlistContextMenu.addEventListener("click", (e) => e.stopPropagation());
 
