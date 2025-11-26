@@ -19,9 +19,45 @@ const gridItemTemplate = document.getElementById("video-grid-item-template");
 const sidebar = document.querySelector(".sidebar");
 const searchPage = document.getElementById("search-page");
 const scrollSentinel = document.getElementById("scroll-sentinel");
+const fpsCounterEl = document.getElementById("fps-counter");
 
 let currentSort = localStorage.getItem("librarySort") || "downloadedAt-desc";
 let lastActivePageId = "home";
+
+// FPS Logic
+let fpsAnimationFrameId = null;
+let fpsLastTime = performance.now();
+let fpsFrameCount = 0;
+
+export function toggleFPSCounter(isVisible) {
+  if (isVisible) {
+    fpsCounterEl.classList.remove("hidden");
+    if (!fpsAnimationFrameId) {
+      fpsLastTime = performance.now();
+      fpsFrameCount = 0;
+      updateFPS();
+    }
+  } else {
+    fpsCounterEl.classList.add("hidden");
+    if (fpsAnimationFrameId) {
+      cancelAnimationFrame(fpsAnimationFrameId);
+      fpsAnimationFrameId = null;
+    }
+  }
+}
+
+function updateFPS() {
+  const now = performance.now();
+  fpsFrameCount++;
+
+  if (now >= fpsLastTime + 1000) {
+    fpsCounterEl.textContent = `FPS: ${fpsFrameCount}`;
+    fpsFrameCount = 0;
+    fpsLastTime = now;
+  }
+
+  fpsAnimationFrameId = requestAnimationFrame(updateFPS);
+}
 
 // Infinite Scroll State
 let pendingItems = [];
