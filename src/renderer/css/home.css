@@ -107,6 +107,7 @@
      overflow: hidden;
      text-overflow: ellipsis;
      display: -webkit-box;
+     line-clamp: 2;
      -webkit-line-clamp: 2;
      -webkit-box-orient: vertical;
 }
@@ -164,10 +165,10 @@
 
 .filter-panel {
      display: flex;
-     gap: 24px;
+     flex-wrap: wrap;
+     gap: 12px;
      align-items: center;
      justify-content: center;
-     overflow: hidden;
      border-radius: 16px;
      max-height: 0;
      opacity: 0;
@@ -176,11 +177,9 @@
 }
 
 .filter-panel.visible {
-     max-height: 100px;
+     max-height: 500px;
      opacity: 1;
      transform: translateY(0);
-     padding: 24px;
-     margin: 10px 0px;
 }
 
 .filter-group {
