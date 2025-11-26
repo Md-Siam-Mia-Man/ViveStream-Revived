@@ -2,6 +2,7 @@ const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("electronAPI", {
   getAssetsPath: () => ipcRenderer.invoke("get-assets-path"),
+  getPlatform: () => process.platform,
 
   downloadVideo: (options, jobId) =>
     ipcRenderer.send("download-video", { downloadOptions: options, jobId }),
