@@ -124,20 +124,20 @@ body {
 /* Platform specific alignment */
 body.platform-win .window-controls-container {
      right: 0;
-     flex-direction: row;
+     flex-direction: row-reverse;
 }
 
 body.platform-mac .window-controls-container {
      left: 0;
-     flex-direction: row-reverse;
+     flex-direction: row;
 }
 
 /* Traffic Light Button Styles */
 .window-control-btn {
      background: none;
      border: none;
-     width: 14px;
-     height: 14px;
+     width: 18px;
+     height: 18px;
      border-radius: 50%;
      padding: 0;
      cursor: pointer;
@@ -150,13 +150,8 @@ body.platform-mac .window-controls-container {
 
 .window-control-btn .material-symbols-outlined {
      font-size: 10px;
-     opacity: 0;
-     color: rgba(0, 0, 0, 0.6);
+     color: white;
      font-weight: 700;
-}
-
-.window-control-btn:hover .material-symbols-outlined {
-     opacity: 1;
 }
 
 /* Colors */
@@ -240,7 +235,6 @@ button,
 .sidebar.collapsed~.content-wrapper .header-left {
      width: var(--sidebar-collapsed-width);
 }
-
 
 .header-center {
      flex-grow: 1;
