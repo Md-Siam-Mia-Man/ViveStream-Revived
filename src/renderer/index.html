@@ -22,17 +22,17 @@
         <div class="title-bar-drag-region"></div>
         <div class="window-controls-container" id="window-controls">
             <!-- Order will be handled by CSS flex-direction based on OS -->
-            <button id="close-btn" class="window-control-btn close-btn" title="Close">
-                <span class="material-symbols-outlined">close</span>
-            </button>
-            <button id="maximize-btn" class="window-control-btn maximize-btn" title="Maximize">
-                <span class="material-symbols-outlined">crop_square</span>
+            <button id="tray-btn" class="window-control-btn tray-btn" title="Minimize to Tray">
+                <span class="material-symbols-outlined">close_fullscreen</span>
             </button>
             <button id="minimize-btn" class="window-control-btn minimize-btn" title="Minimize">
                 <span class="material-symbols-outlined">remove</span>
             </button>
-            <button id="tray-btn" class="window-control-btn tray-btn" title="Minimize to Tray">
-                <span class="material-symbols-outlined">close_fullscreen</span>
+            <button id="maximize-btn" class="window-control-btn maximize-btn" title="Maximize">
+                <span class="material-symbols-outlined">crop_square</span>
+            </button>
+            <button id="close-btn" class="window-control-btn close-btn" title="Close">
+                <span class="material-symbols-outlined">close</span>
             </button>
         </div>
     </div>
@@ -408,6 +408,26 @@
                                     <input type="checkbox" id="theme-toggle" />
                                     <span class="slider round"></span>
                                 </label>
+                            </div>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-text">
+                                <label>Window Controls</label>
+                                <p>Choose the position of window buttons (Minimize, Maximize, Close).</p>
+                            </div>
+                            <div class="setting-control">
+                                <div class="custom-select-container" id="window-controls-select-container">
+                                    <div class="selected-option" data-value="auto">
+                                        <span>Automatic</span>
+                                        <span class="chevron"><span
+                                                class="material-symbols-outlined">expand_more</span></span>
+                                    </div>
+                                    <div class="options-list">
+                                        <div class="option-item selected" data-value="auto">Automatic</div>
+                                        <div class="option-item" data-value="win">Windows/Linux</div>
+                                        <div class="option-item" data-value="mac">macOS</div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         <div class="setting-item">
