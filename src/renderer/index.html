@@ -88,6 +88,7 @@
             <div id="header-actions-container"></div>
         </div>
         <div class="header-right">
+            <div id="fps-counter" class="fps-counter hidden">FPS: 0</div>
         </div>
     </div>
     <div class="app-body">
@@ -405,6 +406,18 @@
                             <div class="setting-control">
                                 <label class="switch">
                                     <input type="checkbox" id="theme-toggle" />
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-text">
+                                <label for="fps-toggle">Show FPS</label>
+                                <p>Display a real-time frames per second counter.</p>
+                            </div>
+                            <div class="setting-control">
+                                <label class="switch">
+                                    <input type="checkbox" id="fps-toggle" />
                                     <span class="slider round"></span>
                                 </label>
                             </div>
