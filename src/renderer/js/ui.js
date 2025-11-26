@@ -468,8 +468,8 @@ const debouncedSearchHandler = debounce((term) => {
 }, 300);
 
 function initializePlatformStyles() {
-  // Detect platform via UA string
-  const isMac = navigator.userAgent.includes("Mac");
+  const platform = window.electronAPI.getPlatform();
+  const isMac = platform === "darwin";
   document.body.classList.add(isMac ? "platform-mac" : "platform-win");
 }
 
