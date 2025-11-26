@@ -3,13 +3,16 @@ import { showNotification } from "./notifications.js";
 import { loadLibrary, showPage } from "./renderer.js";
 import { resetPlaybackState } from "./state.js";
 import { closeMiniplayer } from "./miniplayer.js";
-import { toggleFPSCounter } from "./ui.js";
+import { toggleFPSCounter, setWindowControlsAlignment } from "./ui.js";
 
 let currentSettings = {};
 
 const appVersionEl = document.getElementById("app-version");
 const themeToggle = document.getElementById("theme-toggle");
 const fpsToggle = document.getElementById("fps-toggle");
+const windowControlsSelect = document.getElementById(
+  "window-controls-select-container"
+);
 const concurrentDownloadsSlider = document.getElementById(
   "concurrent-downloads-slider"
 );
@@ -83,6 +86,21 @@ export async function loadSettings() {
   const savedFps = localStorage.getItem("showFPS") === "true";
   fpsToggle.checked = savedFps;
   toggleFPSCounter(savedFps);
+
+  const savedAlignment = localStorage.getItem("windowControlsAlignment") || "auto";
+  const alignmentOption = windowControlsSelect.querySelector(
+    `.option-item[data-value="${savedAlignment}"]`
+  );
+  if (alignmentOption) {
+    const selectedEl = windowControlsSelect.querySelector(".selected-option");
+    selectedEl.querySelector("span").textContent = alignmentOption.textContent;
+    selectedEl.dataset.value = savedAlignment;
+
+    windowControlsSelect
+      .querySelectorAll(".option-item")
+      .forEach((o) => o.classList.remove("selected"));
+    alignmentOption.classList.add("selected");
+  }
 }
 
 export function initializeSettingsPage() {
@@ -99,6 +117,14 @@ export function initializeSettingsPage() {
   fpsToggle.addEventListener("change", (e) => {
     localStorage.setItem("showFPS", e.target.checked);
     toggleFPSCounter(e.target.checked);
+  });
+
+  windowControlsSelect.addEventListener("change", (e) => {
+    const value = e.target
+      .closest(".custom-select-container")
+      .querySelector(".selected-option").dataset.value;
+    localStorage.setItem("windowControlsAlignment", value);
+    setWindowControlsAlignment(value);
   });
 
   const saveSetting = (key, value) => {
