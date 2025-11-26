@@ -503,10 +503,23 @@ const debouncedSearchHandler = debounce((term) => {
   renderSearchPage(term);
 }, 300);
 
+export function setWindowControlsAlignment(alignment) {
+  document.body.classList.remove("platform-win", "platform-mac");
+  let type = alignment;
+
+  if (!type || type === "auto") {
+    const platform = window.electronAPI.getPlatform();
+    type = platform === "darwin" ? "mac" : "win";
+  }
+
+  document.body.classList.add(
+    type === "mac" ? "platform-mac" : "platform-win"
+  );
+}
+
 function initializePlatformStyles() {
-  const platform = window.electronAPI.getPlatform();
-  const isMac = platform === "darwin";
-  document.body.classList.add(isMac ? "platform-mac" : "platform-win");
+  const saved = localStorage.getItem("windowControlsAlignment") || "auto";
+  setWindowControlsAlignment(saved);
 }
 
 function initializeMainEventListeners() {
