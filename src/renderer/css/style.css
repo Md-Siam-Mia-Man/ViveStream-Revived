@@ -124,20 +124,20 @@ body {
 /* Platform specific alignment */
 body.platform-win .window-controls-container {
      right: 0;
-     flex-direction: row-reverse;
+     flex-direction: row;
 }
 
 body.platform-mac .window-controls-container {
      left: 0;
-     flex-direction: row;
+     flex-direction: row-reverse;
 }
 
 /* Traffic Light Button Styles */
 .window-control-btn {
      background: none;
      border: none;
-     width: 18px;
-     height: 18px;
+     width: 14px;
+     height: 14px;
      border-radius: 50%;
      padding: 0;
      cursor: pointer;
@@ -150,8 +150,13 @@ body.platform-mac .window-controls-container {
 
 .window-control-btn .material-symbols-outlined {
      font-size: 10px;
-     color: white;
+     opacity: 0;
+     color: rgba(0, 0, 0, 0.6);
      font-weight: 700;
+}
+
+.window-control-btn:hover .material-symbols-outlined {
+     opacity: 1;
 }
 
 /* Colors */
@@ -236,6 +241,7 @@ button,
      width: var(--sidebar-collapsed-width);
 }
 
+/* Updated Header Center for correct search bar positioning */
 .header-center {
      flex-grow: 1;
      display: grid;
@@ -376,6 +382,22 @@ button,
      display: none;
 }
 
+.fps-counter {
+     font-family: monospace;
+     font-size: 0.8rem;
+     color: var(--primary-accent);
+     background: var(--secondary-background);
+     padding: 4px 8px;
+     border-radius: 4px;
+     margin-right: 12px;
+     font-weight: bold;
+     pointer-events: none;
+}
+
+.fps-counter.hidden {
+     display: none;
+}
+
 .app-body {
      display: flex;
      flex-grow: 1;
@@ -395,7 +417,6 @@ button,
      transition: width 0.3s ease;
      z-index: 1000;
      overflow: hidden;
-     /* Ensure content stays within */
 }
 
 .sidebar:hover,
