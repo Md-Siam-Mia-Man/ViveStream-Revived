@@ -258,13 +258,36 @@ export function initializeSettingsPage() {
       "Reset ViveStream?",
       "This will restore all settings to their defaults. Your downloaded media will not be deleted.",
       async () => {
+        // Reset Backend Settings
         const newSettings = await window.electronAPI.resetApp();
+
+        // Reset Local Storage (Theme, UI prefs)
+        localStorage.clear();
+
+        // Apply Default Theme (Dark)
+        document.body.classList.remove("light-theme");
+        if (themeToggle) themeToggle.checked = false;
+
+        // Reset FPS
+        toggleFPSCounter(false);
+        if (fpsToggle) fpsToggle.checked = false;
+
+        // Reset Window Controls
+        setWindowControlsAlignment("auto");
+        // Reset dropdown in UI
+        const defaultWinControl = windowControlsSelect.querySelector('.option-item[data-value="auto"]');
+        if (defaultWinControl) defaultWinControl.click();
+
+        // Update Backend UI elements
         updateSettingsUI(newSettings);
+
+        // Reload player settings if needed
         const playerModule = await import("./player.js");
         playerModule.loadSettings();
+
         showNotification(
           "ViveStream has been reset to default settings.",
-          "info"
+          "success"
         );
       }
     );
@@ -301,9 +324,7 @@ export function initializeSettingsPage() {
         if (result.success) {
           showNotification("All local media has been deleted.", "success");
           resetPlaybackState();
-          // Assuming videoPlayer is accessible here or imported; if not, logic should be handled appropriately.
-          // Since videoPlayer is not imported here, we rely on eventBus or direct DOM if needed.
-          // However, for safety in this scope:
+          // Clear player source
           const vp = document.getElementById("video-player");
           if (vp) vp.src = "";
 
