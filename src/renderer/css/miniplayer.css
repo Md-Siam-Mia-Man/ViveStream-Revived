@@ -46,6 +46,14 @@
      object-fit: cover;
 }
 
+/* 
+   Scale Subtitles for Miniplayer 
+   Calculates 60% of the user-defined size to fit the small window
+*/
+#miniplayer video::cue {
+     font-size: calc(var(--subtitle-size, 1.25rem) * 0.6) !important;
+}
+
 .miniplayer-artwork {
      position: absolute;
      top: 0;
