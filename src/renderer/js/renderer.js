@@ -13,8 +13,6 @@ import {
   initializeUI,
   createGridItem,
   setHeaderActions,
-  createHeaderActionsElement,
-  createFilterPanel,
 } from "./ui.js";
 import {
   renderPlaylistsPage,
@@ -117,18 +115,6 @@ export function showPage(pageId, isSubPage = false) {
   if (targetPageId === "player-page") {
     deactivateMiniplayer();
     contentWrapper.scrollTo(0, 0);
-    // Explicitly set header actions for player page so filtering works
-    setHeaderActions(createHeaderActionsElement());
-
-    // Ensure filter panel is present if not already appended
-    if (!playerPage.querySelector(".filter-panel")) {
-      const panel = createFilterPanel();
-      // Insert before main content to match layout, or append.
-      // Player page layout is specific, might need specific container.
-      // Actually player page structure is <main class="main-content">...
-      // Filter panel usually goes into the page container.
-      playerPage.insertBefore(panel, playerPage.firstChild);
-    }
   }
 
   if (
@@ -281,7 +267,11 @@ function initializeContextMenu() {
   };
 
   document.addEventListener("click", hideContextMenus);
+
+  // KEY FIX: Use capture=true to catch scroll events from ANY element (content wrapper, lists, etc)
+  // This ensures the menu closes when scrolling starts anywhere.
   document.addEventListener("scroll", hideContextMenus, true);
+
   window.addEventListener("resize", hideContextMenus);
 
   videoContextMenu.addEventListener("click", (e) => e.stopPropagation());

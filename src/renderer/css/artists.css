@@ -54,13 +54,9 @@
   color: var(--secondary-text);
 }
 
-/* Artist Detail Header */
 .artist-detail-header-wrapper {
   position: relative;
   overflow: hidden;
-  flex-shrink: 0;
-  width: 100%;
-  min-height: 250px;
 }
 
 .artist-detail-header-wrapper::before {
@@ -83,10 +79,9 @@
   z-index: 2;
   display: flex;
   align-items: center;
-  gap: 32px;
-  padding: 40px;
+  gap: 24px;
+  padding: 32px;
   background: linear-gradient(to top, var(--primary-background) 0%, color-mix(in srgb, var(--primary-background) 70%, transparent) 50%, color-mix(in srgb, var(--primary-background) 40%, transparent) 100%);
-  height: 100%;
 }
 
 .artist-detail-image-container {
@@ -106,39 +101,16 @@
   box-shadow: 0 5px 20px var(--shadow-color-heavy);
 }
 
-/* Fix for edit button positioning and z-index */
 .artist-detail-image-container .edit-cover-btn {
   position: absolute;
   bottom: 5px;
   right: 5px;
-  background-color: rgba(0, 0, 0, 0.7);
-  border: none;
-  color: white;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  opacity: 0;
-  transition: opacity 0.2s, background-color 0.2s;
-  font-size: 20px;
-  z-index: 10;
-}
-
-.artist-detail-image-container:hover .edit-cover-btn {
-  opacity: 1;
-}
-
-.artist-detail-image-container .edit-cover-btn:hover {
-  background-color: var(--primary-accent);
 }
 
 .artist-detail-info {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
   text-shadow: 0 2px 5px var(--shadow-color-heavy);
 }
 
@@ -147,7 +119,6 @@
   font-size: 3.5rem;
   font-weight: 700;
   color: #fff;
-  line-height: 1.1;
 }
 
 body.light-theme .artist-detail-header-wrapper::before {
@@ -160,10 +131,9 @@ body.light-theme .artist-detail-name {
 }
 
 .artist-detail-meta {
-  font-size: 1.1rem;
+  font-size: 1rem;
   color: #eee;
   font-weight: 500;
-  opacity: 0.9;
 }
 
 body.light-theme .artist-detail-meta {

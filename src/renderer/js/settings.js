@@ -41,10 +41,7 @@ const updaterConsoleContainer = document.getElementById(
 const updaterConsole = document.getElementById("updater-console");
 const resetAppBtn = document.getElementById("reset-app-btn");
 const clearMediaBtn = document.getElementById("clear-media-btn");
-const deleteDbBtn = document.getElementById("delete-db-btn");
-const openVideoDirBtn = document.getElementById("open-video-dir-btn");
-const openDbDirBtn = document.getElementById("open-db-dir-btn");
-const openBinDirBtn = document.getElementById("open-bin-dir-btn");
+const videoPlayer = document.getElementById("video-player");
 
 const fileOpProgressContainer = document.getElementById(
   "file-op-progress-container"
@@ -270,28 +267,6 @@ export function initializeSettingsPage() {
     );
   });
 
-  deleteDbBtn.addEventListener("click", () => {
-    showConfirmationModal(
-      "Delete Database?",
-      "<strong>WARNING:</strong> This will delete your database and restart the application. All metadata (playlists, favorites, histories) will be lost, but your downloaded media files will remain on disk. You can re-import them afterwards.",
-      async () => {
-        await window.electronAPI.deleteDatabase();
-      }
-    );
-  });
-
-  openVideoDirBtn.addEventListener("click", () => {
-    window.electronAPI.openMediaFolder();
-  });
-
-  openDbDirBtn.addEventListener("click", () => {
-    window.electronAPI.openDatabaseFolder();
-  });
-
-  openBinDirBtn.addEventListener("click", () => {
-    window.electronAPI.openVendorFolder();
-  });
-
   clearMediaBtn.addEventListener("click", () => {
     showConfirmationModal(
       "Delete All Media?",
@@ -301,12 +276,7 @@ export function initializeSettingsPage() {
         if (result.success) {
           showNotification("All local media has been deleted.", "success");
           resetPlaybackState();
-          // Assuming videoPlayer is accessible here or imported; if not, logic should be handled appropriately.
-          // Since videoPlayer is not imported here, we rely on eventBus or direct DOM if needed.
-          // However, for safety in this scope:
-          const vp = document.getElementById("video-player");
-          if (vp) vp.src = "";
-
+          videoPlayer.src = "";
           closeMiniplayer();
           await loadLibrary();
           showPage("home");

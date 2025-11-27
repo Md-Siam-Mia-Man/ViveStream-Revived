@@ -26,16 +26,12 @@ contextBridge.exposeInMainWorld("electronAPI", {
   videosTouch: (videoIds) => ipcRenderer.invoke("videos:touch", videoIds),
 
   openExternal: (url) => ipcRenderer.send("open-external", url),
-  openMediaFolder: () => ipcRenderer.invoke("open-media-folder"),
-  openDatabaseFolder: () => ipcRenderer.invoke("open-database-folder"),
-  openVendorFolder: () => ipcRenderer.invoke("open-vendor-folder"),
 
   getSettings: () => ipcRenderer.invoke("get-settings"),
   getAppVersion: () => ipcRenderer.invoke("get-app-version"),
   saveSettings: (s) => ipcRenderer.send("save-settings", s),
   resetApp: () => ipcRenderer.invoke("reset-app"),
   clearAllMedia: () => ipcRenderer.invoke("clear-all-media"),
-  deleteDatabase: () => ipcRenderer.invoke("db:delete"),
   onClearLocalStorage: (cb) => ipcRenderer.on("clear-local-storage", cb),
 
   minimizeWindow: () => ipcRenderer.send("minimize-window"),
@@ -79,11 +75,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
   artistGetDetails: (id) => ipcRenderer.invoke("artist:get-details", id),
   artistUpdateThumbnail: (artistId) =>
     ipcRenderer.invoke("artist:update-thumbnail", artistId),
-  artistRename: (id, name) => ipcRenderer.invoke("artist:rename", id, name),
-  artistDelete: (id) => ipcRenderer.invoke("artist:delete", id),
-
-  historyGet: () => ipcRenderer.invoke("history:get"),
-  historyClear: () => ipcRenderer.invoke("history:clear"),
 
   onMediaKeyPlayPause: (cb) => ipcRenderer.on("media-key-play-pause", cb),
   onMediaKeyNextTrack: (cb) => ipcRenderer.on("media-key-next-track", cb),
