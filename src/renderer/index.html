@@ -269,6 +269,10 @@
                             <video id="video-player">
                                 <track kind="subtitles" srclang="en" id="subtitle-track" />
                             </video>
+                            <div id="player-feedback" class="hidden">
+                                <span class="material-symbols-outlined"></span>
+                                <span class="feedback-text"></span>
+                            </div>
                             <video id="video-player-preload"></video>
                             <div class="audio-artwork-container">
                                 <img id="audio-artwork-img" src="" alt="Artwork" />
@@ -329,6 +333,9 @@
                             <div class="settings-menu" id="settings-menu"></div>
                             <div class="settings-submenu" id="speed-submenu"></div>
                             <div class="settings-submenu" id="sleep-submenu"></div>
+                            <div class="settings-submenu" id="subtitle-submenu"></div>
+                            <div class="settings-submenu" id="subtitle-style-submenu"></div>
+                            <div class="settings-submenu" id="subtitle-sync-submenu"></div>
                         </div>
                         <div class="video-info-section">
                             <h1 id="video-info-title"></h1>
@@ -662,9 +669,9 @@
                                 <p class="about-version" id="app-version"></p>
                                 <div class="about-links">
                                     <a id="github-view-link" class="about-btn github-view-btn"><span
-                                            class="material-symbols-outlined">code</span> GitHub</a>
+                                            class="material-symbols-outlined">code</span> View On GitHub</a>
                                     <a id="github-star-link" class="about-btn github-star-btn"><span
-                                            class="material-symbols-outlined">star</span> Star</a>
+                                            class="material-symbols-outlined">star</span> Star On Github</a>
                                 </div>
                             </div>
                         </div>
