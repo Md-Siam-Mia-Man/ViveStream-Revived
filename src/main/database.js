@@ -98,10 +98,12 @@ function initialize(app) {
           table.string("title");
           table.string("type");
           table.string("thumbnail");
+          table.string("status").defaultTo("success"); // success, failed
           table.timestamp("createdAt").defaultTo(db.fn.now());
         });
       }
 
+      // Migrations for existing tables
       if (!(await db.schema.hasColumn("playlists", "coverPath"))) {
         await db.schema.alterTable("playlists", (table) => {
           table.string("coverPath");
@@ -116,6 +118,11 @@ function initialize(app) {
       if (!(await db.schema.hasColumn("download_history", "thumbnail"))) {
         await db.schema.alterTable("download_history", (table) => {
           table.string("thumbnail");
+        });
+      }
+      if (!(await db.schema.hasColumn("download_history", "status"))) {
+        await db.schema.alterTable("download_history", (table) => {
+          table.string("status").defaultTo("success");
         });
       }
     } catch (error) {
@@ -581,7 +588,8 @@ async function addToHistory(item) {
       url: item.url,
       title: item.title || item.url,
       type: item.type || "unknown",
-      thumbnail: item.thumbnail
+      thumbnail: item.thumbnail,
+      status: item.status || "success"
     });
     return { success: true };
   } catch (error) {
