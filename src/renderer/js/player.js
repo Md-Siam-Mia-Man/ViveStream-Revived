@@ -2,7 +2,7 @@ import { AppState, setCurrentlyPlaying } from "./state.js";
 import { showPage } from "./renderer.js";
 import { activateMiniplayer } from "./miniplayer.js";
 import { openAddToPlaylistModal } from "./playlists.js";
-import { toggleFavoriteStatus, applyFilters } from "./ui.js";
+import { toggleFavoriteStatus, applyFilters } from "./ui.js"; // Imported applyFilters
 import { showNotification } from "./notifications.js";
 import { eventBus } from "./event-bus.js";
 import { formatTime, fuzzySearch } from "./utils.js";
