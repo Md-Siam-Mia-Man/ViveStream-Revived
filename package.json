@@ -13,7 +13,7 @@
   "keywords": [],
   "devDependencies": {
     "@electron/rebuild": "^4.0.1",
-    "electron": "^39.2.3",
+    "electron": "^39.2.4",
     "electron-builder": "^26.0.12",
     "electron-rebuild": "^3.2.9",
     "rimraf": "^6.1.2"
