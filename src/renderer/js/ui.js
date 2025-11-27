@@ -294,7 +294,7 @@ export function createHeaderActionsElement() {
 export function createFilterPanel() {
   const panel = document.createElement("div");
   panel.className = "filter-panel";
-  panel.id = "filter-panel";
+  // Removed ID to allow multiple instances in DOM (one per page context)
   panel.innerHTML = `
         <div class="filter-group" data-filter="type">
             <div class="filter-selection-indicator"></div>
@@ -331,7 +331,8 @@ export function createFilterPanel() {
 }
 
 function updateFilterIndicators() {
-  const panel = document.getElementById("filter-panel");
+  // Find the visible filter panel (the one in the active page)
+  const panel = document.querySelector(".page:not(.hidden) .filter-panel");
   if (!panel) return;
 
   panel.querySelectorAll(".filter-group").forEach((group) => {
@@ -372,8 +373,8 @@ function reapplyCurrentView() {
   const activePage =
     document.querySelector(".nav-item.active")?.dataset.page || "home";
 
-  if (!document.getElementById("player-page").classList.contains("hidden")) {
-    // If player page is active (even if nav item is different), update queue list
+  const playerPage = document.getElementById("player-page");
+  if (!playerPage.classList.contains("hidden")) {
     renderUpNextList({ sortKey: currentSort });
     return;
   }
@@ -488,14 +489,14 @@ eventBus.on("ui:favorite_toggled", updateFavoriteUI);
 
 export function updateSearchPlaceholder(pageId) {
   let isSearchable = true;
-  // Disable search/sort for pages where it doesn't make sense or isn't implemented
-  if (pageId === "downloads" || pageId === "settings") {
+  // Settings page generally doesn't need global search
+  if (pageId === "settings") {
     isSearchable = false;
   }
-  // Allow search/filter/sort on player page now
+  // Downloads page IS searchable now per requirements
 
   homeSearchInput.placeholder = isSearchable
-    ? "Search videos, artists, playlists... anything"
+    ? "Search videos, artists, playlists..."
     : "Search unavailable";
   homeSearchInput.disabled = !isSearchable;
   homeSearchInput.style.opacity = isSearchable ? "1" : "0.5";
@@ -505,9 +506,16 @@ export function updateSearchPlaceholder(pageId) {
 
 const debouncedSearchHandler = debounce((term) => {
   const isPlayerPage = !document.getElementById("player-page").classList.contains("hidden");
+  const isDownloadsPage = !document.getElementById("downloads-page").classList.contains("hidden");
+
   if (isPlayerPage) {
+    // Player Page Search (filters Up Next)
     renderUpNextList({ searchTerm: term, sortKey: currentSort });
+  } else if (isDownloadsPage) {
+    // Downloads Page Search
+    eventBus.emit("search:downloads", term);
   } else {
+    // Global Library Search
     renderSearchPage(term);
   }
 }, 300);
@@ -600,7 +608,8 @@ function initializeMainEventListeners() {
 
     if (e.target.closest("#filter-btn")) {
       const btn = e.target.closest("#filter-btn");
-      const panel = document.getElementById("filter-panel");
+      // Find the filter panel in the currently active page (visible)
+      const panel = document.querySelector(".page:not(.hidden) .filter-panel");
       if (panel) {
         panel.classList.toggle("visible");
         btn.classList.toggle("active");
@@ -664,16 +673,16 @@ function initializeMainEventListeners() {
     if (homeSearchInput.disabled) return;
     const searchTerm = e.target.value;
 
-    // If on player page, we might want to just filter the list even if empty search
     const isPlayerPage = !document.getElementById("player-page").classList.contains("hidden");
+    const isDownloadsPage = !document.getElementById("downloads-page").classList.contains("hidden");
 
-    if (searchTerm.trim() === "" && !isPlayerPage) {
+    if (searchTerm.trim() === "" && !isPlayerPage && !isDownloadsPage) {
       showPage(lastActivePageId);
       if (searchPage) searchPage.innerHTML = "";
       return;
     }
 
-    if (!isPlayerPage) showLoader();
+    if (!isPlayerPage && !isDownloadsPage) showLoader();
     debouncedSearchHandler(searchTerm);
   });
 }
