@@ -1,8 +1,9 @@
 import { AppState, setAllArtists } from "./state.js";
-import { showPage, showLoader, hideLoader } from "./renderer.js";
+import { showPage, showLoader, hideLoader, loadLibrary } from "./renderer.js";
 import { createGridItem, setHeaderActions } from "./ui.js";
 import { eventBus } from "./event-bus.js";
 import { showNotification } from "./notifications.js";
+import { showConfirmationModal, showPromptModal } from "./modals.js";
 
 const artistsPage = document.getElementById("artists-page");
 const artistDetailPage = document.getElementById("artist-detail-page");
@@ -32,7 +33,7 @@ export async function renderArtistsPage(artistsToRender) {
   }
 
   artistsPage.innerHTML = "";
-  setHeaderActions(null); // Clear header actions
+  setHeaderActions(null);
 
   if (AppState.artists.length === 0) {
     const placeholder = document.createElement("div");
@@ -113,6 +114,7 @@ export async function renderArtistDetailPage(artistId) {
   headerWrapper.className = "artist-detail-header-wrapper";
   headerWrapper.style.setProperty("--bg-image", `url('${thumbnailSrc}')`);
 
+  // Added Actions buttons
   headerWrapper.innerHTML = `
     <div class="artist-detail-header">
         <div class="artist-detail-image-container">
@@ -122,6 +124,10 @@ export async function renderArtistDetailPage(artistId) {
         <div class="artist-detail-info">
             <h1 class="artist-detail-name">${artist.name}</h1>
             <p class="artist-detail-meta">${videoCountText}</p>
+            <div class="playlist-detail-actions">
+                 <button class="action-button" id="rename-artist-btn" data-id="${artist.id}" data-name="${artist.name}"><span class="material-symbols-outlined">edit</span> Rename</button>
+                 <button class="action-button danger-btn" id="delete-artist-btn" data-id="${artist.id}" data-name="${artist.name}"><span class="material-symbols-outlined">delete</span> Delete</button>
+            </div>
         </div>
     </div>`;
   artistDetailPage.appendChild(headerWrapper);
@@ -158,6 +164,7 @@ export async function renderArtistDetailPage(artistId) {
   }
   artistDetailPage.appendChild(content);
 
+  // Edit Thumbnail
   document
     .getElementById("edit-artist-thumbnail-btn")
     .addEventListener("click", async () => {
@@ -169,6 +176,35 @@ export async function renderArtistDetailPage(artistId) {
         showNotification(`Error: ${result.error}`, "error");
       }
     });
+
+  // Rename Artist
+  document.getElementById("rename-artist-btn").addEventListener("click", async () => {
+    const newName = await showPromptModal("Rename Artist", "Enter new artist name:", artist.name);
+    if (newName && newName.trim() && newName.trim() !== artist.name) {
+      const result = await window.electronAPI.artistRename(artistId, newName.trim());
+      if (result.success) {
+        showNotification("Artist renamed.", "success");
+        await renderArtistDetailPage(artistId);
+        await loadLibrary(); // Refresh library to update video metadata potentially
+      } else {
+        showNotification(`Error: ${result.error}`, "error");
+      }
+    }
+  });
+
+  // Delete Artist
+  document.getElementById("delete-artist-btn").addEventListener("click", () => {
+    showConfirmationModal("Delete Artist?", `Are you sure you want to delete "${artist.name}"? Their videos will NOT be deleted.`, async () => {
+      const result = await window.electronAPI.artistDelete(artistId);
+      if (result.success) {
+        showNotification("Artist deleted.", "success");
+        await renderArtistsPage();
+        showPage("artists");
+      } else {
+        showNotification(`Error: ${result.error}`, "error");
+      }
+    });
+  });
 
   hideLoader();
 }
