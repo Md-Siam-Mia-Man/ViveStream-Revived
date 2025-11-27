@@ -79,7 +79,7 @@ function findInstaller(dir) {
 
 async function runBuild() {
     console.log(colors.cyan + "==================================================" + colors.reset);
-    console.log(colors.cyan + "         ViveStream Custom Builder v3.0           " + colors.reset);
+    console.log(colors.cyan + "            ViveStream Custom Builder             " + colors.reset);
     console.log(colors.cyan + "==================================================" + colors.reset);
 
     const rootDir = path.join(__dirname, "..");
