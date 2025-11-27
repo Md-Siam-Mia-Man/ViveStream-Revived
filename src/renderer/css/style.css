@@ -41,6 +41,10 @@
 
      --sidebar-collapsed-width: 57px;
      --sidebar-expanded-width: 240px;
+
+     /* Animation Variables */
+     --transition-bounce: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+     --transition-smooth: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 body.light-theme {
@@ -82,7 +86,7 @@ body {
      flex-direction: column;
      border: 1px solid var(--border-color);
      border-radius: 8px;
-     transition: background-color 0.2s, color 0.2s;
+     transition: background-color 0.3s var(--transition-smooth), color 0.3s var(--transition-smooth);
 }
 
 .title-bar {
@@ -113,7 +117,7 @@ body {
      -webkit-app-region: no-drag;
      background-color: transparent;
      opacity: 0;
-     transition: opacity 0.2s ease-in-out;
+     transition: opacity 0.3s var(--transition-smooth);
      padding: 0 10px;
 }
 
@@ -146,6 +150,15 @@ body.platform-mac .window-controls-container {
      justify-content: center;
      overflow: hidden;
      position: relative;
+     transition: transform 0.2s var(--transition-bounce);
+}
+
+.window-control-btn:hover {
+     transform: scale(1.15);
+}
+
+.window-control-btn:active {
+     transform: scale(0.95);
 }
 
 .window-control-btn .material-symbols-outlined {
@@ -153,6 +166,7 @@ body.platform-mac .window-controls-container {
      opacity: 0;
      color: rgba(0, 0, 0, 0.6);
      font-weight: 700;
+     transition: opacity 0.2s ease;
 }
 
 .window-control-btn:hover .material-symbols-outlined {
@@ -193,6 +207,7 @@ body.platform-mac .window-controls-container {
 ::-webkit-scrollbar-thumb {
      background: var(--tertiary-background);
      border-radius: 4px;
+     transition: background 0.2s ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
@@ -221,6 +236,7 @@ button,
      flex-shrink: 0;
      position: relative;
      z-index: 100;
+     transition: background-color 0.3s ease;
 }
 
 .header-left,
@@ -234,7 +250,7 @@ button,
      align-items: center;
      flex-shrink: 0;
      width: var(--sidebar-expanded-width);
-     transition: width 0.3s ease;
+     transition: width 0.4s var(--transition-bounce);
 }
 
 .sidebar.collapsed~.content-wrapper .header-left {
@@ -273,12 +289,19 @@ button,
      background-color: transparent;
      border-color: transparent;
      color: var(--secondary-text);
+     transition: all 0.2s var(--transition-bounce);
 }
 
 #header-actions-container .action-button:hover,
 #header-actions-container .sort-dropdown-btn:hover {
      background-color: var(--secondary-background);
      color: var(--primary-text);
+     transform: translateY(-2px);
+}
+
+#header-actions-container .action-button:active,
+#header-actions-container .sort-dropdown-btn:active {
+     transform: translateY(0) scale(0.95);
 }
 
 /* Active Filter Button Style */
@@ -296,9 +319,13 @@ button,
      cursor: pointer;
      padding: 2px;
      border-radius: 8px;
-     transition: background-color 0.2s;
+     transition: transform 0.2s var(--transition-bounce), background-color 0.2s;
      height: 48px;
      width: 300px;
+}
+
+.logo-container:active {
+     transform: scale(0.98);
 }
 
 .logo-svg {
@@ -331,23 +358,27 @@ button,
      opacity: 0.6;
 }
 
+/* Explicit Width Transition for Bouncy Effect */
 #home-search-input {
-     min-width: 300px;
-     width: auto;
+     width: 300px;
+     /* Use explicit width for transitions */
      padding: 10px 16px 10px 42px;
      background-color: var(--secondary-background);
      border: 1px solid var(--border-color);
      border-radius: 20px;
      color: var(--primary-text);
      font-size: 0.9rem;
-     transition: width 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.3s ease, border-color 0.3s ease;
+     /* The Bounce Magic */
+     transition: width 0.5s var(--transition-bounce), box-shadow 0.3s ease, border-color 0.3s ease, background-color 0.3s ease;
 }
 
 #home-search-input:focus {
-     min-width: 400px;
+     width: 480px;
+     /* Expanded width */
      outline: none;
      border-color: var(--primary-accent);
-     box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-accent) 30%, transparent);
+     background-color: color-mix(in srgb, var(--secondary-background) 80%, var(--primary-background));
+     box-shadow: 0 4px 20px color-mix(in srgb, var(--primary-accent) 20%, transparent);
 }
 
 .sleep-timer-status {
@@ -364,7 +395,7 @@ button,
      font-weight: 500;
      color: var(--secondary-text);
      cursor: pointer;
-     transition: background-color 0.2s;
+     transition: all 0.3s var(--transition-bounce);
      flex-shrink: 0;
      white-space: nowrap;
 }
@@ -372,6 +403,11 @@ button,
 .sleep-timer-status:hover {
      background-color: var(--border-color);
      color: var(--primary-text);
+     transform: scale(1.05);
+}
+
+.sleep-timer-status:active {
+     transform: scale(0.95);
 }
 
 .sleep-timer-status.hidden {
@@ -410,7 +446,7 @@ button,
      display: flex;
      flex-direction: column;
      justify-content: space-between;
-     transition: width 0.3s ease;
+     transition: width 0.4s var(--transition-bounce);
      z-index: 1000;
      overflow: hidden;
 }
@@ -438,9 +474,14 @@ button,
      min-height: 48px;
      border-radius: 10px;
      cursor: pointer;
-     transition: background-color 0.2s, color 0.2s;
+     transition: background-color 0.2s, color 0.2s, transform 0.2s var(--transition-bounce);
      font-weight: 500;
      overflow: hidden;
+     position: relative;
+}
+
+.nav-item:active {
+     transform: scale(0.95);
 }
 
 .nav-icon-container {
@@ -454,22 +495,22 @@ button,
 
 .nav-item .material-symbols-outlined {
      font-size: 24px;
-     transition: transform 0.2s ease;
+     transition: transform 0.3s var(--transition-bounce);
 }
 
 .nav-text {
      white-space: nowrap;
      opacity: 0;
      padding-left: 12px;
-     transform: translateX(-10px);
-     transition: opacity 0.2s ease, transform 0.2s ease;
+     transform: translateX(-15px);
+     transition: opacity 0.3s ease, transform 0.4s var(--transition-bounce);
 }
 
 .sidebar:hover .nav-text,
 .sidebar.pinned .nav-text {
      opacity: 1;
      transform: translateX(0);
-     transition-delay: 0.1s;
+     transition-delay: 0.05s;
 }
 
 .nav-item:hover {
@@ -480,10 +521,11 @@ button,
      background-color: var(--primary-accent);
      font-weight: 600;
      color: #fff;
+     box-shadow: 0 4px 12px color-mix(in srgb, var(--primary-accent) 30%, transparent);
 }
 
 .nav-item.active:hover .material-symbols-outlined {
-     transform: scale(1.1);
+     transform: scale(1.2) rotate(5deg);
 }
 
 .content-wrapper {
@@ -505,7 +547,7 @@ button,
      justify-content: center;
      align-items: center;
      backdrop-filter: blur(2px);
-     transition: opacity 0.2s ease-in-out;
+     transition: opacity 0.3s ease-in-out;
 }
 
 .loader-overlay.hidden {
@@ -536,16 +578,19 @@ button,
      display: flex;
      flex-direction: column;
      height: 100%;
-     animation: fadeIn 0.4s ease-out;
+     /* Smooth Page Transitions */
+     animation: fadeSlideUp 0.5s var(--transition-bounce);
 }
 
-@keyframes fadeIn {
+@keyframes fadeSlideUp {
      from {
           opacity: 0;
+          transform: translateY(20px);
      }
 
      to {
           opacity: 1;
+          transform: translateY(0);
      }
 }
 
@@ -577,10 +622,16 @@ button,
      background-color: var(--secondary-background);
      border: 1px solid var(--border-color);
      padding: 8px 16px;
+     transition: all 0.2s var(--transition-bounce);
 }
 
 .page-header-actions .action-button:hover {
      background-color: var(--button-hover-bg);
+     transform: translateY(-2px);
+}
+
+.page-header-actions .action-button:active {
+     transform: translateY(0);
 }
 
 .sort-dropdown-container {
@@ -599,7 +650,7 @@ button,
      cursor: pointer;
      font-size: 0.9rem;
      font-weight: 500;
-     transition: all 0.2s ease;
+     transition: all 0.2s var(--transition-bounce);
 }
 
 #sort-dropdown-label {
@@ -612,10 +663,15 @@ button,
 
 .sort-dropdown-btn:hover {
      background-color: var(--border-color);
+     transform: translateY(-2px);
+}
+
+.sort-dropdown-btn:active {
+     transform: translateY(0);
 }
 
 .sort-dropdown-btn .chevron {
-     transition: transform 0.2s ease;
+     transition: transform 0.3s var(--transition-bounce);
 }
 
 .sort-dropdown-container.open .sort-dropdown-btn .chevron {
@@ -635,14 +691,15 @@ button,
      z-index: 1000;
      box-shadow: 0 5px 20px var(--shadow-color-heavy);
      opacity: 0;
-     transform: translateY(-10px);
+     transform: translateY(-10px) scale(0.95);
      pointer-events: none;
-     transition: opacity 0.2s ease, transform 0.2s ease;
+     transition: opacity 0.2s ease, transform 0.3s var(--transition-bounce);
+     transform-origin: top right;
 }
 
 .sort-dropdown-container.open .sort-options-list {
      opacity: 1;
-     transform: translateY(0);
+     transform: translateY(0) scale(1);
      pointer-events: auto;
 }
 
@@ -654,11 +711,12 @@ button,
      font-size: 0.9rem;
      border-radius: 8px;
      cursor: pointer;
-     transition: background-color 0.2s;
+     transition: background-color 0.2s, transform 0.1s;
 }
 
 .sort-option-item:hover {
      background-color: rgba(255, 255, 255, 0.1);
+     transform: translateX(4px);
 }
 
 body.light-theme .sort-option-item:hover {
@@ -669,10 +727,13 @@ body.light-theme .sort-option-item:hover {
      width: 16px;
      visibility: hidden;
      color: var(--primary-accent);
+     transform: scale(0);
+     transition: transform 0.2s var(--transition-bounce);
 }
 
 .sort-option-item.active .check {
      visibility: visible;
+     transform: scale(1);
 }
 
 .placeholder-page {
@@ -693,6 +754,21 @@ body.light-theme .sort-option-item:hover {
      font-size: 64px;
      margin-bottom: 24px;
      opacity: 0.4;
+     animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+     0% {
+          transform: translateY(0);
+     }
+
+     50% {
+          transform: translateY(-10px);
+     }
+
+     100% {
+          transform: translateY(0);
+     }
 }
 
 .placeholder-title {
@@ -745,9 +821,9 @@ body.light-theme .sort-option-item:hover {
      box-shadow: 0 5px 20px var(--shadow-color-heavy);
      border: 1px solid var(--glass-border);
      opacity: 0;
-     transform: scale(0.95) translateY(10px);
+     transform: scale(0.8) translateY(10px);
      transform-origin: top left;
-     transition: opacity .2s ease, transform .2s ease;
+     transition: opacity .2s ease, transform .3s var(--transition-bounce);
      pointer-events: none;
 }
 
@@ -765,7 +841,7 @@ body.light-theme .sort-option-item:hover {
      font-size: 0.9rem;
      border-radius: 8px;
      cursor: pointer;
-     transition: background-color 0.2s;
+     transition: background-color 0.2s, transform 0.1s;
 }
 
 .context-menu-divider {
@@ -787,6 +863,7 @@ body.light-theme .sort-option-item:hover {
 
 .context-menu-item:hover {
      background-color: rgba(255, 255, 255, 0.1);
+     transform: translateX(4px);
 }
 
 body.light-theme .context-menu-item:hover {
@@ -796,6 +873,7 @@ body.light-theme .context-menu-item:hover {
 .sortable-ghost {
      opacity: 0.4;
      background-color: var(--primary-accent-dark);
+     transform: scale(0.95);
 }
 
 /* Generic Switch Style used in various places */
@@ -836,7 +914,7 @@ body.light-theme .context-menu-item:hover {
      left: 2px;
      bottom: 2px;
      background-color: white;
-     transition: transform .3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+     transition: transform .4s var(--transition-bounce);
      border-radius: 50%;
 }
 
