@@ -179,6 +179,37 @@ async function loadHistory() {
   });
 }
 
+// --- Search Filter Logic ---
+eventBus.on("search:downloads", (searchTerm) => {
+  const term = searchTerm.toLowerCase();
+
+  // Filter active queue
+  const queueCards = downloadQueueArea.querySelectorAll(".download-card");
+  let hasVisibleQueue = false;
+  queueCards.forEach(card => {
+    const title = card.querySelector(".dl-card-title").textContent.toLowerCase();
+    const url = card.querySelector(".dl-card-uploader").textContent.toLowerCase();
+    const matches = title.includes(term) || url.includes(term);
+    card.classList.toggle("hidden", !matches);
+    if (matches) hasVisibleQueue = true;
+  });
+
+  // Only show empty state if nothing matches AND queue actually has items
+  if (queueCards.length > 0 && !hasVisibleQueue) {
+    // We could add a "no search results" placeholder, but showing standard empty is confusing
+    // For now, simpler to just hide everything.
+  }
+
+  // Filter history
+  const historyCards = historyListContainer.querySelectorAll(".download-card");
+  historyCards.forEach(card => {
+    const title = card.querySelector(".dl-card-title").textContent.toLowerCase();
+    const url = card.querySelector(".dl-card-uploader").textContent.toLowerCase();
+    const matches = title.includes(term) || url.includes(term);
+    card.classList.toggle("hidden", !matches);
+  });
+});
+
 // --- Download Logic ---
 
 startDownloadBtn.addEventListener("click", (e) => {
