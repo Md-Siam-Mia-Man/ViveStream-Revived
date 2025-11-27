@@ -2,7 +2,7 @@ import { AppState, setCurrentlyPlaying } from "./state.js";
 import { showPage } from "./renderer.js";
 import { activateMiniplayer } from "./miniplayer.js";
 import { openAddToPlaylistModal } from "./playlists.js";
-import { toggleFavoriteStatus, applyFilters } from "./ui.js"; // Imported applyFilters
+import { toggleFavoriteStatus, applyFilters } from "./ui.js";
 import { showNotification } from "./notifications.js";
 import { eventBus } from "./event-bus.js";
 import { formatTime, fuzzySearch } from "./utils.js";
@@ -11,7 +11,6 @@ const playerPage = document.getElementById("player-page");
 const playerSection = document.getElementById("player-section");
 const videoPlayer = document.getElementById("video-player");
 const videoPlayerPreload = document.getElementById("video-player-preload");
-const subtitleTrack = document.getElementById("subtitle-track");
 const audioArtworkContainer = document.querySelector(
   ".audio-artwork-container"
 );
@@ -44,6 +43,9 @@ const settingsBtn = document.getElementById("settings-btn");
 const settingsMenu = document.getElementById("settings-menu");
 const speedSubmenu = document.getElementById("speed-submenu");
 const sleepSubmenu = document.getElementById("sleep-submenu");
+const subtitleSubmenu = document.getElementById("subtitle-submenu");
+const subtitleStyleSubmenu = document.getElementById("subtitle-style-submenu");
+const subtitleSyncSubmenu = document.getElementById("subtitle-sync-submenu");
 const controlsContainer = document.querySelector(".video-controls-container");
 const videoMenuBtn = document.getElementById("video-menu-btn");
 const miniplayerBtn = document.getElementById("miniplayer-btn");
@@ -57,8 +59,23 @@ const editableDescriptionTextarea = document.getElementById(
 const saveEditBtn = document.getElementById("save-edit-btn");
 const cancelEditBtn = document.getElementById("cancel-edit-btn");
 const mainContent = playerPage.querySelector(".main-content");
+const playerFeedback = document.getElementById("player-feedback");
 
 let hideControlsTimeout;
+let feedbackTimeout;
+
+// -- Subtitle & Player State --
+const playerState = {
+  subtitleMode: "off", // 'off' | 'on'
+  subtitleOffset: 0,
+  subtitleStyles: {
+    font: 'Poppins',
+    size: '1.25rem',
+    color: '#ffffff',
+    bg: 'rgba(0,0,0,0.7)',
+    pos: '0%'
+  }
+};
 
 class SleepTimerManager {
   constructor() {
@@ -154,6 +171,91 @@ const lazyLoadObserver = new IntersectionObserver(
   { root: mainContent, rootMargin: "0px 0px 200px 0px" }
 );
 
+// --- Player Feedback Logic ---
+function showPlayerFeedback(iconName, text) {
+  if (!playerFeedback) return;
+
+  clearTimeout(feedbackTimeout);
+  playerFeedback.classList.remove("visible");
+
+  // Force reflow for animation restart
+  void playerFeedback.offsetWidth;
+
+  const iconEl = playerFeedback.querySelector(".material-symbols-outlined");
+  const textEl = playerFeedback.querySelector(".feedback-text");
+
+  iconEl.textContent = iconName;
+  textEl.textContent = text;
+
+  playerFeedback.classList.add("visible");
+
+  feedbackTimeout = setTimeout(() => {
+    playerFeedback.classList.remove("visible");
+  }, 1000);
+}
+
+// --- Subtitle Logic ---
+function applySubtitleStyles() {
+  const s = playerState.subtitleStyles;
+  videoPlayer.style.setProperty('--subtitle-font', s.font);
+  videoPlayer.style.setProperty('--subtitle-size', s.size);
+  videoPlayer.style.setProperty('--subtitle-color', s.color);
+  videoPlayer.style.setProperty('--subtitle-bg', s.bg);
+  videoPlayer.style.setProperty('--subtitle-pos', s.pos);
+
+  // Persist
+  localStorage.setItem("subtitleStyles", JSON.stringify(s));
+}
+
+function syncSubtitleOffset(offsetDelta) {
+  playerState.subtitleOffset += offsetDelta;
+  const track = Array.from(videoPlayer.textTracks).find(t => t.mode !== 'disabled');
+  if (track && track.cues) {
+    Array.from(track.cues).forEach(cue => {
+      cue.startTime += offsetDelta;
+      cue.endTime += offsetDelta;
+    });
+    showPlayerFeedback("timer", `Sync: ${playerState.subtitleOffset.toFixed(1)}s`);
+  }
+}
+
+function loadSubtitleTrack(filePath, mode = 'hidden') {
+  // Remove existing tracks
+  const oldTracks = videoPlayer.querySelectorAll('track');
+  oldTracks.forEach(t => t.remove());
+
+  if (filePath) {
+    const track = document.createElement('track');
+    track.kind = 'subtitles';
+    track.label = 'English';
+    track.srclang = 'en';
+    track.src = filePath;
+    track.default = mode === 'showing';
+    videoPlayer.appendChild(track);
+
+    track.onload = () => {
+      // Ensure style is applied when new track loads
+      const textTrack = track.track;
+      textTrack.mode = mode;
+    };
+  }
+}
+
+function toggleSubtitleMode(forceState = null) {
+  if (forceState) {
+    playerState.subtitleMode = forceState;
+  } else {
+    playerState.subtitleMode = playerState.subtitleMode === "on" ? "off" : "on";
+  }
+
+  const track = Array.from(videoPlayer.textTracks).find(t => t.kind === 'subtitles');
+  if (track) {
+    track.mode = playerState.subtitleMode === "on" ? "showing" : "hidden";
+  }
+
+  localStorage.setItem("subtitleMode", playerState.subtitleMode);
+}
+
 function preloadNextItem() {
   const queue = AppState.playbackQueue;
   if (
@@ -183,9 +285,15 @@ function playLibraryItem({ index, queue, context = null, options = {} }) {
   const item = AppState.playbackQueue[AppState.currentlyPlayingIndex];
 
   videoPlayer.src = decodeURIComponent(item.filePath);
-  subtitleTrack.src = "";
+
+  // Reset Subtitles for new track
+  playerState.subtitleOffset = 0;
   if (item.subtitlePath) {
-    subtitleTrack.src = decodeURIComponent(item.subtitlePath);
+    const savedMode = localStorage.getItem("subtitleMode") || "off";
+    playerState.subtitleMode = savedMode;
+    loadSubtitleTrack(decodeURIComponent(item.subtitlePath), savedMode === 'on' ? 'showing' : 'hidden');
+  } else {
+    loadSubtitleTrack(null);
   }
 
   if (item.type === "audio") {
@@ -368,7 +476,13 @@ export function renderUpNextList({ searchTerm = "", sortKey = "" } = {}) {
 
 function togglePlay() {
   if (videoPlayer.src) {
-    videoPlayer.paused ? videoPlayer.play() : videoPlayer.pause();
+    if (videoPlayer.paused) {
+      videoPlayer.play();
+      showPlayerFeedback("play_arrow", "Play");
+    } else {
+      videoPlayer.pause();
+      showPlayerFeedback("pause", "Pause");
+    }
   }
 }
 
@@ -428,6 +542,15 @@ export function loadSettings() {
   const savedMuted = localStorage.getItem("playerMuted") === "true";
   const savedTheater = localStorage.getItem("theaterMode") === "true";
   const savedAutoplay = localStorage.getItem("autoplayEnabled");
+  const savedSubs = localStorage.getItem("subtitleStyles");
+
+  if (savedSubs) {
+    try {
+      const styles = JSON.parse(savedSubs);
+      playerState.subtitleStyles = { ...playerState.subtitleStyles, ...styles };
+      applySubtitleStyles();
+    } catch (e) { }
+  }
 
   videoPlayer.muted = savedMuted;
   videoPlayerPreload.muted = savedMuted;
@@ -446,12 +569,9 @@ export function loadSettings() {
 
 function buildSettingsMenu() {
   settingsMenu.innerHTML = `
-        <div class="settings-item" data-setting="speed"><span class="material-symbols-outlined">speed</span><span>Playback Speed</span><span class="setting-value" id="speed-value">${videoPlayer.playbackRate === 1
-      ? "Normal"
-      : videoPlayer.playbackRate + "x"
-    }</span><span class="chevron material-symbols-outlined">arrow_forward_ios</span></div>
-        <div class="settings-item" data-setting="sleep"><span class="material-symbols-outlined">bedtime</span><span>Sleep Timer</span><span class="setting-value" id="sleep-value">${sleepTimer.type ? "On" : "Off"
-    }</span><span class="chevron material-symbols-outlined">arrow_forward_ios</span></div>`;
+        <div class="settings-item" data-setting="speed"><span class="material-symbols-outlined">speed</span><span>Playback Speed</span><span class="setting-value" id="speed-value">${videoPlayer.playbackRate === 1 ? "Normal" : videoPlayer.playbackRate + "x"}</span><span class="chevron material-symbols-outlined">arrow_forward_ios</span></div>
+        <div class="settings-item" data-setting="subtitles"><span class="material-symbols-outlined">subtitles</span><span>Subtitles</span><span class="setting-value">${playerState.subtitleMode === 'on' ? 'On' : 'Off'}</span><span class="chevron material-symbols-outlined">arrow_forward_ios</span></div>
+        <div class="settings-item" data-setting="sleep"><span class="material-symbols-outlined">bedtime</span><span>Sleep Timer</span><span class="setting-value" id="sleep-value">${sleepTimer.type ? "On" : "Off"}</span><span class="chevron material-symbols-outlined">arrow_forward_ios</span></div>`;
 }
 
 function handleSubmenu(mainSel, subMenuEl, values, type, labelFormatter) {
@@ -479,6 +599,25 @@ function handleSubmenu(mainSel, subMenuEl, values, type, labelFormatter) {
     subMenuEl.classList.add("active");
   };
   mainItem.addEventListener("click", openSubmenu);
+}
+
+// Reusable function to create a custom dropdown structure
+function createCustomDropdownHTML(id, options, currentValue) {
+  const selectedOption = options.find(o => o.value === currentValue) || options[0];
+  const optionsHTML = options.map(opt => `
+        <div class="player-dropdown-item ${opt.value === currentValue ? 'selected' : ''}" 
+             data-value="${opt.value}">
+             ${opt.label}
+        </div>
+    `).join('');
+
+  return `
+        <div class="player-dropdown" id="${id}">
+            <span class="selected-text">${selectedOption.label}</span>
+            <span class="material-symbols-outlined">expand_more</span>
+            <div class="player-dropdown-list">${optionsHTML}</div>
+        </div>
+    `;
 }
 
 export function enterEditMode() {
@@ -574,7 +713,14 @@ prevBtn.addEventListener("click", playPrevious);
 muteBtn.addEventListener("click", () => {
   const lastVolume = parseFloat(localStorage.getItem("playerVolume")) || 1;
   const isCurrentlyMuted = videoPlayer.muted || videoPlayer.volume === 0;
-  updateVolume(isCurrentlyMuted ? lastVolume : 0);
+
+  if (isCurrentlyMuted) {
+    updateVolume(lastVolume);
+    showPlayerFeedback("volume_up", Math.round(lastVolume * 100) + "%");
+  } else {
+    updateVolume(0);
+    showPlayerFeedback("volume_off", "Muted");
+  }
 });
 volumeSlider.addEventListener("input", (e) =>
   updateVolume(parseFloat(e.target.value))
@@ -582,8 +728,9 @@ volumeSlider.addEventListener("input", (e) =>
 timelineContainer.addEventListener("click", (e) => {
   if (!videoPlayer.duration) return;
   const rect = timelineContainer.getBoundingClientRect();
-  videoPlayer.currentTime =
-    ((e.clientX - rect.left) / rect.width) * videoPlayer.duration;
+  const time = ((e.clientX - rect.left) / rect.width) * videoPlayer.duration;
+  videoPlayer.currentTime = time;
+  showPlayerFeedback("schedule", formatTime(time));
 });
 theaterBtn.addEventListener("click", () => {
   playerPage.classList.toggle("theater-mode");
@@ -593,8 +740,13 @@ theaterBtn.addEventListener("click", () => {
   );
 });
 fullscreenBtn.addEventListener("click", () => {
-  if (document.fullscreenElement) document.exitFullscreen();
-  else playerSection.requestFullscreen();
+  if (document.fullscreenElement) {
+    document.exitFullscreen();
+    showPlayerFeedback("fullscreen_exit", "Exit Fullscreen");
+  } else {
+    playerSection.requestFullscreen();
+    showPlayerFeedback("fullscreen", "Fullscreen");
+  }
 });
 miniplayerBtn.addEventListener("click", () => {
   if (videoPlayer.src) {
@@ -664,7 +816,10 @@ playerSection.addEventListener("mousemove", () => {
       if (
         !settingsMenu.classList.contains("active") &&
         !speedSubmenu.classList.contains("active") &&
-        !sleepSubmenu.classList.contains("active")
+        !sleepSubmenu.classList.contains("active") &&
+        !subtitleSubmenu.classList.contains("active") &&
+        !subtitleStyleSubmenu.classList.contains("active") &&
+        !subtitleSyncSubmenu.classList.contains("active")
       ) {
         controlsContainer.style.opacity = 0;
         playerSection.style.cursor = "none";
@@ -718,16 +873,30 @@ document.addEventListener("keydown", (e) => {
       }
       break;
     case "arrowleft":
-      if (videoPlayer.duration) videoPlayer.currentTime -= 5;
+      if (videoPlayer.duration) {
+        videoPlayer.currentTime -= 5;
+        showPlayerFeedback("rewind", "-5s");
+      }
       break;
     case "arrowright":
-      if (videoPlayer.duration) videoPlayer.currentTime += 5;
+      if (videoPlayer.duration) {
+        videoPlayer.currentTime += 5;
+        showPlayerFeedback("fast_forward", "+5s");
+      }
       break;
     case "arrowup":
-      updateVolume(videoPlayer.volume + 0.1);
+      {
+        const v = Math.min(1, videoPlayer.volume + 0.1);
+        updateVolume(v);
+        showPlayerFeedback("volume_up", Math.round(v * 100) + "%");
+      }
       break;
     case "arrowdown":
-      updateVolume(videoPlayer.volume - 0.1);
+      {
+        const v = Math.max(0, videoPlayer.volume - 0.1);
+        updateVolume(v);
+        showPlayerFeedback(v === 0 ? "volume_off" : "volume_down", Math.round(v * 100) + "%");
+      }
       break;
     case "n":
       playNext();
@@ -740,9 +909,10 @@ document.addEventListener("keydown", (e) => {
 settingsBtn.addEventListener("click", (e) => {
   e.stopPropagation();
   const isActive = settingsMenu.classList.contains("active");
-  settingsMenu.classList.remove("active");
-  speedSubmenu.classList.remove("active");
-  sleepSubmenu.classList.remove("active");
+  // Close all
+  [settingsMenu, speedSubmenu, sleepSubmenu, subtitleSubmenu, subtitleStyleSubmenu, subtitleSyncSubmenu]
+    .forEach(el => el.classList.remove("active"));
+
   if (!isActive) {
     buildSettingsMenu();
     settingsMenu.classList.add("active");
@@ -770,8 +940,154 @@ settingsMenu.addEventListener("click", (e) => {
             <div class="submenu-item"><div class="sleep-timer-input-group"><input type="number" min="1" id="sleep-minutes-input" placeholder="Minutes"><button id="sleep-minutes-btn">Set</button></div></div>
             <div class="submenu-item"><div class="sleep-timer-input-group"><input type="time" id="sleep-time-input"><button id="sleep-time-btn">Set</button></div></div>`;
     sleepSubmenu.classList.add("active");
+  } else if (setting === "subtitles") {
+    settingsMenu.classList.remove("active");
+    // Main Subtitle Menu
+    subtitleSubmenu.innerHTML = `
+        <div class="submenu-item" data-action="back"><span class="chevron material-symbols-outlined">arrow_back_ios</span><span>Subtitles</span></div>
+        <div class="submenu-item" data-sub-action="toggle"><span>Show/Hide</span><span class="setting-value">${playerState.subtitleMode === 'on' ? 'On' : 'Off'}</span></div>
+        <div class="submenu-item" data-sub-action="style"><span>Customize Style</span><span class="chevron material-symbols-outlined">arrow_forward_ios</span></div>
+        <div class="submenu-item" data-sub-action="sync"><span>Sync Offset</span><span class="chevron material-symbols-outlined">arrow_forward_ios</span></div>
+    `;
+    subtitleSubmenu.classList.add("active");
   }
 });
+
+// Subtitle Menu Handler
+subtitleSubmenu.addEventListener("click", (e) => {
+  e.stopPropagation();
+  const item = e.target.closest(".submenu-item");
+  if (!item) return;
+
+  if (item.dataset.action === "back") {
+    subtitleSubmenu.classList.remove("active");
+    buildSettingsMenu();
+    settingsMenu.classList.add("active");
+    return;
+  }
+
+  const action = item.dataset.subAction;
+  if (action === "toggle") {
+    toggleSubtitleMode();
+    item.querySelector(".setting-value").textContent = playerState.subtitleMode === 'on' ? 'On' : 'Off';
+  } else if (action === "style") {
+    subtitleSubmenu.classList.remove("active");
+
+    const sizeOptions = [
+      { value: '1rem', label: 'Small' },
+      { value: '1.25rem', label: 'Normal' },
+      { value: '1.5rem', label: 'Large' },
+      { value: '2rem', label: 'Huge' }
+    ];
+
+    const bgOptions = [
+      { value: 'rgba(0,0,0,0)', label: 'None' },
+      { value: 'rgba(0,0,0,0.7)', label: 'Black (70%)' },
+      { value: 'rgba(0,0,0,1)', label: 'Black (100%)' }
+    ];
+
+    subtitleStyleSubmenu.innerHTML = `
+            <div class="submenu-item" data-action="back"><span class="chevron material-symbols-outlined">arrow_back_ios</span><span>Style</span></div>
+            <div class="submenu-item submenu-control-row">
+                <span class="submenu-label">Size</span>
+                ${createCustomDropdownHTML('sub-size-dd', sizeOptions, playerState.subtitleStyles.size)}
+            </div>
+            <div class="submenu-item submenu-control-row">
+                <span class="submenu-label">Color</span>
+                <input type="color" id="sub-color-input" value="${playerState.subtitleStyles.color}" style="background:none;border:none;width:30px;height:30px;cursor:pointer;">
+            </div>
+            <div class="submenu-item submenu-control-row">
+                <span class="submenu-label">BG Color</span>
+                ${createCustomDropdownHTML('sub-bg-dd', bgOptions, playerState.subtitleStyles.bg)}
+            </div>
+            <div class="submenu-item submenu-input-group">
+                <span class="submenu-label">Vertical Pos</span>
+                <input type="range" id="sub-pos-range" min="-45" max="0" value="${parseInt(playerState.subtitleStyles.pos)}" style="width:100%;">
+            </div>
+        `;
+    subtitleStyleSubmenu.classList.add("active");
+  } else if (action === "sync") {
+    subtitleSubmenu.classList.remove("active");
+    subtitleSyncSubmenu.innerHTML = `
+            <div class="submenu-item" data-action="back"><span class="chevron material-symbols-outlined">arrow_back_ios</span><span>Sync</span></div>
+            <div class="submenu-item" data-sync="-0.5"><span class="material-symbols-outlined">remove</span> -0.5s</div>
+            <div class="submenu-item" data-sync="0.5"><span class="material-symbols-outlined">add</span> +0.5s</div>
+            <div class="submenu-item" data-sync="reset" style="justify-content:center;color:var(--secondary-text);">Reset Sync</div>
+        `;
+    subtitleSyncSubmenu.classList.add("active");
+  }
+});
+
+// Custom Dropdown Logic for Player Menu (Integrated into Style Submenu Listener)
+subtitleStyleSubmenu.addEventListener('click', (e) => {
+  e.stopPropagation();
+
+  // Handle Back Button
+  if (e.target.closest('[data-action="back"]')) {
+    subtitleStyleSubmenu.classList.remove("active");
+    subtitleSubmenu.classList.add("active");
+    return;
+  }
+
+  // Handle Dropdown Logic
+  const dd = e.target.closest('.player-dropdown');
+  if (dd) {
+    // Close other open dropdowns in this submenu
+    subtitleStyleSubmenu.querySelectorAll('.player-dropdown.open').forEach(el => {
+      if (el !== dd) el.classList.remove('open');
+    });
+
+    if (e.target.closest('.player-dropdown-item')) {
+      const item = e.target.closest('.player-dropdown-item');
+      const val = item.dataset.value;
+      const label = item.innerText;
+
+      dd.querySelector('.selected-text').textContent = label;
+      dd.querySelectorAll('.player-dropdown-item').forEach(i => i.classList.remove('selected'));
+      item.classList.add('selected');
+      dd.classList.remove('open');
+
+      if (dd.id === 'sub-size-dd') playerState.subtitleStyles.size = val;
+      if (dd.id === 'sub-bg-dd') playerState.subtitleStyles.bg = val;
+      applySubtitleStyles();
+    } else {
+      dd.classList.toggle('open');
+    }
+    return; // Stop further processing
+  }
+
+  // Close dropdowns if clicked outside (but inside menu)
+  subtitleStyleSubmenu.querySelectorAll('.player-dropdown.open').forEach(el => el.classList.remove('open'));
+});
+
+subtitleStyleSubmenu.addEventListener("input", (e) => {
+  if (e.target.id === "sub-color-input") {
+    playerState.subtitleStyles.color = e.target.value;
+    applySubtitleStyles();
+  }
+  if (e.target.id === "sub-pos-range") {
+    playerState.subtitleStyles.pos = e.target.value + "%";
+    applySubtitleStyles();
+  }
+});
+
+subtitleSyncSubmenu.addEventListener("click", (e) => {
+  e.stopPropagation();
+  const item = e.target.closest(".submenu-item");
+  if (item) {
+    if (item.dataset.action === "back") {
+      subtitleSyncSubmenu.classList.remove("active");
+      subtitleSubmenu.classList.add("active");
+    } else if (item.dataset.sync) {
+      if (item.dataset.sync === "reset") {
+        syncSubtitleOffset(-playerState.subtitleOffset);
+      } else {
+        syncSubtitleOffset(parseFloat(item.dataset.sync));
+      }
+    }
+  }
+});
+
 speedSubmenu.addEventListener("click", (e) => {
   e.stopPropagation();
   const target = e.target.closest(".submenu-item");
@@ -815,13 +1131,9 @@ sleepSubmenu.addEventListener("click", (e) => {
 document.addEventListener("click", (e) => {
   if (
     !settingsBtn.contains(e.target) &&
-    !settingsMenu.contains(e.target) &&
-    !speedSubmenu.contains(e.target) &&
-    !sleepSubmenu.contains(e.target)
+    ![settingsMenu, speedSubmenu, sleepSubmenu, subtitleSubmenu, subtitleStyleSubmenu, subtitleSyncSubmenu].some(el => el.contains(e.target))
   ) {
-    settingsMenu.classList.remove("active");
-    speedSubmenu.classList.remove("active");
-    sleepSubmenu.classList.remove("active");
+    [settingsMenu, speedSubmenu, sleepSubmenu, subtitleSubmenu, subtitleStyleSubmenu, subtitleSyncSubmenu].forEach(el => el.classList.remove("active"));
   }
 });
 cancelEditBtn.addEventListener("click", exitEditMode);
