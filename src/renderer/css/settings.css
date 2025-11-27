@@ -287,48 +287,96 @@
      background-color: var(--primary-accent-dark);
 }
 
+/* Enhanced About Section */
 .about-section {
+     padding-top: 24px;
+}
+
+.about-card {
+     background: linear-gradient(145deg, var(--secondary-background), var(--tertiary-background));
+     border: 1px solid var(--border-color);
+     border-radius: 16px;
+     padding: 32px;
      text-align: center;
-     padding-top: 16px;
+     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+     position: relative;
+     overflow: hidden;
+}
+
+.about-card::before {
+     content: '';
+     position: absolute;
+     top: -50px;
+     left: -50px;
+     width: 100px;
+     height: 100px;
+     background: var(--primary-accent);
+     filter: blur(60px);
+     opacity: 0.2;
+     border-radius: 50%;
+}
+
+.about-card::after {
+     content: '';
+     position: absolute;
+     bottom: -50px;
+     right: -50px;
+     width: 120px;
+     height: 120px;
+     background: var(--primary-accent);
+     filter: blur(80px);
+     opacity: 0.15;
+     border-radius: 50%;
 }
 
 .about-content {
      display: flex;
      flex-direction: column;
      align-items: center;
-     gap: 8px;
+     gap: 12px;
+     position: relative;
+     z-index: 2;
 }
 
 .about-logo {
-     width: 80px;
-     height: 80px;
-     border-radius: 12px;
-     margin-bottom: 8px;
+     width: 90px;
+     height: 90px;
+     margin-bottom: 12px;
+     filter: drop-shadow(0 5px 15px rgba(0, 0, 0, 0.3));
 }
 
 .about-app-name {
      font-family: var(--font-display);
-     font-size: 1.8rem;
-     font-weight: 700;
+     font-size: 2.2rem;
+     font-weight: 800;
+     letter-spacing: 1px;
+     background: linear-gradient(45deg, #fff, #bbb);
+     background-clip: text;
+     -webkit-background-clip: text;
+     -webkit-text-fill-color: transparent;
+}
+
+body.light-theme .about-app-name {
+     background: linear-gradient(45deg, #333, #666);
+     background-clip: text;
+     -webkit-background-clip: text;
+     -webkit-text-fill-color: transparent;
 }
 
 .about-version {
-     background-color: var(--tertiary-background);
-     padding: 2px 8px;
-     border-radius: 6px;
-     font-size: 0.8rem;
+     background-color: var(--primary-background);
+     padding: 4px 12px;
+     border-radius: 20px;
+     font-size: 0.85rem;
      color: var(--secondary-text);
-}
-
-.about-dev {
-     margin-top: 8px;
-     color: var(--primary-text);
+     font-weight: 500;
+     border: 1px solid var(--border-color);
 }
 
 .about-links {
      display: flex;
-     gap: 12px;
-     margin-top: 16px;
+     gap: 16px;
+     margin-top: 24px;
 }
 
 .about-btn {
@@ -336,31 +384,40 @@
      align-items: center;
      gap: 8px;
      text-decoration: none;
-     padding: 8px 16px;
-     border-radius: 6px;
-     font-weight: 500;
+     padding: 10px 20px;
+     border-radius: 8px;
+     font-weight: 600;
      transition: all 0.2s ease;
      border: 1px solid var(--border-color);
      cursor: pointer;
+     font-size: 0.95rem;
 }
 
 .github-view-btn {
-     background-color: var(--tertiary-background);
+     background-color: var(--primary-background);
      color: var(--primary-text);
 }
 
 .github-view-btn:hover {
      background-color: var(--border-color);
+     transform: translateY(-2px);
 }
 
 .github-star-btn {
-     background-color: var(--warning-accent);
-     color: var(--primary-background);
-     border-color: var(--warning-accent);
+     background-color: #f0c32f;
+     /* GitHub Star Gold */
+     color: #121212;
+     border-color: #f0c32f;
+}
+
+.github-star-btn .material-symbols-outlined {
+     font-variation-settings: 'FILL' 1;
 }
 
 .github-star-btn:hover {
      filter: brightness(1.1);
+     transform: translateY(-2px);
+     box-shadow: 0 5px 15px rgba(240, 195, 47, 0.3);
 }
 
 #file-op-progress-container {
