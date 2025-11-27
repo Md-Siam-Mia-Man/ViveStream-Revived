@@ -7,6 +7,7 @@
     <title>ViveStream</title>
     <link rel="stylesheet" href="../../assets/icons/index.css" />
     <link rel="stylesheet" href="./css/style.css" />
+    <link rel="stylesheet" href="./css/modals.css" />
     <link rel="stylesheet" href="./css/home.css" />
     <link rel="stylesheet" href="./css/downloads.css" />
     <link rel="stylesheet" href="./css/player.css" />
@@ -21,7 +22,6 @@
     <div class="title-bar">
         <div class="title-bar-drag-region"></div>
         <div class="window-controls-container" id="window-controls">
-            <!-- Order will be handled by CSS flex-direction based on OS -->
             <button id="tray-btn" class="window-control-btn tray-btn" title="Minimize to Tray">
                 <span class="material-symbols-outlined">close_fullscreen</span>
             </button>
@@ -128,144 +128,137 @@
             </div>
             <div id="home-page" class="page"></div>
             <div id="downloads-page" class="page hidden">
-                <div class="downloads-container">
-                    <div class="download-card">
-                        <h2>Download New Media</h2>
-                        <p class="download-card-subtitle">
-                            Paste a YouTube video or playlist URL to begin.
-                        </p>
-                        <form id="download-form">
-                            <div class="url-input-container">
-                                <span class="material-symbols-outlined url-icon">link</span>
-                                <input type="text" id="url-input" placeholder="Enter YouTube URL..." required />
+                <div class="downloads-wrapper">
+                    <!-- Hero Input Section -->
+                    <div class="dl-hero-section">
+                        <div class="dl-input-container">
+                            <span class="input-icon material-symbols-outlined">link</span>
+                            <input type="text" id="url-input" placeholder="Paste video or playlist URL..."
+                                autocomplete="off">
+
+                            <!-- Type Switcher Inside Input -->
+                            <div class="dl-type-switcher">
+                                <div class="dl-type-option active" data-type="video">Video</div>
+                                <div class="dl-type-option" data-type="audio">Audio</div>
                             </div>
-                            <div class="download-options-grid">
-                                <div class="option-group full-width">
-                                    <label>Download Type</label>
-                                    <div class="radio-group">
-                                        <label class="radio-label">
-                                            <input type="radio" name="download-type" value="video" checked />
-                                            <span><span class="material-symbols-outlined">smart_display</span>
-                                                Video</span>
-                                        </label>
-                                        <label class="radio-label">
-                                            <input type="radio" name="download-type" value="audio" />
-                                            <span><span class="material-symbols-outlined">headphones</span>
-                                                Audio Only</span>
-                                        </label>
-                                    </div>
-                                </div>
-                                <div id="video-options-container" class="option-group">
-                                    <label>Video Quality</label>
-                                    <div class="custom-select-container" id="video-quality-select-container">
-                                        <div class="selected-option" data-value="1080">
-                                            <span>1080p</span>
-                                            <span class="chevron"><span
-                                                    class="material-symbols-outlined">expand_more</span></span>
-                                        </div>
-                                        <div class="options-list">
-                                            <div class="option-item" data-value="best">Best</div>
-                                            <div class="option-item" data-value="2160">
-                                                4K (2160p)
-                                            </div>
-                                            <div class="option-item" data-value="1440">1440p</div>
-                                            <div class="option-item selected" data-value="1080">
-                                                1080p
-                                            </div>
-                                            <div class="option-item" data-value="720">720p</div>
-                                            <div class="option-item" data-value="480">480p</div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div id="audio-options-container" class="option-group hidden">
-                                    <label>Audio Format</label>
-                                    <div class="custom-select-container" id="audio-format-select-container">
-                                        <div class="selected-option" data-value="mp3">
-                                            <span>MP3</span>
-                                            <span class="chevron"><span
-                                                    class="material-symbols-outlined">expand_more</span></span>
-                                        </div>
-                                        <div class="options-list">
-                                            <div class="option-item selected" data-value="mp3">
-                                                MP3 (Compatible)
-                                            </div>
-                                            <div class="option-item" data-value="opus">
-                                                Opus (High Quality)
-                                            </div>
-                                            <div class="option-item" data-value="best">
-                                                Best Available
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div id="audio-quality-container" class="option-group hidden">
-                                    <label>Audio Quality (VBR)</label>
-                                    <div class="setting-control" style="
-                        justify-content: space-between;
-                        padding-top: 8px;
-                      ">
-                                        <span>Best</span>
-                                        <input type="range" id="audio-quality-slider" min="0" max="10" value="5"
-                                            step="1" />
-                                        <span>Smallest</span>
-                                    </div>
-                                </div>
-                                <div id="video-subs-container" class="option-group">
-                                    <div class="option-group-row">
-                                        <label for="download-subs-toggle">Subtitles</label>
-                                        <label class="switch">
-                                            <input type="checkbox" id="download-subs-toggle" />
-                                            <span class="slider round"></span>
-                                        </label>
-                                    </div>
-                                </div>
-                                <div id="audio-thumb-container" class="option-group hidden">
-                                    <div class="option-group-row">
-                                        <label for="embed-thumbnail-toggle">Embed Thumbnail</label>
-                                        <label class="switch">
-                                            <input type="checkbox" id="embed-thumbnail-toggle" checked />
-                                            <span class="slider round"></span>
-                                        </label>
-                                    </div>
-                                </div>
-                                <div id="playlist-options-container" class="option-group hidden full-width">
-                                    <label>Playlist Items</label>
-                                    <input type="text" id="playlist-items-input" class="text-input-control"
-                                        placeholder="E.g., 1-5, 8, 12-">
-                                </div>
-                                <div class="option-group-row full-width">
-                                    <label for="live-from-start-toggle">Download Livestream from Start</label>
-                                    <label class="switch">
-                                        <input type="checkbox" id="live-from-start-toggle" />
-                                        <span class="slider round"></span>
-                                    </label>
-                                </div>
-                                <div class="download-button-container">
-                                    <button type="submit" class="download-button">
-                                        <span class="material-symbols-outlined">download</span><span>Download</span>
-                                    </button>
-                                </div>
-                            </div>
-                        </form>
-                    </div>
-                    <div class="download-queue-header">
-                        <h3>Download Queue</h3>
-                        <div class="queue-actions">
-                            <button id="clear-completed-btn" class="queue-action-btn">
-                                <span class="material-symbols-outlined">done_all</span>
-                                Clear Completed
-                            </button>
-                            <button id="clear-all-btn" class="queue-action-btn">
-                                <span class="material-symbols-outlined">delete</span>
-                                Clear All
+
+                            <button id="start-download-btn" class="dl-start-btn">
+                                <span class="material-symbols-outlined">download</span>
                             </button>
                         </div>
                     </div>
-                    <div id="download-queue-area"></div>
-                    <div id="empty-queue-placeholder" class="hidden">
-                        <span class="material-symbols-outlined placeholder-icon">download</span>
-                        <p>Your download queue is empty</p>
-                        <span>Paste a link above to get started</span>
+
+                    <!-- Configuration Grid -->
+                    <div class="dl-config-grid">
+                        <!-- Video Quality Dropdown -->
+                        <div class="dl-config-item" id="quality-config">
+                            <label>Quality</label>
+                            <div class="custom-dl-dropdown" id="quality-dropdown">
+                                <div class="dropdown-selected" data-value="1440">1440p</div>
+                                <div class="dropdown-options">
+                                    <div class="dropdown-option" data-value="2160">4K (2160p)</div>
+                                    <div class="dropdown-option selected" data-value="1440">1440p</div>
+                                    <div class="dropdown-option" data-value="1080">1080p</div>
+                                    <div class="dropdown-option" data-value="720">720p</div>
+                                    <div class="dropdown-option" data-value="480">480p</div>
+                                    <div class="dropdown-option" data-value="best">Best Available</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Audio Format Dropdown -->
+                        <div class="dl-config-item hidden" id="format-config">
+                            <label>Format</label>
+                            <div class="custom-dl-dropdown" id="format-dropdown">
+                                <div class="dropdown-selected" data-value="best">Best Available</div>
+                                <div class="dropdown-options">
+                                    <div class="dropdown-option" data-value="mp3">MP3</div>
+                                    <div class="dropdown-option" data-value="opus">Opus</div>
+                                    <div class="dropdown-option" data-value="m4a">M4A</div>
+                                    <div class="dropdown-option selected" data-value="best">Best Available</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Audio Quality Slider -->
+                        <div class="dl-config-item hidden" id="audio-quality-config">
+                            <label>Audio Quality</label>
+                            <div class="slider-container">
+                                <span class="slider-label">Low</span>
+                                <input type="range" id="audio-quality-slider" min="0" max="10" value="10" step="1">
+                                <span class="slider-label">Best</span>
+                            </div>
+                        </div>
+
+                        <!-- Toggles -->
+                        <div class="dl-config-item" id="subs-config">
+                            <div class="toggle-wrapper">
+                                <label for="download-subs-toggle">Subtitles</label>
+                                <label class="modern-switch">
+                                    <input type="checkbox" id="download-subs-toggle">
+                                    <span class="modern-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="dl-config-item hidden" id="thumb-config">
+                            <div class="toggle-wrapper">
+                                <label for="embed-thumbnail-toggle">Embed Cover</label>
+                                <label class="modern-switch">
+                                    <input type="checkbox" id="embed-thumbnail-toggle" checked>
+                                    <span class="modern-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="dl-config-item">
+                            <div class="toggle-wrapper">
+                                <label for="live-from-start-toggle">Live from Start</label>
+                                <label class="modern-switch">
+                                    <input type="checkbox" id="live-from-start-toggle">
+                                    <span class="modern-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Playlist Range -->
+                        <div class="dl-config-item hidden full-width" id="playlist-range-config">
+                            <label>Playlist Range</label>
+                            <input type="text" id="playlist-items-input" class="dl-text-input"
+                                placeholder="e.g. 1-5, 10, 15-">
+                        </div>
+                    </div>
+
+                    <!-- Unified Queue/History Section -->
+                    <div class="dl-tabs-container">
+                        <div class="dl-tabs-header">
+                            <button class="dl-tab-btn active" data-tab="queue">Active Queue</button>
+                            <button class="dl-tab-btn" data-tab="history">History</button>
+                            <div class="dl-tabs-actions">
+                                <button id="queue-clear-btn" class="icon-btn" title="Clear All"><span
+                                        class="material-symbols-outlined">delete_sweep</span></button>
+                            </div>
+                        </div>
+
+                        <div class="dl-tab-content active" id="tab-queue">
+                            <div id="download-queue-area" class="dl-list-container">
+                                <!-- Queue Cards Populated via JS -->
+                            </div>
+                            <div id="empty-queue-placeholder" class="dl-empty-state">
+                                <span class="material-symbols-outlined">layers</span>
+                                <p>Queue is empty</p>
+                            </div>
+                        </div>
+
+                        <div class="dl-tab-content" id="tab-history">
+                            <div class="dl-list-container" id="history-list-container">
+                                <!-- History Cards Populated via JS -->
+                            </div>
+                            <div id="empty-history-placeholder" class="dl-empty-state hidden">
+                                <span class="material-symbols-outlined">history</span>
+                                <p>No download history</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -413,7 +406,7 @@
                         <div class="setting-item">
                             <div class="setting-text">
                                 <label>Window Controls</label>
-                                <p>Choose the position of window buttons (Minimize, Maximize, Close).</p>
+                                <p>Choose the position of window buttons.</p>
                             </div>
                             <div class="setting-control">
                                 <div class="custom-select-container" id="window-controls-select-container">
@@ -458,9 +451,7 @@
                         <div class="setting-item">
                             <div class="setting-text">
                                 <label for="concurrent-fragments-slider">Concurrent Fragments</label>
-                                <p>
-                                    Speeds up HLS/DASH downloads by fetching parts in parallel.
-                                </p>
+                                <p>Speeds up HLS/DASH downloads by fetching parts in parallel.</p>
                             </div>
                             <div class="setting-control">
                                 <input type="range" id="concurrent-fragments-slider" min="1" max="10" value="1" />
@@ -480,9 +471,7 @@
                         <div class="setting-item">
                             <div class="setting-text">
                                 <label>Browser Cookies</label>
-                                <p>
-                                    Use cookies from a browser to bypass login/age restrictions.
-                                </p>
+                                <p>Use cookies from a browser to bypass login/age restrictions.</p>
                             </div>
                             <div class="setting-control">
                                 <div class="custom-select-container" id="cookie-browser-select-container">
@@ -492,23 +481,15 @@
                                                 class="material-symbols-outlined">expand_more</span></span>
                                     </div>
                                     <div class="options-list">
-                                        <div class="option-item selected" data-value="none">
-                                            None
-                                        </div>
+                                        <div class="option-item selected" data-value="none">None</div>
                                         <div class="option-item" data-value="brave">Brave</div>
                                         <div class="option-item" data-value="chrome">Chrome</div>
-                                        <div class="option-item" data-value="chromium">
-                                            Chromium
-                                        </div>
+                                        <div class="option-item" data-value="chromium">Chromium</div>
                                         <div class="option-item" data-value="edge">Edge</div>
-                                        <div class="option-item" data-value="firefox">
-                                            Firefox
-                                        </div>
+                                        <div class="option-item" data-value="firefox">Firefox</div>
                                         <div class="option-item" data-value="opera">Opera</div>
                                         <div class="option-item" data-value="safari">Safari</div>
-                                        <div class="option-item" data-value="vivaldi">
-                                            Vivaldi
-                                        </div>
+                                        <div class="option-item" data-value="vivaldi">Vivaldi</div>
                                     </div>
                                 </div>
                             </div>
@@ -516,10 +497,7 @@
                         <div class="setting-item">
                             <div class="setting-text">
                                 <label for="auto-subs-toggle">Download Automatic Subtitles</label>
-                                <p>
-                                    If official subtitles aren't found, download auto-generated
-                                    ones (when available).
-                                </p>
+                                <p>If official subtitles aren't found, download auto-generated ones.</p>
                             </div>
                             <div class="setting-control">
                                 <label class="switch">
@@ -531,10 +509,7 @@
                         <div class="setting-item">
                             <div class="setting-text">
                                 <label for="sponsorblock-toggle">Remove Sponsored Segments</label>
-                                <p>
-                                    Automatically cut sponsored sections, intros, outros, etc.,
-                                    from videos.
-                                </p>
+                                <p>Automatically cut sponsored sections, intros, etc.</p>
                             </div>
                             <div class="setting-control">
                                 <label class="switch">
@@ -549,24 +524,20 @@
                         <div class="setting-item">
                             <div class="setting-text">
                                 <label>Import & Export</label>
-                                <p>
-                                    Add local files or export your entire library to a folder.
-                                </p>
+                                <p>Add local files or export your entire library.</p>
                             </div>
                             <div class="setting-control">
                                 <button class="setting-btn" id="import-files-btn">
-                                    <span class="material-symbols-outlined">upload_file</span>
-                                    Import Files
+                                    <span class="material-symbols-outlined">upload_file</span> Import Files
                                 </button>
                                 <button class="setting-btn" id="export-all-btn">
-                                    <span class="material-symbols-outlined">folder_open</span>
-                                    Export Library
+                                    <span class="material-symbols-outlined">folder_open</span> Export Library
                                 </button>
                             </div>
                         </div>
                         <div id="file-op-progress-container" class="hidden">
                             <div class="file-op-progress-header">
-                                <label id="file-op-progress-label">Importing...</label>
+                                <label id="file-op-progress-label">Processing...</label>
                                 <span id="file-op-progress-value">0%</span>
                             </div>
                             <p id="file-op-progress-filename"></p>
@@ -577,35 +548,44 @@
                         <div class="setting-item">
                             <div class="setting-text">
                                 <label>Reinitialize App</label>
-                                <p>
-                                    Rescan media files, clear cache, and remove dead entries
-                                    from the database.
-                                </p>
+                                <p>Rescan files, clear cache, and regenerate artists.</p>
                             </div>
                             <div class="setting-control">
                                 <button class="setting-btn" id="reinitialize-app-btn">
-                                    <span class="material-symbols-outlined">sync</span>
-                                    Reinitialize
+                                    <span class="material-symbols-outlined">sync</span> Reinitialize
                                 </button>
                             </div>
                         </div>
                         <div class="setting-item">
                             <div class="setting-text">
                                 <label>Update Downloader</label>
-                                <p>
-                                    Keep the internal downloader (yt-dlp) up-to-date to prevent
-                                    download errors.
-                                </p>
+                                <p>Keep yt-dlp up-to-date.</p>
                             </div>
                             <div class="setting-control">
                                 <button class="setting-btn" id="update-ytdlp-btn">
-                                    <span class="material-symbols-outlined">system_update</span>
-                                    Check for Updates
+                                    <span class="material-symbols-outlined">system_update</span> Check Updates
                                 </button>
                             </div>
                         </div>
                         <div id="updater-console-container" class="hidden">
                             <pre id="updater-console"></pre>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-text">
+                                <label>Directories</label>
+                                <p>Open folders where your data is stored.</p>
+                            </div>
+                            <div class="setting-control">
+                                <button class="setting-btn" id="open-video-dir-btn">
+                                    <span class="material-symbols-outlined">folder</span> Media
+                                </button>
+                                <button class="setting-btn" id="open-db-dir-btn">
+                                    <span class="material-symbols-outlined">database</span> Database
+                                </button>
+                                <button class="setting-btn" id="open-bin-dir-btn">
+                                    <span class="material-symbols-outlined">terminal</span> Binaries
+                                </button>
+                            </div>
                         </div>
                     </div>
                     <div class="settings-section danger-zone">
@@ -613,35 +593,37 @@
                         <div class="setting-item">
                             <div class="setting-text">
                                 <label>Reset ViveStream</label>
-                                <p>
-                                    Resets all settings to their defaults. Your downloaded
-                                    media will not be affected.
-                                </p>
+                                <p>Resets settings. Media remains intact.</p>
                             </div>
                             <div class="setting-control">
-                                <button class="danger-btn" id="reset-app-btn">
-                                    Reset Now
+                                <button class="danger-btn" id="reset-app-btn">Reset Now</button>
+                            </div>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-text">
+                                <label>Delete Database</label>
+                                <p><strong>Warning:</strong> Deletes database and restarts. Media files remain.</p>
+                            </div>
+                            <div class="setting-control">
+                                <button class="danger-btn" id="delete-db-btn">
+                                    <span class="material-symbols-outlined">database</span> Delete DB
                                 </button>
                             </div>
                         </div>
                         <div class="setting-item">
                             <div class="setting-text">
                                 <label>Clear All Local Media</label>
-                                <p>
-                                    <strong>Warning:</strong> This will permanently delete all
-                                    your downloaded videos, audio, and metadata.
-                                </p>
+                                <p><strong>Warning:</strong> Permanently deletes all downloaded files.</p>
                             </div>
                             <div class="setting-control">
                                 <button class="danger-btn" id="clear-media-btn">
-                                    <span class="material-symbols-outlined">delete_forever</span>
-                                    Clear Media
+                                    <span class="material-symbols-outlined">delete_forever</span> Clear Media
                                 </button>
                             </div>
                         </div>
                     </div>
                     <div class="settings-section about-section">
-                        <h2 class="settings-section-title">About ViveStream</h2>
+                        <h2 class="settings-section-title">About</h2>
                         <div class="about-content">
                             <svg class="about-logo" width="30" height="30" viewBox="0 0 500 500"
                                 xmlns="http://www.w3.org/2000/svg">
@@ -650,19 +632,19 @@
                                         0% {
                                             stroke-dashoffset: 1000;
                                             stroke: #fff;
-                                            filter: drop-shadow(0 0 2px #fff) drop-shadow(0 0 5px #fff);
+                                            filter: drop-shadow(0 0 2px #fff) drop-shadow(0 0 5px #fff)
                                         }
 
                                         50% {
                                             stroke-dashoffset: 500;
                                             stroke: #f1f1f1;
-                                            filter: drop-shadow(0 0 4px #fff) drop-shadow(0 0 8px #f1f1f1);
+                                            filter: drop-shadow(0 0 4px #fff) drop-shadow(0 0 8px #f1f1f1)
                                         }
 
                                         to {
                                             stroke-dashoffset: 0;
                                             stroke: #fff;
-                                            filter: drop-shadow(0 0 2px #fff) drop-shadow(0 0 5px #fff);
+                                            filter: drop-shadow(0 0 2px #fff) drop-shadow(0 0 5px #fff)
                                         }
                                     }
                                 </style>
@@ -673,84 +655,62 @@
                                 <path
                                     d="M375 125c-241.667 62.5 -270.833 -41.667 -225 0 8.333 41.667 16.667 -20.833 25 0s16.667 -62.5 25 0 16.667 -33.333 25 0 16.667 -8.333 25 0c8.333 50 16.667 -58.333 25 0 8.333 20.833 16.667 -41.667 25 0 8.333 62.5 16.667 -20.833 25 0 8.333 41.667 16.667 -50 25 0 8.333 25 16.667 -33.333 25 0"
                                     stroke="#fff" stroke-width="5.208333333333334" fill="none" stroke-linecap="round"
-                                    style="
-                      stroke-dasharray: 1000;
-                      stroke-dashoffset: 1000;
-                      animation: pulse-glow 5s ease-in-out infinite;
-                    " />
+                                    style="stroke-dasharray: 1000; stroke-dashoffset: 1000; animation: pulse-glow 5s ease-in-out infinite;" />
                             </svg>
                             <h3 class="about-app-name">ViveStream</h3>
                             <p class="about-version" id="app-version"></p>
-                            <p class="about-dev">Developed by Md Siam Mia</p>
                             <div class="about-links">
                                 <a id="github-view-link" class="about-btn github-view-btn"><span
-                                        class="material-symbols-outlined">code</span> View on
-                                    GitHub</a>
+                                        class="material-symbols-outlined">code</span> GitHub</a>
                                 <a id="github-star-link" class="about-btn github-star-btn"><span
-                                        class="material-symbols-outlined">star</span> Star on
-                                    GitHub</a>
+                                        class="material-symbols-outlined">star</span> Star</a>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
+            <!-- Context Menus -->
             <div class="context-menu" id="video-item-context-menu">
-                <div class="context-menu-item" id="context-edit-btn">
-                    <span class="material-symbols-outlined">edit</span>
-                    Edit Metadata
-                </div>
-                <div class="context-menu-item" id="context-export-btn">
-                    <span class="material-symbols-outlined">download</span> Export File
-                </div>
+                <div class="context-menu-item" id="context-edit-btn"><span class="material-symbols-outlined">edit</span>
+                    Edit Metadata</div>
+                <div class="context-menu-item" id="context-export-btn"><span
+                        class="material-symbols-outlined">download</span> Export File</div>
                 <div class="context-menu-divider"></div>
-                <div class="context-menu-item" id="context-remove-from-playlist-btn">
-                    <span class="material-symbols-outlined">playlist_remove</span>
-                    Remove from Playlist
-                </div>
-                <div class="context-menu-item" id="context-delete-btn">
-                    <span class="material-symbols-outlined">delete</span> Delete from
-                    Library
-                </div>
+                <div class="context-menu-item" id="context-remove-from-playlist-btn"><span
+                        class="material-symbols-outlined">playlist_remove</span> Remove from Playlist</div>
+                <div class="context-menu-item" id="context-delete-btn"><span
+                        class="material-symbols-outlined">delete</span> Delete from Library</div>
             </div>
             <div class="context-menu" id="playlist-item-context-menu">
-                <div class="context-menu-item" id="context-playlist-rename-btn">
-                    <span class="material-symbols-outlined">edit</span>
-                    Rename
-                </div>
-                <div class="context-menu-item" id="context-playlist-delete-btn">
-                    <span class="material-symbols-outlined">delete</span>
-                    Delete
-                </div>
+                <div class="context-menu-item" id="context-playlist-rename-btn"><span
+                        class="material-symbols-outlined">edit</span> Rename</div>
+                <div class="context-menu-item" id="context-playlist-delete-btn"><span
+                        class="material-symbols-outlined">delete</span> Delete</div>
             </div>
-            <!-- Infinite Scroll Sentinel -->
             <div id="scroll-sentinel" style="height: 10px; width: 100%;"></div>
         </div>
     </div>
+    <!-- Miniplayer & Modals -->
     <div id="miniplayer" class="hidden">
         <div id="miniplayer-video-container"></div>
         <img id="miniplayer-artwork-img" class="miniplayer-artwork hidden" src="" alt="Artwork" />
         <div class="miniplayer-info">
-            <p class="miniplayer-title">Video Title</p>
+            <p class="miniplayer-title">Title</p>
             <p class="miniplayer-uploader">Uploader</p>
         </div>
         <div class="miniplayer-controls">
-            <button class="mini-control-button" id="miniplayer-prev-btn">
-                <span class="material-symbols-outlined">skip_previous</span>
-            </button>
-            <button class="mini-control-button" id="miniplayer-play-pause-btn">
-                <span class="material-symbols-outlined">play_arrow</span>
-            </button>
-            <button class="mini-control-button" id="miniplayer-next-btn">
-                <span class="material-symbols-outlined">skip_next</span>
-            </button>
+            <button class="mini-control-button" id="miniplayer-prev-btn"><span
+                    class="material-symbols-outlined">skip_previous</span></button>
+            <button class="mini-control-button" id="miniplayer-play-pause-btn"><span
+                    class="material-symbols-outlined">play_arrow</span></button>
+            <button class="mini-control-button" id="miniplayer-next-btn"><span
+                    class="material-symbols-outlined">skip_next</span></button>
         </div>
         <div class="miniplayer-actions">
-            <button class="mini-action-button" id="miniplayer-expand-btn">
-                <span class="material-symbols-outlined">expand_less</span>
-            </button>
-            <button class="mini-action-button" id="miniplayer-close-btn">
-                <span class="material-symbols-outlined">close</span>
-            </button>
+            <button class="mini-action-button" id="miniplayer-expand-btn"><span
+                    class="material-symbols-outlined">expand_less</span></button>
+            <button class="mini-action-button" id="miniplayer-close-btn"><span
+                    class="material-symbols-outlined">close</span></button>
         </div>
         <div class="miniplayer-progress-container">
             <div class="miniplayer-progress-bar"></div>
@@ -768,28 +728,24 @@
             </div>
             <div class="add-playlist-list"></div>
             <div class="modal-actions">
-                <button id="add-to-playlist-close-btn" class="modal-btn">
-                    Close
-                </button>
+                <button id="add-to-playlist-close-btn" class="modal-btn">Close</button>
             </div>
         </div>
     </div>
     <div id="confirmation-modal" class="modal-overlay hidden">
         <div class="modal-content">
             <h3 id="modal-title">Are you sure?</h3>
-            <p id="modal-text">This action cannot be undone.</p>
+            <p id="modal-text">Action cannot be undone.</p>
             <div class="modal-actions">
                 <button id="modal-cancel-btn" class="modal-btn">Cancel</button>
-                <button id="modal-confirm-btn" class="modal-btn danger-btn">
-                    Confirm
-                </button>
+                <button id="modal-confirm-btn" class="modal-btn danger-btn">Confirm</button>
             </div>
         </div>
     </div>
     <div id="prompt-modal" class="modal-overlay hidden">
         <div class="modal-content prompt-modal-content">
             <h3 id="prompt-title">Prompt</h3>
-            <p id="prompt-text">Enter a value:</p>
+            <p id="prompt-text">Enter value:</p>
             <input type="text" id="prompt-input" />
             <div class="modal-actions">
                 <button id="prompt-cancel-btn" class="modal-btn">Cancel</button>
@@ -811,15 +767,12 @@
                     <p class="grid-item-meta"></p>
                 </div>
                 <div class="grid-item-actions">
-                    <button class="grid-item-action-btn favorite-btn">
-                        <span class="material-symbols-outlined">favorite</span>
-                    </button>
-                    <button class="grid-item-action-btn add-to-playlist-grid-btn" title="Add to Playlist">
-                        <span class="material-symbols-outlined">playlist_add</span>
-                    </button>
-                    <button class="grid-item-action-btn menu-btn" title="More">
-                        <span class="material-symbols-outlined">more_vert</span>
-                    </button>
+                    <button class="grid-item-action-btn favorite-btn"><span
+                            class="material-symbols-outlined">favorite</span></button>
+                    <button class="grid-item-action-btn add-to-playlist-grid-btn" title="Add to Playlist"><span
+                            class="material-symbols-outlined">playlist_add</span></button>
+                    <button class="grid-item-action-btn menu-btn" title="More"><span
+                            class="material-symbols-outlined">more_vert</span></button>
                 </div>
             </div>
         </div>
