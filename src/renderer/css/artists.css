@@ -12,17 +12,19 @@
   gap: 12px;
   cursor: pointer;
   text-align: center;
-  transition: transform 0.2s ease;
+  transition: transform 0.3s var(--transition-bounce);
+  animation: popIn 0.5s var(--transition-bounce) both;
 }
 
 .artist-grid-item:hover {
-  transform: translateY(-5px);
+  transform: translateY(-8px) scale(1.05);
 }
 
 .artist-thumbnail-container {
   width: 150px;
   height: 150px;
   position: relative;
+  transition: transform 0.3s ease;
 }
 
 .artist-thumbnail {
@@ -32,11 +34,12 @@
   border-radius: 50%;
   background-color: var(--secondary-background);
   border: 3px solid var(--border-color);
-  transition: border-color 0.2s ease;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 .artist-grid-item:hover .artist-thumbnail {
   border-color: var(--primary-accent);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
 }
 
 .artist-name {
@@ -94,6 +97,11 @@
   width: 180px;
   height: 180px;
   flex-shrink: 0;
+  transition: transform 0.3s var(--transition-bounce);
+}
+
+.artist-detail-image-container:hover {
+  transform: scale(1.05);
 }
 
 .artist-detail-image {
@@ -122,13 +130,15 @@
   justify-content: center;
   cursor: pointer;
   opacity: 0;
-  transition: opacity 0.2s, background-color 0.2s;
+  transform: scale(0.8);
+  transition: opacity 0.2s, background-color 0.2s, transform 0.3s var(--transition-bounce);
   font-size: 20px;
   z-index: 10;
 }
 
 .artist-detail-image-container:hover .edit-cover-btn {
   opacity: 1;
+  transform: scale(1);
 }
 
 .artist-detail-image-container .edit-cover-btn:hover {
