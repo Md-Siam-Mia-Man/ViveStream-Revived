@@ -102,6 +102,70 @@
      display: none;
 }
 
+/* Subtitle Styling Variables */
+video::-webkit-media-text-track-display {
+     transform: translateY(var(--subtitle-pos, 0%));
+}
+
+video::cue {
+     font-size: var(--subtitle-size, 1.25rem);
+     color: var(--subtitle-color, #ffffff);
+     background-color: var(--subtitle-bg, rgba(0, 0, 0, 0.7));
+     font-family: var(--subtitle-font, 'Poppins');
+}
+
+/* Player Feedback Overlay */
+#player-feedback {
+     position: absolute;
+     top: 50%;
+     left: 50%;
+     transform: translate(-50%, -50%);
+     background-color: rgba(0, 0, 0, 0.6);
+     color: #fff;
+     padding: 20px 40px;
+     border-radius: 12px;
+     display: flex;
+     flex-direction: column;
+     align-items: center;
+     gap: 12px;
+     pointer-events: none;
+     z-index: 25;
+     opacity: 0;
+     transition: opacity 0.3s ease;
+     backdrop-filter: blur(5px);
+}
+
+#player-feedback.visible {
+     opacity: 1;
+     animation: feedback-pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes feedback-pop {
+     0% {
+          transform: translate(-50%, -50%) scale(0.8);
+          opacity: 0;
+     }
+
+     50% {
+          transform: translate(-50%, -50%) scale(1.1);
+          opacity: 1;
+     }
+
+     100% {
+          transform: translate(-50%, -50%) scale(1);
+          opacity: 1;
+     }
+}
+
+#player-feedback .material-symbols-outlined {
+     font-size: 48px;
+}
+
+#player-feedback .feedback-text {
+     font-size: 1.2rem;
+     font-weight: 600;
+}
+
 .audio-artwork-container {
      display: none;
      width: 100%;
@@ -554,6 +618,8 @@
      opacity: 0;
      transform: translateY(10px);
      transition: opacity .2s ease, transform .2s ease;
+     max-height: 400px;
+     overflow-y: auto;
 }
 
 .settings-menu.active,
@@ -624,6 +690,83 @@ body.light-theme .submenu-item:hover {
 
 .submenu-item.active .check {
      visibility: visible;
+}
+
+/* Styled Inputs inside Submenu */
+.submenu-input-group {
+     width: 100%;
+     display: flex;
+     flex-direction: column;
+     gap: 8px;
+}
+
+.submenu-label {
+     font-size: 0.85rem;
+     color: var(--secondary-text);
+     font-weight: 600;
+}
+
+.submenu-control-row {
+     display: flex;
+     justify-content: space-between;
+     align-items: center;
+}
+
+/* Custom dropdown for player menu */
+.player-dropdown {
+     background: var(--tertiary-background);
+     border: 1px solid var(--border-color);
+     color: #fff;
+     padding: 6px 10px;
+     border-radius: 6px;
+     font-size: 0.9rem;
+     cursor: pointer;
+     min-width: 100px;
+     display: flex;
+     justify-content: space-between;
+     align-items: center;
+     position: relative;
+     flex-wrap: wrap;
+     /* Fixed: Allow list to wrap to next line */
+}
+
+.player-dropdown-list {
+     position: static;
+     /* Fixed: Flow within container */
+     width: 100%;
+     min-width: 100%;
+     background: var(--tertiary-background);
+     border: 1px solid var(--border-color);
+     border-radius: 6px;
+     margin-top: 8px;
+     z-index: 50;
+     display: none;
+     max-height: 200px;
+     overflow-y: auto;
+}
+
+.player-dropdown.open .player-dropdown-list {
+     display: block;
+}
+
+.player-dropdown-item {
+     padding: 10px;
+     font-size: 0.85rem;
+     transition: background-color 0.2s;
+     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.player-dropdown-item:last-child {
+     border-bottom: none;
+}
+
+.player-dropdown-item:hover {
+     background-color: var(--primary-background);
+}
+
+.player-dropdown-item.selected {
+     color: var(--primary-accent);
+     font-weight: 600;
 }
 
 .sleep-timer-input-group {
