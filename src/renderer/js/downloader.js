@@ -388,7 +388,7 @@ function showErrorLog(errorData) {
             <p style="font-weight:bold;">${errorData.error || "Log Details"}</p>
             <div class="log-content">${errorData.fullLog || "No detailed log."}</div>
             <div class="modal-actions">
-                <button id="copy-log-btn" class="modal-btn" style="background:var(--tertiary-background);">Copy Log</button>
+                <button id="copy-log-btn" class="modal-btn">Copy Log</button>
                 <button id="close-log-btn" class="modal-btn">Close</button>
             </div>
         </div>
