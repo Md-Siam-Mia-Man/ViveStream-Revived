@@ -2,10 +2,10 @@ import { AppState, setCurrentlyPlaying } from "./state.js";
 import { showPage } from "./renderer.js";
 import { activateMiniplayer } from "./miniplayer.js";
 import { openAddToPlaylistModal } from "./playlists.js";
-import { toggleFavoriteStatus } from "./ui.js";
+import { toggleFavoriteStatus, applyFilters } from "./ui.js";
 import { showNotification } from "./notifications.js";
 import { eventBus } from "./event-bus.js";
-import { formatTime } from "./utils.js";
+import { formatTime, fuzzySearch } from "./utils.js";
 
 const playerPage = document.getElementById("player-page");
 const playerSection = document.getElementById("player-section");
@@ -289,7 +289,25 @@ function createUpNextItem(video, isPlaying) {
   return li;
 }
 
-export function renderUpNextList() {
+function sortQueueForDisplay(queue, sortKey) {
+  if (!sortKey) return queue;
+  const [key, direction] = sortKey.split("-");
+  return [...queue].sort((a, b) => {
+    let valA = a[key];
+    let valB = b[key];
+    if (valA === undefined || valA === null) valA = "";
+    if (valB === undefined || valB === null) valB = "";
+    if (key === "title") {
+      valA = valA.toLowerCase();
+      valB = valB.toLowerCase();
+    }
+    if (valA < valB) return direction === "asc" ? -1 : 1;
+    if (valA > valB) return direction === "asc" ? 1 : -1;
+    return 0;
+  });
+}
+
+export function renderUpNextList({ searchTerm = "", sortKey = "" } = {}) {
   upNextList.innerHTML = "";
 
   if (
@@ -303,7 +321,23 @@ export function renderUpNextList() {
   upNextContainer.classList.remove("hidden");
 
   const context = AppState.playbackContext;
-  const currentQueue = AppState.playbackQueue;
+
+  // Base Queue
+  let displayQueue = [...AppState.playbackQueue];
+  const currentlyPlayingId = displayQueue[AppState.currentlyPlayingIndex]?.id;
+
+  // Filter by Type/Duration/Source using global filter
+  displayQueue = applyFilters(displayQueue);
+
+  // Filter by Search Term
+  if (searchTerm.trim()) {
+    displayQueue = fuzzySearch(searchTerm, displayQueue, ["title", "creator"]);
+  }
+
+  // Sort
+  if (sortKey) {
+    displayQueue = sortQueueForDisplay(displayQueue, sortKey);
+  }
 
   if (context && context.name) {
     const icon = {
@@ -317,8 +351,13 @@ export function renderUpNextList() {
     upNextHeaderText.innerHTML = "Up Next";
   }
 
-  currentQueue.forEach((video, index) => {
-    const isPlaying = index === AppState.currentlyPlayingIndex;
+  // Show empty state if filters hid everything
+  if (displayQueue.length === 0) {
+    upNextList.innerHTML = `<li style="padding:15px;text-align:center;color:var(--secondary-text)">No tracks match filters</li>`;
+  }
+
+  displayQueue.forEach((video) => {
+    const isPlaying = video.id === currentlyPlayingId;
     const itemEl = createUpNextItem(video, isPlaying);
     upNextList.appendChild(itemEl);
   });
