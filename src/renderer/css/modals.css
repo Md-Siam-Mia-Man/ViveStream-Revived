@@ -35,8 +35,9 @@
     max-width: 480px;
     border: 1px solid rgba(255, 255, 255, 0.08);
     box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
-    transform: scale(0.92) translateY(20px);
-    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.1);
+    /* Bouncy entry transform */
+    transform: scale(0.8) translateY(50px);
+    transition: transform 0.5s var(--transition-bounce);
 }
 
 .modal-overlay:not(.hidden) .modal-content {
@@ -72,7 +73,7 @@
     padding: 12px 16px;
     border-radius: 10px;
     font-size: 1rem;
-    transition: all 0.2s ease;
+    transition: all 0.3s var(--transition-bounce);
     font-family: var(--font-body);
 }
 
@@ -80,7 +81,8 @@
     outline: none;
     border-color: var(--primary-accent);
     background: rgba(0, 0, 0, 0.5);
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-accent) 20%, transparent);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary-accent) 20%, transparent);
+    transform: scale(1.02);
 }
 
 /* Actions */
@@ -98,8 +100,12 @@
     cursor: pointer;
     font-weight: 600;
     font-size: 0.95rem;
-    transition: all 0.2s ease;
+    transition: all 0.2s var(--transition-bounce);
     letter-spacing: 0.02em;
+}
+
+.modal-btn:hover {
+    transform: translateY(-2px);
 }
 
 .modal-btn:active {
@@ -138,8 +144,7 @@
 #modal-confirm-btn:hover,
 #copy-log-btn:hover {
     background-color: var(--primary-accent-dark);
-    box-shadow: 0 6px 20px color-mix(in srgb, var(--primary-accent) 50%, transparent);
-    transform: translateY(-1px);
+    box-shadow: 0 8px 25px color-mix(in srgb, var(--primary-accent) 50%, transparent);
 }
 
 /* Add to Playlist Modal Specifics */
@@ -192,12 +197,13 @@
     padding: 14px;
     border-radius: 12px;
     cursor: pointer;
-    transition: background-color 0.2s;
+    transition: background-color 0.2s, transform 0.2s var(--transition-bounce);
     margin-bottom: 4px;
 }
 
 .add-playlist-item:hover {
     background-color: rgba(255, 255, 255, 0.08);
+    transform: translateX(5px);
 }
 
 .add-playlist-item.hidden {
@@ -218,19 +224,20 @@
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    transition: all 0.2s;
+    transition: all 0.3s var(--transition-bounce);
 }
 
 .add-playlist-item input:checked+.custom-checkbox {
     background-color: var(--primary-accent);
     border-color: var(--primary-accent);
+    transform: scale(1.1);
 }
 
 .add-playlist-item .custom-checkbox .material-symbols-outlined {
     font-size: 18px;
     color: #fff;
     transform: scale(0);
-    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    transition: transform 0.3s var(--transition-bounce);
 }
 
 .add-playlist-item input:checked+.custom-checkbox .material-symbols-outlined {
