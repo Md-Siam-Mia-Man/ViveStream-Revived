@@ -316,6 +316,15 @@ class Downloader {
         await this.postProcess(videoInfo, job, fullLog);
       } else if (code !== null) {
         const errorMsg = parseYtDlpError(stderrOutput);
+        // Save failed history
+        await db.addToHistory({
+          url: videoInfo.webpage_url,
+          title: videoInfo.title || videoInfo.url,
+          type: job.downloadType,
+          thumbnail: videoInfo.thumbnail,
+          status: "failed"
+        });
+
         if (win)
           win.webContents.send("download-error", {
             id: videoInfo.id,
@@ -368,8 +377,11 @@ class Downloader {
 
       let subFileUri = null;
       if (job.downloadType === "video") {
-        const tempSubPath = path.join(videoPath, `${videoInfo.id}.en.vtt`);
-        if (fs.existsSync(tempSubPath)) {
+        // More robust subtitle check - iterate files in dir that match ID and .vtt
+        const potentialSubs = fs.readdirSync(videoPath).filter(f => f.startsWith(videoInfo.id) && f.endsWith('.vtt'));
+        if (potentialSubs.length > 0) {
+          // Take the first one found (usually .en.vtt)
+          const tempSubPath = path.join(videoPath, potentialSubs[0]);
           const finalSubPath = path.join(subtitlePath, `${info.id}.vtt`);
           fs.renameSync(tempSubPath, finalSubPath);
           subFileUri = url.pathToFileURL(finalSubPath).href;
@@ -419,12 +431,13 @@ class Downloader {
         await db.addVideoToPlaylist(job.playlistId, videoData.id);
       }
 
-      // Add to history
+      // Add to history (success)
       await db.addToHistory({
         url: info.webpage_url,
         title: info.title,
         type: job.downloadType,
-        thumbnail: finalCoverUri
+        thumbnail: finalCoverUri,
+        status: "success"
       });
 
       if (win)
@@ -553,7 +566,11 @@ ipcMain.on("tray-window", () => win.hide());
 ipcMain.on("open-external", (e, url) => shell.openExternal(url));
 ipcMain.handle("open-media-folder", () => shell.openPath(viveStreamPath));
 ipcMain.handle("open-database-folder", () => shell.openPath(app.getPath("userData")));
-ipcMain.handle("open-vendor-folder", () => shell.openPath(getResourcePath(vendorPath, "")));
+ipcMain.handle("open-vendor-folder", () => {
+  // Always open the actual location of binaries (resources in prod, vendor in dev)
+  const p = isDev ? path.join(__dirname, "..", "..", "vendor") : path.join(process.resourcesPath, "vendor");
+  return shell.openPath(p);
+});
 
 ipcMain.handle("get-settings", getSettings);
 ipcMain.handle("get-app-version", () => app.getVersion());
