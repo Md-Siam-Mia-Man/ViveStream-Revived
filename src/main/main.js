@@ -34,6 +34,7 @@ if (isDev) {
 
 const platform = process.platform;
 const exeSuffix = platform === "win32" ? ".exe" : "";
+const platformDir = platform === "win32" ? "win" : platform === "darwin" ? "mac" : "linux";
 
 const getResourcePath = (subfolder, fileName) => {
   const basePath = isDev
@@ -42,12 +43,13 @@ const getResourcePath = (subfolder, fileName) => {
   return path.join(basePath, fileName);
 };
 
-const bundledYtDlpPath = getResourcePath("vendor", `yt-dlp${exeSuffix}`);
+const vendorPath = path.join("vendor", platformDir);
+const bundledYtDlpPath = getResourcePath(vendorPath, `yt-dlp${exeSuffix}`);
 const userYtDlpPath = path.join(app.getPath("userData"), `yt-dlp${exeSuffix}`);
 let ytDlpPath = userYtDlpPath;
 
-const ffmpegPath = getResourcePath("vendor", `ffmpeg${exeSuffix}`);
-const ffprobePath = getResourcePath("vendor", `ffprobe${exeSuffix}`);
+const ffmpegPath = getResourcePath(vendorPath, `ffmpeg${exeSuffix}`);
+const ffprobePath = getResourcePath(vendorPath, `ffprobe${exeSuffix}`);
 const iconPath = getResourcePath("assets", "icon.ico");
 
 const userHomePath = app.getPath("home");
@@ -87,7 +89,11 @@ async function initializeYtDlp() {
   try {
     const userPathExists = await fse.pathExists(userYtDlpPath);
     if (!userPathExists) {
-      await fse.copy(bundledYtDlpPath, userYtDlpPath);
+      if (await fse.pathExists(bundledYtDlpPath)) {
+        await fse.copy(bundledYtDlpPath, userYtDlpPath);
+      } else {
+        console.warn("Bundled yt-dlp not found at:", bundledYtDlpPath);
+      }
     }
     ytDlpPath = userYtDlpPath;
   } catch (error) {
@@ -208,11 +214,9 @@ class Downloader {
       "--ffmpeg-location",
       path.dirname(ffmpegPath),
       "--progress",
-      "--no-warnings",
+      "-v",
       "--retries",
       "5",
-      "--impersonate",
-      "chrome",
       "--write-info-json",
       "--write-thumbnail",
       "--convert-thumbnails",
@@ -257,6 +261,8 @@ class Downloader {
       args.push("--cookies-from-browser", this.settings.cookieBrowser);
     if (this.settings.speedLimit) args.push("-r", this.settings.speedLimit);
 
+    console.log(`[Downloader] Executing: ${ytDlpPath} ${args.join(" ")}`);
+
     const proc = spawn(ytDlpPath, args);
     this.activeDownloads.set(videoInfo.id, proc);
 
@@ -266,8 +272,7 @@ class Downloader {
     const resetStallTimer = () => {
       clearTimeout(stallTimeout);
       stallTimeout = setTimeout(() => {
-        stderrOutput =
-          "Download stalled for over 90 seconds and was cancelled.";
+        stderrOutput += "\n[System]: Download stalled for over 90 seconds and was cancelled.";
         proc.kill();
       }, 90000);
     };
@@ -294,7 +299,6 @@ class Downloader {
     proc.stderr.on("data", (data) => {
       resetStallTimer();
       stderrOutput += data.toString();
-      console.error(`Download Stderr (${videoInfo.id}): ${data}`);
     });
 
     proc.on("error", (err) => {
@@ -305,13 +309,18 @@ class Downloader {
     proc.on("close", async (code) => {
       clearTimeout(stallTimeout);
       this.activeDownloads.delete(videoInfo.id);
+
+      const fullLog = `COMMAND EXECUTED:\n${ytDlpPath} ${args.join(" ")}\n\nVERBOSE LOG:\n${stderrOutput}`;
+
       if (code === 0) {
-        await this.postProcess(videoInfo, job);
+        await this.postProcess(videoInfo, job, fullLog);
       } else if (code !== null) {
+        const errorMsg = parseYtDlpError(stderrOutput);
         if (win)
           win.webContents.send("download-error", {
             id: videoInfo.id,
-            error: parseYtDlpError(stderrOutput),
+            error: errorMsg,
+            fullLog: fullLog,
             job,
           });
       }
@@ -319,7 +328,7 @@ class Downloader {
     });
   }
 
-  async postProcess(videoInfo, job) {
+  async postProcess(videoInfo, job, fullLog) {
     try {
       const infoJsonPath = path.join(videoPath, `${videoInfo.id}.info.json`);
       if (!fs.existsSync(infoJsonPath)) {
@@ -409,10 +418,20 @@ class Downloader {
       if (job.playlistId) {
         await db.addVideoToPlaylist(job.playlistId, videoData.id);
       }
+
+      // Add to history
+      await db.addToHistory({
+        url: info.webpage_url,
+        title: info.title,
+        type: job.downloadType,
+        thumbnail: finalCoverUri
+      });
+
       if (win)
         win.webContents.send("download-complete", {
           id: videoInfo.id,
           videoData,
+          fullLog
         });
     } catch (e) {
       console.error(`Post-processing failed for ${videoInfo.id}:`, e);
@@ -420,6 +439,7 @@ class Downloader {
         win.webContents.send("download-error", {
           id: videoInfo.id,
           error: e.message || "Post-processing failed.",
+          fullLog: fullLog + `\n\nPOST-PROCESSING ERROR:\n${e.stack}`,
           job,
         });
     }
@@ -429,8 +449,8 @@ const downloader = new Downloader();
 
 function createWindow() {
   win = new BrowserWindow({
-    width: 1280,
-    height: 720,
+    width: 1400,
+    height: 900,
     minWidth: 940,
     minHeight: 600,
     backgroundColor: "#0F0F0F",
@@ -531,6 +551,9 @@ ipcMain.on("maximize-window", () =>
 ipcMain.on("close-window", () => win.close());
 ipcMain.on("tray-window", () => win.hide());
 ipcMain.on("open-external", (e, url) => shell.openExternal(url));
+ipcMain.handle("open-media-folder", () => shell.openPath(viveStreamPath));
+ipcMain.handle("open-database-folder", () => shell.openPath(app.getPath("userData")));
+ipcMain.handle("open-vendor-folder", () => shell.openPath(getResourcePath(vendorPath, "")));
 
 ipcMain.handle("get-settings", getSettings);
 ipcMain.handle("get-app-version", () => app.getVersion());
@@ -555,6 +578,19 @@ ipcMain.handle("clear-all-media", async () => {
     for (const dir of mediaPaths) await fse.emptyDir(dir);
     const result = await db.clearAllMedia();
     return result;
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+});
+
+ipcMain.handle("db:delete", async () => {
+  try {
+    await db.shutdown();
+    const dbPath = path.join(app.getPath("userData"), "ViveStream.db");
+    if (fs.existsSync(dbPath)) fs.unlinkSync(dbPath);
+    app.relaunch();
+    app.exit(0);
+    return { success: true };
   } catch (e) {
     return { success: false, error: e.message };
   }
@@ -597,14 +633,14 @@ ipcMain.on("download-video", (e, { downloadOptions, jobId }) => {
   const args = [
     downloadOptions.url,
     "--dump-json",
-    "--no-warnings",
+    "-v",
     "--flat-playlist",
-    "--impersonate",
-    "chrome",
   ];
   const settings = getSettings();
   if (settings.cookieBrowser && settings.cookieBrowser !== "none")
     args.push("--cookies-from-browser", settings.cookieBrowser);
+
+  console.log(`[InfoFetch] Executing: ${ytDlpPath} ${args.join(" ")}`);
 
   const proc = spawn(ytDlpPath, args);
   let j = "";
@@ -612,7 +648,7 @@ ipcMain.on("download-video", (e, { downloadOptions, jobId }) => {
 
   const timeout = setTimeout(() => {
     proc.kill();
-    errorOutput = "Network timeout: The request took too long to complete.";
+    errorOutput += "\n[System]: Network timeout: The request took too long to complete.";
   }, 30000);
 
   proc.stdout.on("data", (d) => (j += d));
@@ -651,10 +687,12 @@ ipcMain.on("download-video", (e, { downloadOptions, jobId }) => {
           });
       }
     } else {
+      const fullLog = `COMMAND EXECUTED:\n${ytDlpPath} ${args.join(" ")}\n\nVERBOSE LOG:\n${errorOutput}`;
       if (win)
         win.webContents.send("download-info-error", {
           jobId,
           error: parseYtDlpError(errorOutput),
+          fullLog: fullLog
         });
     }
   });
@@ -677,16 +715,26 @@ ipcMain.handle("updater:check-yt-dlp", () => {
 async function copyWithProgress(source, dest, eventPayload) {
   const totalSize = (await fs.promises.stat(source)).size;
   let copiedSize = 0;
+  let lastUpdate = 0;
+
   const sourceStream = fs.createReadStream(source);
   const destStream = fs.createWriteStream(dest);
 
   sourceStream.on("data", (chunk) => {
     copiedSize += chunk.length;
-    const progress = Math.round((copiedSize / totalSize) * 100);
-    win.webContents.send("file-operation-progress", {
-      ...eventPayload,
-      progress,
-    });
+
+    // Throttle updates to ~every 100ms
+    const now = Date.now();
+    if (now - lastUpdate > 100 || copiedSize === totalSize) {
+      lastUpdate = now;
+      const progress = totalSize > 0 ? Math.round((copiedSize / totalSize) * 100) : 100;
+      if (win) {
+        win.webContents.send("file-operation-progress", {
+          ...eventPayload,
+          progress,
+        });
+      }
+    }
   });
 
   sourceStream.pipe(destStream);
@@ -973,3 +1021,9 @@ ipcMain.handle("artist:update-thumbnail", async (e, artistId) => {
     return { success: false, error: error.message };
   }
 });
+
+ipcMain.handle("artist:rename", (e, id, name) => db.updateArtistName(id, name));
+ipcMain.handle("artist:delete", (e, id) => db.deleteArtist(id));
+
+ipcMain.handle("history:get", () => db.getHistory());
+ipcMain.handle("history:clear", () => db.clearHistory());

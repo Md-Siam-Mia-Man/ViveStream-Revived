@@ -1,135 +1,212 @@
 import { loadLibrary } from "./renderer.js";
 import { showNotification } from "./notifications.js";
 import { AppState } from "./state.js";
+import { eventBus } from "./event-bus.js";
 
-const downloadForm = document.getElementById("download-form");
+// DOM Elements
 const urlInput = document.getElementById("url-input");
+const startDownloadBtn = document.getElementById("start-download-btn");
+const typeOptions = document.querySelectorAll(".dl-type-option");
+const tabBtns = document.querySelectorAll(".dl-tab-btn");
+const tabContents = document.querySelectorAll(".dl-tab-content");
+const queueClearBtn = document.getElementById("queue-clear-btn");
+
+// Config Elements
+const qualityConfig = document.getElementById("quality-config");
+const formatConfig = document.getElementById("format-config");
+const subsConfig = document.getElementById("subs-config");
+const thumbConfig = document.getElementById("thumb-config");
+const audioQualityConfig = document.getElementById("audio-quality-config");
+const playlistConfig = document.getElementById("playlist-range-config");
+
+const subsToggle = document.getElementById("download-subs-toggle");
+const thumbToggle = document.getElementById("embed-thumbnail-toggle");
+const liveToggle = document.getElementById("live-from-start-toggle");
+const playlistInput = document.getElementById("playlist-items-input");
+const audioQualitySlider = document.getElementById("audio-quality-slider");
+
+// Dropdowns
+const qualityDropdown = document.getElementById("quality-dropdown");
+const formatDropdown = document.getElementById("format-dropdown");
+
+// Lists
 const downloadQueueArea = document.getElementById("download-queue-area");
+const historyListContainer = document.getElementById("history-list-container");
+const queueEmptyState = document.getElementById("empty-queue-placeholder");
+const historyEmptyState = document.getElementById("empty-history-placeholder");
 
-const downloadTypeRadios = document.querySelectorAll(
-  'input[name="download-type"]'
-);
-const videoOptionsContainer = document.getElementById(
-  "video-options-container"
-);
-const videoSubsContainer = document.getElementById("video-subs-container");
-const audioOptionsContainer = document.getElementById(
-  "audio-options-container"
-);
-const audioQualityContainer = document.getElementById(
-  "audio-quality-container"
-);
-const audioThumbContainer = document.getElementById("audio-thumb-container");
-const playlistOptionsContainer = document.getElementById(
-  "playlist-options-container"
-);
-
+// State
+let currentType = "video";
 const downloadJobs = new Map();
 const pendingInfoJobs = new Map();
+const errorLogs = new Map();
 
-const lazyLoadObserver = new IntersectionObserver(
-  (entries, observer) => {
-    entries.forEach((entry) => {
-      if (entry.isIntersecting) {
-        const img = entry.target;
-        const src = img.dataset.src;
-        if (src) {
-          img.src = src;
-        }
-        img.classList.remove("lazy");
-        observer.unobserve(img);
+// --- UI Logic ---
+
+function updateUIState() {
+  const isVideo = currentType === "video";
+
+  typeOptions.forEach(opt => opt.classList.toggle("active", opt.dataset.type === currentType));
+
+  qualityConfig.classList.toggle("hidden", !isVideo);
+  subsConfig.classList.toggle("hidden", !isVideo);
+
+  formatConfig.classList.toggle("hidden", isVideo);
+  thumbConfig.classList.toggle("hidden", isVideo);
+  audioQualityConfig.classList.toggle("hidden", isVideo);
+
+  const isPlaylist = urlInput.value.includes("list=");
+  playlistConfig.classList.toggle("hidden", !isPlaylist);
+}
+
+function setupDropdowns() {
+  [qualityDropdown, formatDropdown].forEach(dd => {
+    if (!dd) return;
+    const selected = dd.querySelector(".dropdown-selected");
+    const options = dd.querySelectorAll(".dropdown-option");
+
+    dd.addEventListener("click", (e) => {
+      e.stopPropagation();
+      // Close others
+      [qualityDropdown, formatDropdown].forEach(other => {
+        if (other !== dd) other.classList.remove("open");
+      });
+      dd.classList.toggle("open");
+    });
+
+    options.forEach(opt => {
+      opt.addEventListener("click", (e) => {
+        e.stopPropagation();
+        selected.textContent = opt.textContent;
+        selected.dataset.value = opt.dataset.value;
+        dd.classList.remove("open");
+
+        // Update selected visual state
+        dd.querySelectorAll('.dropdown-option').forEach(o => o.classList.remove('selected'));
+        opt.classList.add('selected');
+      });
+    });
+  });
+
+  document.addEventListener("click", () => {
+    qualityDropdown.classList.remove("open");
+    formatDropdown.classList.remove("open");
+  });
+}
+
+function setupTabs() {
+  tabBtns.forEach(btn => {
+    btn.addEventListener("click", () => {
+      tabBtns.forEach(b => b.classList.remove("active"));
+      tabContents.forEach(c => c.classList.remove("active"));
+
+      btn.classList.add("active");
+      document.getElementById(`tab-${btn.dataset.tab}`).classList.add("active");
+
+      // Change clear button action based on tab
+      if (btn.dataset.tab === 'history') {
+        queueClearBtn.title = "Clear History";
+      } else {
+        queueClearBtn.title = "Clear Queue";
       }
     });
-  },
-  { rootMargin: "0px 0px 100px 0px" }
-);
-
-function updateQueuePlaceholder() {
-  const placeholder = document.getElementById("empty-queue-placeholder");
-  const hasItems = downloadQueueArea.children.length > 0;
-  placeholder.classList.toggle("hidden", hasItems);
+  });
 }
 
-function createFetchingPlaceholder(url, jobId) {
-  const itemHTML = `
-        <div class="download-item" data-job-id="${jobId}" data-status="fetching">
-            <div class="download-item-thumb">
-                <div class="thumb-overlay">
-                    <div class="spinner"></div>
-                </div>
-            </div>
-            <div class="download-item-info">
-                <p class="download-item-title">${url}</p>
-                <p class="download-item-uploader">Requesting from YouTube...</p>
-                <div class="download-item-progress-bar-container" style="display:none;"></div>
-                <div class="download-item-stats">
-                    <span class="download-item-status"><span class="material-symbols-outlined spin">progress_activity</span> Fetching details...</span>
-                </div>
-            </div>
-            <div class="download-item-actions"></div>
-        </div>`;
-  downloadQueueArea.insertAdjacentHTML("beforeend", itemHTML);
-  updateQueuePlaceholder();
+// --- History Logic ---
+
+async function loadHistory() {
+  const history = await window.electronAPI.historyGet();
+  historyListContainer.innerHTML = "";
+
+  if (history.length === 0) {
+    historyEmptyState.classList.remove("hidden");
+    return;
+  }
+  historyEmptyState.classList.add("hidden");
+
+  history.forEach(item => {
+    const card = document.createElement("div");
+    card.className = "download-card";
+
+    // Reuse Card UI Logic for consistency
+    const thumb = item.thumbnail || `${AppState.assetsPath}/logo.png`;
+    const icon = item.type === 'audio' ? 'music_note' : 'play_arrow';
+
+    card.innerHTML = `
+        <div class="dl-card-thumb-container">
+             <img src="${thumb}" class="dl-card-thumb" onerror="this.src='${AppState.assetsPath}/logo.png'">
+             <div class="dl-card-thumb-overlay">
+                  <span class="material-symbols-outlined dl-card-play-icon">${icon}</span>
+             </div>
+        </div>
+        <div class="dl-card-content">
+             <div class="dl-card-title">${item.title || 'Unknown'}</div>
+             <div class="dl-card-uploader">${item.url}</div>
+             <div class="dl-card-actions">
+                  <button class="dl-action-btn copy-btn" title="Copy URL"><span class="material-symbols-outlined">content_copy</span></button>
+                  <button class="dl-action-btn reuse-btn" title="Reuse"><span class="material-symbols-outlined">arrow_upward</span></button>
+             </div>
+        </div>
+    `;
+
+    card.querySelector(".dl-card-thumb-container").addEventListener("click", () => {
+      const libItem = AppState.library.find(v => v.originalUrl === item.url);
+      if (libItem) {
+        const idx = AppState.library.indexOf(libItem);
+        eventBus.emit("player:play_request", {
+          index: idx,
+          queue: AppState.library,
+          context: { type: 'home', id: null, name: 'Library' }
+        });
+      } else {
+        showNotification("Video not found in library (might be deleted)", "info");
+      }
+    });
+
+    card.querySelector(".copy-btn").addEventListener("click", () => {
+      navigator.clipboard.writeText(item.url);
+      showNotification("URL copied", "info");
+    });
+
+    card.querySelector(".reuse-btn").addEventListener("click", () => {
+      urlInput.value = item.url;
+      updateUIState();
+      urlInput.focus();
+    });
+
+    historyListContainer.appendChild(card);
+  });
 }
 
-function updateDownloadOptionsUI() {
-  const downloadType = document.querySelector(
-    'input[name="download-type"]:checked'
-  ).value;
-  const isVideo = downloadType === "video";
+// --- Download Logic ---
 
-  videoOptionsContainer.classList.toggle("hidden", !isVideo);
-  videoSubsContainer.classList.toggle("hidden", !isVideo);
-  audioOptionsContainer.classList.toggle("hidden", isVideo);
-  audioQualityContainer.classList.toggle("hidden", isVideo);
-  audioThumbContainer.classList.toggle("hidden", isVideo);
-
-  const url = urlInput.value;
-  const isPlaylist = url.includes("playlist?list=");
-  playlistOptionsContainer.classList.toggle("hidden", !isPlaylist);
-}
-
-urlInput.addEventListener("input", updateDownloadOptionsUI);
-downloadTypeRadios.forEach((radio) => {
-  radio.addEventListener("change", updateDownloadOptionsUI);
-});
-
-downloadForm.addEventListener("submit", (e) => {
+startDownloadBtn.addEventListener("click", (e) => {
   e.preventDefault();
   const url = urlInput.value.trim();
-  if (!url) return;
+  if (!url) {
+    showNotification("Please enter a URL", "error");
+    return;
+  }
 
-  const downloadType = document.querySelector(
-    'input[name="download-type"]:checked'
-  ).value;
+  document.querySelector('[data-tab="queue"]').click();
 
   const downloadOptions = {
     url,
-    downloadType,
-    playlistItems: document
-      .getElementById("playlist-items-input")
-      .value.trim(),
-    liveFromStart: document.getElementById("live-from-start-toggle").checked,
+    downloadType: currentType,
+    playlistItems: playlistInput.value.trim(),
+    liveFromStart: liveToggle.checked
   };
 
-  if (downloadType === "video") {
-    Object.assign(downloadOptions, {
-      quality: document.getElementById("video-quality-select-container")
-        .querySelector(".selected-option")
-        .dataset.value,
-      downloadSubs: document.getElementById("download-subs-toggle").checked,
-    });
+  if (currentType === "video") {
+    const qVal = qualityDropdown.querySelector(".dropdown-selected").dataset.value;
+    downloadOptions.quality = qVal || "1440";
+    downloadOptions.downloadSubs = subsToggle.checked;
   } else {
-    Object.assign(downloadOptions, {
-      audioFormat: document.getElementById("audio-format-select-container")
-        .querySelector(".selected-option")
-        .dataset.value,
-      audioQuality:
-        10 -
-        parseInt(document.getElementById("audio-quality-slider").value, 10),
-      embedThumbnail: document.getElementById("embed-thumbnail-toggle")
-        .checked,
-    });
+    const fVal = formatDropdown.querySelector(".dropdown-selected").dataset.value;
+    downloadOptions.audioFormat = fVal || "best";
+    downloadOptions.audioQuality = 10 - parseInt(audioQualitySlider.value, 10);
+    downloadOptions.embedThumbnail = thumbToggle.checked;
   }
 
   const jobId = Date.now().toString();
@@ -138,245 +215,292 @@ downloadForm.addEventListener("submit", (e) => {
   window.electronAPI.downloadVideo(downloadOptions, jobId);
 
   urlInput.value = "";
-  updateDownloadOptionsUI();
+  updateUIState();
 });
 
-downloadQueueArea.addEventListener("click", (e) => {
-  const btn = e.target.closest(".download-action-btn");
-  if (!btn) return;
+function createFetchingPlaceholder(url, jobId) {
+  queueEmptyState.classList.add("hidden");
 
-  const item = e.target.closest(".download-item");
-  const videoId = item.dataset.id;
-  const jobId = item.dataset.jobId;
+  const card = document.createElement("div");
+  card.className = "download-card";
+  card.dataset.jobId = jobId;
+  card.dataset.status = "fetching";
 
-  if (btn.classList.contains("cancel-btn")) {
-    window.electronAPI.cancelDownload(videoId);
-    item.remove();
-    downloadJobs.delete(videoId);
-  } else if (btn.classList.contains("retry-btn")) {
-    const job = downloadJobs.get(videoId);
-    if (job) window.electronAPI.retryDownload(job);
-    item.querySelector(
-      ".download-item-status"
-    ).innerHTML = `<span class="material-symbols-outlined">schedule</span> Queued for retry...`;
-    item.dataset.status = "queued";
-  } else if (btn.classList.contains("remove-btn")) {
-    item.remove();
-    if (videoId) downloadJobs.delete(videoId);
-    if (jobId) pendingInfoJobs.delete(jobId);
-  } else if (btn.classList.contains("info-retry-btn")) {
-    const originalOptions = pendingInfoJobs.get(jobId);
-    if (originalOptions) {
-      item.remove();
-      createFetchingPlaceholder(originalOptions.url, jobId);
-      window.electronAPI.downloadVideo(originalOptions, jobId);
-    }
-  }
+  card.innerHTML = `
+        <div class="dl-card-thumb-container">
+             <img src="${AppState.assetsPath}/logo.png" class="dl-card-thumb">
+             <div class="dl-card-thumb-overlay" style="opacity:1; background:rgba(0,0,0,0.7)">
+                  <div class="spinner"></div>
+             </div>
+        </div>
+        <div class="dl-card-content">
+             <div class="dl-card-title">${url}</div>
+             <div class="dl-card-uploader">Fetching info...</div>
+             
+             <div class="dl-progress-wrapper">
+                 <div class="dl-progress-bar-container"><div class="dl-progress-bar" style="width:100%"></div></div>
+                 <div class="dl-card-stats"><span>Connecting...</span></div>
+             </div>
 
-  updateQueuePlaceholder();
-});
+             <div class="dl-card-actions">
+                  <button class="dl-action-btn log-btn hidden" title="View Log"><span class="material-symbols-outlined">description</span> Log</button>
+                  <button class="dl-action-btn cancel-btn" title="Cancel"><span class="material-symbols-outlined">close</span></button>
+             </div>
+        </div>
+  `;
 
-document.getElementById("clear-completed-btn").addEventListener("click", () => {
-  downloadQueueArea
-    .querySelectorAll('.download-item[data-status="completed"]')
-    .forEach((item) => {
-      downloadJobs.delete(item.dataset.id);
-      item.remove();
-    });
-  updateQueuePlaceholder();
-});
-
-document.getElementById("clear-all-btn").addEventListener("click", () => {
-  downloadQueueArea.querySelectorAll(".download-item").forEach((item) => {
-    if (item.dataset.status === "downloading") {
-      window.electronAPI.cancelDownload(item.dataset.id);
-    }
-    downloadJobs.delete(item.dataset.id);
-    item.remove();
-  });
-  updateQueuePlaceholder();
-});
-
-function updateItemActions(item, status) {
-  if (!item) return;
-  const actionsContainer = item.querySelector(".download-item-actions");
-  let actionsHTML = "";
-
-  if (status === "downloading" || status === "queued") {
-    actionsHTML = `<button class="download-action-btn cancel-btn" title="Cancel"><span class="material-symbols-outlined">close</span></button>`;
-  } else if (status === "error") {
-    actionsHTML = `<button class="download-action-btn retry-btn" title="Retry"><span class="material-symbols-outlined">refresh</span></button>`;
-  } else if (status === "info-error") {
-    actionsHTML = `<button class="download-action-btn info-retry-btn" title="Retry Fetch"><span class="material-symbols-outlined">refresh</span></button>`;
-  }
-  actionsHTML += `<button class="download-action-btn remove-btn" title="Remove from list"><span class="material-symbols-outlined">delete</span></button>`;
-  actionsContainer.innerHTML = actionsHTML;
+  downloadQueueArea.insertAdjacentElement("afterbegin", card);
 }
 
-window.electronAPI.onDownloadQueueStart(({ infos, jobId }) => {
-  const placeholder = downloadQueueArea.querySelector(
-    `.download-item[data-job-id="${jobId}"]`
-  );
-  if (!placeholder) return;
+function updateItemActions(item, status) {
+  const actionsContainer = item.querySelector(".dl-card-actions");
 
-  const existingLibraryIds = new Set(AppState.library.map((v) => v.id));
-  const videosToTouch = [];
-  const videosToDownload = [];
-
-  infos.forEach((info) => {
-    if (existingLibraryIds.has(info.id)) {
-      videosToTouch.push(info.id);
-    } else {
-      videosToDownload.push(info);
-    }
-  });
-
-  if (videosToTouch.length > 0) {
-    window.electronAPI.videosTouch(videosToTouch);
-    showNotification(
-      `${videosToTouch.length} video(s) already in library.`,
-      "info",
-      "Their 'date added' has been updated."
-    );
+  let logBtn = actionsContainer.querySelector(".log-btn");
+  if (!logBtn) {
+    logBtn = document.createElement("button");
+    logBtn.className = "dl-action-btn log-btn";
+    logBtn.title = "View Log";
+    logBtn.innerHTML = `<span class="material-symbols-outlined">description</span> Log`;
+    actionsContainer.prepend(logBtn);
   }
 
-  if (videosToDownload.length === 0) {
-    placeholder.remove();
-    pendingInfoJobs.delete(jobId);
-    updateQueuePlaceholder();
+  actionsContainer.querySelectorAll(".dl-action-btn:not(.log-btn)").forEach(b => b.remove());
+
+  let html = "";
+  if (status === "downloading" || status === "queued") {
+    html = `<button class="dl-action-btn cancel-btn" title="Cancel"><span class="material-symbols-outlined">close</span></button>`;
+  } else if (status === "error" || status === "info-error") {
+    html = `<button class="dl-action-btn retry-btn" title="Retry"><span class="material-symbols-outlined">refresh</span></button>
+            <button class="dl-action-btn remove-btn" title="Remove"><span class="material-symbols-outlined">delete</span></button>`;
+  } else {
+    // Completed
+    html = `<button class="dl-action-btn remove-btn" title="Remove"><span class="material-symbols-outlined">delete</span></button>`;
+  }
+
+  actionsContainer.insertAdjacentHTML("beforeend", html);
+}
+
+downloadQueueArea.addEventListener("click", (e) => {
+  const btn = e.target.closest("button");
+  const card = e.target.closest(".download-card");
+
+  if (!card) return;
+
+  if (e.target.closest(".dl-card-thumb-container")) {
+    if (card.dataset.status === "completed") {
+      const videoId = card.dataset.id;
+      const libItem = AppState.library.find(v => v.id === videoId);
+      if (libItem) {
+        const idx = AppState.library.indexOf(libItem);
+        eventBus.emit("player:play_request", {
+          index: idx,
+          queue: AppState.library,
+          context: { type: 'home', id: null, name: 'Library' }
+        });
+      }
+    }
     return;
   }
 
-  const fragment = document.createDocumentFragment();
+  if (!btn) return;
 
-  videosToDownload.forEach((video) => {
-    if (downloadJobs.has(video.id)) return;
+  const videoId = card.dataset.id;
+  const jobId = card.dataset.jobId;
 
-    const originalOptions = pendingInfoJobs.get(jobId);
-    const job = { ...originalOptions, videoInfo: video };
-    downloadJobs.set(video.id, job);
+  if (btn.classList.contains("cancel-btn")) {
+    if (videoId) {
+      window.electronAPI.cancelDownload(videoId);
+      downloadJobs.delete(videoId);
+    }
+    card.remove();
+    if (jobId) pendingInfoJobs.delete(jobId);
+  }
+  else if (btn.classList.contains("retry-btn")) {
+    const job = downloadJobs.get(videoId);
+    if (job) {
+      window.electronAPI.retryDownload(job);
+      card.querySelector(".dl-card-stats span").textContent = `Queued for retry...`;
+      card.dataset.status = "queued";
+      card.querySelector(".log-btn").classList.remove("error");
+    }
+  }
+  else if (btn.classList.contains("remove-btn")) {
+    card.remove();
+    if (videoId) downloadJobs.delete(videoId);
+  }
+  else if (btn.classList.contains("log-btn")) {
+    const errorData = errorLogs.get(videoId || jobId);
+    if (errorData) showErrorLog(errorData);
+    else showNotification("No specific log available yet.", "info");
+  }
 
-    const placeholderSrc = `${AppState.assetsPath}/logo.png`;
-    const thumb = video.thumbnail || placeholderSrc;
-    const itemEl = document.createElement("div");
-    itemEl.className = "download-item";
-    itemEl.dataset.id = video.id;
-    itemEl.dataset.status = "queued";
-    itemEl.innerHTML = `
-        <div class="download-item-thumb">
-            <img data-src="${thumb}" src="${placeholderSrc}" class="lazy" alt="thumbnail" onerror="this.onerror=null;this.src='${placeholderSrc}';">
-            <div class="thumb-overlay">
-                <div class="spinner"></div>
-                <div class="thumb-overlay-icon complete"><span class="material-symbols-outlined">check_circle</span></div>
-                <div class="thumb-overlay-icon error"><span class="material-symbols-outlined">warning</span></div>
+  if (downloadQueueArea.children.length === 0) queueEmptyState.classList.remove("hidden");
+});
+
+queueClearBtn.addEventListener("click", async () => {
+  const activeTab = document.querySelector(".dl-tab-btn.active").dataset.tab;
+  if (activeTab === 'history') {
+    await window.electronAPI.historyClear();
+    loadHistory();
+  } else {
+    downloadQueueArea.innerHTML = "";
+    queueEmptyState.classList.remove("hidden");
+  }
+});
+
+function showErrorLog(errorData) {
+  const modal = document.createElement("div");
+  modal.className = "modal-overlay";
+  modal.innerHTML = `
+        <div class="modal-content" style="max-width: 650px;">
+            <h3 style="display:flex;align-items:center;gap:10px;"><span class="material-symbols-outlined" style="color:var(--negative-accent);">bug_report</span> Download Log</h3>
+            <p style="font-weight:bold;">${errorData.error || "Log Details"}</p>
+            <div class="log-content">${errorData.fullLog || "No detailed log."}</div>
+            <div class="modal-actions">
+                <button id="copy-log-btn" class="modal-btn" style="background:var(--tertiary-background);">Copy Log</button>
+                <button id="close-log-btn" class="modal-btn">Close</button>
             </div>
         </div>
-        <div class="download-item-info">
-            <p class="download-item-title">${video.title}</p>
-            <p class="download-item-uploader">${video.uploader || "Unknown"
-      }</p>
-            <div class="download-item-progress-bar-container"><div class="download-item-progress-bar"></div></div>
-            <div class="download-item-stats">
-                <span class="download-item-status"><span class="material-symbols-outlined">schedule</span> Queued</span>
-                <span class="download-item-speed"></span>
-                <span class="download-item-eta"></span>
-            </div>
-        </div>
-        <div class="download-item-actions"></div>`;
-    fragment.appendChild(itemEl);
-    const newImg = itemEl.querySelector("img.lazy");
-    if (newImg) lazyLoadObserver.observe(newImg);
-    updateItemActions(itemEl, "queued");
+    `;
+  document.body.appendChild(modal);
+  requestAnimationFrame(() => modal.classList.remove("hidden"));
+
+  modal.querySelector("#close-log-btn").addEventListener("click", () => {
+    modal.classList.add("hidden");
+    setTimeout(() => modal.remove(), 300);
   });
+  modal.querySelector("#copy-log-btn").addEventListener("click", () => {
+    navigator.clipboard.writeText(errorData.fullLog || errorData.error);
+    showNotification("Log copied", "info");
+  });
+}
 
-  placeholder.replaceWith(fragment);
+// IPC Listeners
+window.electronAPI.onDownloadQueueStart(({ infos, jobId }) => {
+  const placeholder = downloadQueueArea.querySelector(`.download-card[data-job-id="${jobId}"]`);
+  if (!placeholder) return;
+
+  placeholder.remove();
   pendingInfoJobs.delete(jobId);
+
+  infos.forEach(info => {
+    if (downloadJobs.has(info.id)) return;
+
+    const card = document.createElement("div");
+    card.className = "download-card";
+    card.dataset.id = info.id;
+    card.dataset.status = "queued";
+
+    const thumb = info.thumbnail || `${AppState.assetsPath}/logo.png`;
+
+    card.innerHTML = `
+        <div class="dl-card-thumb-container">
+             <img src="${thumb}" class="dl-card-thumb" onerror="this.src='${AppState.assetsPath}/logo.png'">
+             <div class="dl-card-thumb-overlay">
+                  <div class="spinner"></div>
+             </div>
+        </div>
+        <div class="dl-card-content">
+             <div class="dl-card-title">${info.title}</div>
+             <div class="dl-card-uploader">${info.uploader || 'Unknown'}</div>
+             
+             <div class="dl-progress-wrapper">
+                 <div class="dl-progress-bar-container"><div class="dl-progress-bar" style="width:0%"></div></div>
+                 <div class="dl-card-stats">
+                    <span class="status-text">Queued</span>
+                    <span class="speed-text"></span>
+                 </div>
+             </div>
+
+             <div class="dl-card-actions">
+                  <button class="dl-action-btn log-btn" title="View Log"><span class="material-symbols-outlined">description</span> Log</button>
+             </div>
+        </div>
+    `;
+
+    downloadQueueArea.prepend(card);
+    updateItemActions(card, "queued");
+
+    errorLogs.set(info.id, { error: "Download in progress...", fullLog: "Waiting for output..." });
+    downloadJobs.set(info.id, { ...info });
+  });
+  queueEmptyState.classList.add("hidden");
 });
 
 window.electronAPI.onDownloadProgress((data) => {
-  const item = downloadQueueArea.querySelector(
-    `.download-item[data-id="${data.id}"]`
-  );
-  if (!item) return;
+  const card = downloadQueueArea.querySelector(`.download-card[data-id="${data.id}"]`);
+  if (!card) return;
 
-  if (item.dataset.status !== "downloading") {
-    item.dataset.status = "downloading";
-    updateItemActions(item, "downloading");
+  if (card.dataset.status !== 'downloading') {
+    card.dataset.status = 'downloading';
+    updateItemActions(card, 'downloading');
+    card.querySelector(".dl-card-thumb-overlay").innerHTML = "";
   }
 
-  item.querySelector(
-    ".download-item-progress-bar"
-  ).style.width = `${data.percent}%`;
-  item.querySelector(
-    ".download-item-status"
-  ).innerHTML = `<span class="material-symbols-outlined">download</span> Downloading (${data.percent.toFixed(
-    1
-  )}%)`;
-  item.querySelector(".download-item-speed").textContent = data.currentSpeed;
-  item.querySelector(".download-item-eta").textContent = `ETA: ${data.eta || "N/A"
-    }`;
+  card.querySelector(".dl-progress-bar").style.width = `${data.percent}%`;
+  const statusSpan = card.querySelector(".status-text");
+  statusSpan.textContent = `${data.percent.toFixed(1)}% • ${data.eta || '--:--'}`;
+  card.querySelector(".speed-text").textContent = data.currentSpeed;
+
+  if (data.percent >= 100) {
+    card.dataset.status = "processing";
+    statusSpan.textContent = "Processing...";
+    card.querySelector(".speed-text").textContent = "";
+  }
 });
 
 window.electronAPI.onDownloadComplete((data) => {
-  const item = downloadQueueArea.querySelector(
-    `.download-item[data-id="${data.id}"]`
-  );
-  if (item) {
-    item.dataset.status = "completed";
-    item.querySelector(
-      ".download-item-status"
-    ).innerHTML = `<span class="material-symbols-outlined">check_circle</span> Completed`;
-    const thumbImg = item.querySelector(".download-item-thumb img");
-    if (thumbImg && data.videoData.coverPath) {
-      thumbImg.src = decodeURIComponent(data.videoData.coverPath);
-    }
-    item.querySelector(".download-item-speed").textContent = "";
-    item.querySelector(".download-item-eta").textContent = "";
+  const card = downloadQueueArea.querySelector(`.download-card[data-id="${data.id}"]`);
+  if (card) {
+    card.dataset.status = "completed";
+    card.querySelector(".status-text").textContent = "Completed";
+    card.querySelector(".dl-progress-bar").style.width = "100%";
+    card.querySelector(".speed-text").textContent = "";
+
+    // Save success log
+    errorLogs.set(data.id, { error: "Download successful", fullLog: data.fullLog });
+
+    card.querySelector(".dl-card-thumb-overlay").innerHTML = `<span class="material-symbols-outlined dl-card-play-icon">play_arrow</span>`;
+    updateItemActions(card, "completed");
     showNotification("Download Complete", "success", data.videoData.title);
-    updateItemActions(item, "completed");
   }
   loadLibrary();
+  loadHistory();
 });
 
 window.electronAPI.onDownloadError((data) => {
-  const item = downloadQueueArea.querySelector(
-    `.download-item[data-id="${data.id}"]`
-  );
-  if (item) {
-    item.dataset.status = "error";
-    item.querySelector(
-      ".download-item-status"
-    ).innerHTML = `<span class="material-symbols-outlined">warning</span> Error`;
-    const etaEl = item.querySelector(".download-item-eta");
-    const errorText = data.error || "Unknown";
-    etaEl.textContent = errorText;
-    etaEl.title = errorText;
-    item.querySelector(".download-item-speed").textContent = "";
-
-    showNotification("Download failed", "error", errorText);
-    if (data.job) downloadJobs.set(data.id, data.job);
-    updateItemActions(item, "error");
+  const card = downloadQueueArea.querySelector(`.download-card[data-id="${data.id}"]`);
+  if (card) {
+    card.dataset.status = "error";
+    card.querySelector(".status-text").textContent = "Error";
+    errorLogs.set(data.id, { error: data.error, fullLog: data.fullLog });
+    updateItemActions(card, "error");
   }
 });
 
-window.electronAPI.onDownloadInfoError(({ jobId, error }) => {
-  const placeholder = downloadQueueArea.querySelector(
-    `.download-item[data-job-id="${jobId}"]`
-  );
-  if (placeholder) {
-    placeholder.dataset.status = "info-error";
-    const titleEl = placeholder.querySelector(".download-item-title");
-    titleEl.textContent = error;
-    titleEl.title = error;
-    placeholder.querySelector(".spinner").style.display = "none";
-    placeholder.querySelector(".download-item-uploader").textContent =
-      "Failed to fetch details";
-    placeholder.querySelector(
-      ".download-item-status"
-    ).innerHTML = `<span class="material-symbols-outlined">warning</span> Error`;
-    updateItemActions(placeholder, "info-error");
+window.electronAPI.onDownloadInfoError(({ jobId, error, fullLog }) => {
+  const card = downloadQueueArea.querySelector(`.download-card[data-job-id="${jobId}"]`);
+  if (card) {
+    card.dataset.status = "error";
+    card.querySelector(".dl-card-title").textContent = "Fetch Failed";
+    card.querySelector(".dl-card-uploader").textContent = "Check URL";
+    card.querySelector(".dl-card-thumb-overlay").innerHTML = `<span class="material-symbols-outlined dl-card-play-icon" style="color:var(--negative-accent)">error</span>`;
+
+    errorLogs.set(jobId, { error, fullLog });
+    updateItemActions(card, "info-error");
   }
 });
 
-updateQueuePlaceholder();
-updateDownloadOptionsUI();
+typeOptions.forEach(opt => {
+  opt.addEventListener("click", () => {
+    currentType = opt.dataset.type;
+    updateUIState();
+  });
+});
+
+urlInput.addEventListener("input", updateUIState);
+
+setupDropdowns();
+setupTabs();
+loadHistory();
+updateUIState();

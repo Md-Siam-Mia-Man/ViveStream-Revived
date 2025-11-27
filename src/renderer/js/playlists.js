@@ -45,7 +45,7 @@ export async function renderPlaylistsPage(playlistsToRender) {
   }
 
   playlistsPage.innerHTML = "";
-  setHeaderActions(null); // Clear previous header actions
+  setHeaderActions(null);
 
   const createBtn = document.createElement("button");
   createBtn.className = "action-button";
@@ -53,12 +53,7 @@ export async function renderPlaylistsPage(playlistsToRender) {
   createBtn.innerHTML = `<span class="material-symbols-outlined">add</span> Create Playlist`;
 
   if (AppState.playlists.length === 0) {
-    // If empty, button is managed inside placeholder logic usually, 
-    // but per requirements moving actions to header. 
-    // Let's add the button to header anyway.
     setHeaderActions(createBtn);
-
-    // Placeholder content in page
     const placeholder = document.createElement("div");
     placeholder.className = "placeholder-page";
     placeholder.innerHTML = `
@@ -68,7 +63,6 @@ export async function renderPlaylistsPage(playlistsToRender) {
     playlistsPage.appendChild(placeholder);
   } else {
     setHeaderActions(createBtn);
-
     const content = document.createElement("div");
     content.className = "page-content";
 
@@ -129,7 +123,6 @@ export function renderPlaylistCard(playlist) {
 
 export async function renderPlaylistDetailPage(playlistId) {
   showLoader();
-  // Header actions are usually specific to lists, clear for detail view unless needed
   setHeaderActions(null);
 
   const playlist = await window.electronAPI.playlistGetDetails(playlistId);
@@ -156,23 +149,27 @@ export async function renderPlaylistDetailPage(playlistId) {
       ? decodeURIComponent(playlist.videos[0].coverPath)
       : placeholderSrc;
 
-  const header = document.createElement("div");
-  header.className = "playlist-detail-header-container";
-  header.innerHTML = `
-    <div class="playlist-detail-cover-container">
-        <img src="${coverSrc}" class="playlist-detail-cover" alt="playlist cover" onerror="this.onerror=null;this.src='${placeholderSrc}';">
-        <button class="edit-cover-btn" id="edit-playlist-cover-btn" title="Change cover"><span class="material-symbols-outlined">photo_camera</span></button>
-    </div>
-    <div class="playlist-detail-info">
-        <h1 class="playlist-detail-title">${playlist.name}</h1>
-        <p class="playlist-detail-meta">${videoCountText}</p>
-        <div class="playlist-detail-actions">
-             <button class="action-button" id="rename-playlist-btn" data-id="${playlist.id}" data-name="${playlist.name}"><span class="material-symbols-outlined">edit</span> Rename</button>
-             <button class="action-button danger-btn" id="delete-playlist-btn" data-id="${playlist.id}" data-name="${playlist.name}"><span class="material-symbols-outlined">delete</span> Delete</button>
+  // New Header Structure matching Artists
+  const headerWrapper = document.createElement("div");
+  headerWrapper.className = "playlist-detail-header-wrapper";
+  headerWrapper.style.setProperty("--bg-image", `url('${coverSrc}')`);
+
+  headerWrapper.innerHTML = `
+    <div class="playlist-detail-header">
+        <div class="playlist-detail-image-container">
+            <img src="${coverSrc}" class="playlist-detail-image" alt="${playlist.name}" onerror="this.onerror=null;this.src='${placeholderSrc}';">
+            <button class="edit-cover-btn" id="edit-playlist-cover-btn" title="Change cover"><span class="material-symbols-outlined">photo_camera</span></button>
         </div>
-    </div>
-    `;
-  playlistDetailPage.appendChild(header);
+        <div class="playlist-detail-info">
+            <h1 class="playlist-detail-name">${playlist.name}</h1>
+            <p class="playlist-detail-meta">${videoCountText}</p>
+            <div class="playlist-detail-actions">
+                <button class="action-button" id="rename-playlist-btn" data-id="${playlist.id}" data-name="${playlist.name}"><span class="material-symbols-outlined">edit</span> Rename</button>
+                <button class="action-button danger-btn" id="delete-playlist-btn" data-id="${playlist.id}" data-name="${playlist.name}"><span class="material-symbols-outlined">delete</span> Delete</button>
+            </div>
+        </div>
+    </div>`;
+  playlistDetailPage.appendChild(headerWrapper);
 
   const content = document.createElement("div");
   content.className = "page-content";
@@ -250,6 +247,7 @@ export async function openAddToPlaylistModal(videoId) {
   inputField.focus();
 }
 
+// Global Event Listeners (delegated)
 playlistsPage.addEventListener("click", async (e) => {
   const menuBtn = e.target.closest(".playlist-grid-item .menu-btn");
   if (menuBtn) {
@@ -289,32 +287,12 @@ playlistsPage.addEventListener("click", async (e) => {
       await renderPlaylistDetailPage(playlistId);
       showPage("playlist-detail-page", true);
     }
-    return;
-  }
-
-  // Note: Since buttons are now in header, we listen via bubbling, but we need to ensure 
-  // the logic handles them regardless of location if ID matches.
-  if (
-    e.target.closest("#create-new-playlist-btn")
-  ) {
-    const newName = await showPromptModal(
-      "Create New Playlist",
-      "Enter a name for your new playlist:"
-    );
-    if (newName && newName.trim()) {
-      const result = await window.electronAPI.playlistCreate(newName.trim());
-      if (result.success) {
-        showNotification(`Playlist "${newName.trim()}" created.`, "success");
-        await renderPlaylistsPage();
-      } else {
-        showNotification(`Error: ${result.error}`, "error");
-      }
-    }
   }
 });
 
-document.addEventListener('click', async (e) => {
-  if (e.target.closest('#create-new-playlist-btn')) {
+// Listener for creating playlist from header or modal logic
+document.addEventListener("click", async (e) => {
+  if (e.target.closest("#create-new-playlist-btn")) {
     const newName = await showPromptModal(
       "Create New Playlist",
       "Enter a name for your new playlist:"
@@ -323,8 +301,9 @@ document.addEventListener('click', async (e) => {
       const result = await window.electronAPI.playlistCreate(newName.trim());
       if (result.success) {
         showNotification(`Playlist "${newName.trim()}" created.`, "success");
-        // Only re-render if we are on playlists page
-        if (document.querySelector('.nav-item.active[data-page="playlists"]')) {
+        // Refresh only if on playlists page
+        const activePage = document.querySelector(".nav-item.active");
+        if (activePage && activePage.dataset.page === "playlists") {
           await renderPlaylistsPage();
         }
       } else {
@@ -333,7 +312,6 @@ document.addEventListener('click', async (e) => {
     }
   }
 });
-
 
 addToPlaylistModal.addEventListener("click", (e) => {
   if (
@@ -402,6 +380,7 @@ document
   });
 
 playlistDetailPage.addEventListener("click", async (e) => {
+  // Edit Cover
   const editCoverBtn = e.target.closest("#edit-playlist-cover-btn");
   if (editCoverBtn) {
     const playlistId = document.getElementById("rename-playlist-btn").dataset
@@ -415,6 +394,7 @@ playlistDetailPage.addEventListener("click", async (e) => {
     }
   }
 
+  // Rename
   const renameBtn = e.target.closest("#rename-playlist-btn");
   if (renameBtn) {
     const playlistId = renameBtn.dataset.id;
@@ -437,6 +417,8 @@ playlistDetailPage.addEventListener("click", async (e) => {
       }
     }
   }
+
+  // Delete
   const deleteBtn = e.target.closest("#delete-playlist-btn");
   if (deleteBtn) {
     const playlistId = deleteBtn.dataset.id;

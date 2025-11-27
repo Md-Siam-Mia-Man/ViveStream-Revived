@@ -91,6 +91,17 @@ function initialize(app) {
         });
       }
 
+      if (!(await db.schema.hasTable("download_history"))) {
+        await db.schema.createTable("download_history", (table) => {
+          table.increments("id").primary();
+          table.string("url").notNullable();
+          table.string("title");
+          table.string("type");
+          table.string("thumbnail");
+          table.timestamp("createdAt").defaultTo(db.fn.now());
+        });
+      }
+
       if (!(await db.schema.hasColumn("playlists", "coverPath"))) {
         await db.schema.alterTable("playlists", (table) => {
           table.string("coverPath");
@@ -102,13 +113,18 @@ function initialize(app) {
           table.boolean("hasEmbeddedSubs").defaultTo(false);
         });
       }
+      if (!(await db.schema.hasColumn("download_history", "thumbnail"))) {
+        await db.schema.alterTable("download_history", (table) => {
+          table.string("thumbnail");
+        });
+      }
     } catch (error) {
       console.error("Database initialization failed:", error);
       const { dialog } = require("electron");
       dialog.showErrorBox(
         "Database Error",
         "A critical database error occurred and ViveStream must close. Please try restarting the app. Error: " +
-          error.message
+        error.message
       );
       app.quit();
     }
@@ -216,6 +232,7 @@ async function clearAllMedia() {
     await db("playlist_videos").del();
     await db("playlists").del();
     await db("videos").del();
+    await db("download_history").del();
     return { success: true };
   } catch (error) {
     console.error("Error clearing all media from DB:", error);
@@ -475,6 +492,41 @@ async function updateArtistThumbnail(artistId, thumbnailPath) {
   }
 }
 
+async function updateArtistName(artistId, name) {
+  try {
+    await db("artists").where({ id: artistId }).update({ name });
+    return { success: true };
+  } catch (error) {
+    console.error(`Error updating name for artist ${artistId}:`, error);
+    return { success: false, error: error.message };
+  }
+}
+
+async function deleteArtist(artistId) {
+  try {
+    const artist = await db("artists").where({ id: artistId }).first();
+    if (artist && artist.thumbnailPath) {
+      try {
+        const p = path.normalize(
+          decodeURIComponent(artist.thumbnailPath.replace("file://", ""))
+        );
+        if (fs.existsSync(p)) fs.unlinkSync(p);
+      } catch (err) {
+        console.error(
+          `Failed to delete artist thumbnail ${artist.thumbnailPath}:`,
+          err
+        );
+      }
+    }
+    await db("video_artists").where({ artistId }).del();
+    await db("artists").where({ id: artistId }).del();
+    return { success: true };
+  } catch (error) {
+    console.error(`Error deleting artist ${artistId}:`, error);
+    return { success: false, error: error.message };
+  }
+}
+
 async function cleanupOrphanArtists() {
   try {
     const orphanArtists = await db("artists")
@@ -490,6 +542,69 @@ async function cleanupOrphanArtists() {
     return { success: true, count: idsToDelete.length };
   } catch (error) {
     console.error("Error cleaning up orphan artists:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+async function regenerateArtists() {
+  try {
+    const videos = await db("videos").select("id", "creator", "coverPath");
+    let count = 0;
+    for (const video of videos) {
+      if (!video.creator) continue;
+
+      const existingLink = await db("video_artists").where({ videoId: video.id }).first();
+      if (existingLink) continue;
+
+      const artistNames = video.creator.split(/[,;&]/).map((name) => name.trim());
+
+      for (const name of artistNames) {
+        if (!name) continue;
+        const artist = await findOrCreateArtist(name, video.coverPath);
+        if (artist) {
+          const linked = await linkVideoToArtist(video.id, artist.id);
+          if (linked.success) count++;
+        }
+      }
+    }
+    return { success: true, count };
+  } catch (error) {
+    console.error("Error regenerating artists:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+async function addToHistory(item) {
+  try {
+    await db("download_history").where({ url: item.url }).del();
+    await db("download_history").insert({
+      url: item.url,
+      title: item.title || item.url,
+      type: item.type || "unknown",
+      thumbnail: item.thumbnail
+    });
+    return { success: true };
+  } catch (error) {
+    console.error("Error adding to history:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+async function getHistory() {
+  try {
+    return await db("download_history").select("*").orderBy("createdAt", "desc").limit(50);
+  } catch (error) {
+    console.error("Error getting history:", error);
+    return [];
+  }
+}
+
+async function clearHistory() {
+  try {
+    await db("download_history").del();
+    return { success: true };
+  } catch (error) {
+    console.error("Error clearing history:", error);
     return { success: false, error: error.message };
   }
 }
@@ -527,5 +642,11 @@ module.exports = {
   getAllArtistsWithStats,
   getArtistDetails,
   updateArtistThumbnail,
+  updateArtistName,
+  deleteArtist,
   cleanupOrphanArtists,
+  regenerateArtists,
+  addToHistory,
+  getHistory,
+  clearHistory
 };

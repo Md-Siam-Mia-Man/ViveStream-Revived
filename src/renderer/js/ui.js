@@ -9,6 +9,7 @@ import {
 import { formatTime, debounce } from "./utils.js";
 import { eventBus } from "./event-bus.js";
 import { openAddToPlaylistModal } from "./playlists.js";
+import { renderUpNextList } from "./player.js";
 
 const homeSearchInput = document.getElementById("home-search-input");
 const videoContextMenu = document.getElementById("video-item-context-menu");
@@ -165,7 +166,7 @@ function sortLibrary(library, sortKey) {
   });
 }
 
-function applyFilters(library) {
+export function applyFilters(library) {
   const { type, duration, source, uploadDate } = AppState.currentFilters;
   const now = new Date();
   const currentYear = now.getFullYear();
@@ -215,7 +216,6 @@ function renderNextBatch() {
 
   renderContainer.appendChild(fragment);
 
-  // Attach observers to new images
   renderContainer.querySelectorAll("img.lazy:not(.observed)").forEach(img => {
     img.classList.add('observed');
     lazyLoadObserver.observe(img);
@@ -229,7 +229,6 @@ function renderNextBatch() {
 function renderGrid(container, library, isPlaylistItem = false) {
   if (!container) return;
 
-  // Reset scroll state
   scrollObserver.unobserve(scrollSentinel);
   container.innerHTML = "";
   renderContainer = container;
@@ -242,10 +241,7 @@ function renderGrid(container, library, isPlaylistItem = false) {
 
     if (sortedLibrary.length > 0) {
       pendingItems = sortedLibrary;
-      // Render first batch immediately
       renderNextBatch();
-
-      // Start observing sentinel if there are more items
       if (pendingItems.length > 0) {
         scrollObserver.observe(scrollSentinel);
       }
@@ -258,7 +254,7 @@ function renderGrid(container, library, isPlaylistItem = false) {
   }
 }
 
-function createHeaderActionsElement() {
+export function createHeaderActionsElement() {
   const fragment = document.createDocumentFragment();
 
   const filterBtn = document.createElement("button");
@@ -352,8 +348,6 @@ function updateFilterIndicators() {
     if (activeButton) {
       activeButton.classList.add("active");
       const indicator = group.querySelector(".filter-selection-indicator");
-
-      // Ensure calculation is based on the active button's current position
       indicator.style.left = `${activeButton.offsetLeft}px`;
       indicator.style.width = `${activeButton.offsetWidth}px`;
     }
@@ -377,6 +371,13 @@ function updateSortUI() {
 function reapplyCurrentView() {
   const activePage =
     document.querySelector(".nav-item.active")?.dataset.page || "home";
+
+  if (!document.getElementById("player-page").classList.contains("hidden")) {
+    // If player page is active (even if nav item is different), update queue list
+    renderUpNextList({ sortKey: currentSort });
+    return;
+  }
+
   let gridContainer;
   let librarySource;
 
@@ -487,20 +488,28 @@ eventBus.on("ui:favorite_toggled", updateFavoriteUI);
 
 export function updateSearchPlaceholder(pageId) {
   let isSearchable = true;
-  switch (pageId) {
-    case "downloads":
-    case "settings":
-      isSearchable = false;
+  // Disable search/sort for pages where it doesn't make sense or isn't implemented
+  if (pageId === "downloads" || pageId === "settings") {
+    isSearchable = false;
   }
+  // Allow search/filter/sort on player page now
+
   homeSearchInput.placeholder = isSearchable
-    ? "Search videos, artists, playlists..."
-    : "Search is unavailable";
+    ? "Search videos, artists, playlists... anything"
+    : "Search unavailable";
   homeSearchInput.disabled = !isSearchable;
+  homeSearchInput.style.opacity = isSearchable ? "1" : "0.5";
+
   lastActivePageId = pageId;
 }
 
 const debouncedSearchHandler = debounce((term) => {
-  renderSearchPage(term);
+  const isPlayerPage = !document.getElementById("player-page").classList.contains("hidden");
+  if (isPlayerPage) {
+    renderUpNextList({ searchTerm: term, sortKey: currentSort });
+  } else {
+    renderSearchPage(term);
+  }
 }, 300);
 
 export function setWindowControlsAlignment(alignment) {
@@ -594,9 +603,8 @@ function initializeMainEventListeners() {
       const panel = document.getElementById("filter-panel");
       if (panel) {
         panel.classList.toggle("visible");
-        btn.classList.toggle("active"); // Toggle active state on filter button
+        btn.classList.toggle("active");
 
-        // Force recalculation of indicators when panel becomes visible
         if (panel.classList.contains("visible")) {
           requestAnimationFrame(() => {
             updateFilterIndicators();
@@ -655,12 +663,17 @@ function initializeMainEventListeners() {
   homeSearchInput.addEventListener("input", (e) => {
     if (homeSearchInput.disabled) return;
     const searchTerm = e.target.value;
-    if (searchTerm.trim() === "") {
+
+    // If on player page, we might want to just filter the list even if empty search
+    const isPlayerPage = !document.getElementById("player-page").classList.contains("hidden");
+
+    if (searchTerm.trim() === "" && !isPlayerPage) {
       showPage(lastActivePageId);
       if (searchPage) searchPage.innerHTML = "";
       return;
     }
-    showLoader();
+
+    if (!isPlayerPage) showLoader();
     debouncedSearchHandler(searchTerm);
   });
 }
