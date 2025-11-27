@@ -137,16 +137,16 @@ video::cue {
 
 #player-feedback.visible {
      opacity: 1;
-     animation: feedback-pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+     animation: feedback-pop 0.4s var(--transition-bounce);
 }
 
 @keyframes feedback-pop {
      0% {
-          transform: translate(-50%, -50%) scale(0.8);
+          transform: translate(-50%, -50%) scale(0.5);
           opacity: 0;
      }
 
-     50% {
+     60% {
           transform: translate(-50%, -50%) scale(1.1);
           opacity: 1;
      }
@@ -186,6 +186,11 @@ video::cue {
      border-radius: 12px;
      box-shadow: 0 10px 30px var(--shadow-color-heavy);
      object-fit: contain;
+     transition: transform 0.3s ease;
+}
+
+.player-section.audio-mode:hover #audio-artwork-img {
+     transform: scale(1.02);
 }
 
 .video-info-section {
@@ -220,6 +225,11 @@ video::cue {
      border-radius: 50%;
      flex-shrink: 0;
      position: relative;
+     transition: transform 0.2s var(--transition-bounce);
+}
+
+.channel-thumb-container:hover {
+     transform: scale(1.1);
 }
 
 #channel-thumb {
@@ -267,7 +277,7 @@ video::cue {
      display: flex;
      align-items: center;
      gap: 8px;
-     transition: background-color 0.2s, color 0.2s;
+     transition: background-color 0.2s, color 0.2s, transform 0.2s var(--transition-bounce);
 }
 
 .action-button .material-symbols-outlined {
@@ -276,21 +286,27 @@ video::cue {
 
 .action-button.favorite-btn .material-symbols-outlined {
      color: var(--secondary-text);
-     transition: color 0.2s, transform 0.2s, font-variation-settings 0.2s;
+     transition: color 0.2s, transform 0.3s var(--transition-bounce), font-variation-settings 0.2s;
 }
 
 .action-button.favorite-btn:hover .material-symbols-outlined {
      color: var(--primary-text);
+     transform: scale(1.2);
 }
 
 .action-button.favorite-btn.is-favorite .material-symbols-outlined {
      color: var(--primary-accent);
-     transform: scale(1.1);
+     transform: scale(1.2);
      font-variation-settings: 'FILL' 1;
 }
 
 .action-button:hover {
      background-color: var(--button-hover-bg);
+     transform: translateY(-2px);
+}
+
+.action-button:active {
+     transform: scale(0.95);
 }
 
 #video-menu-btn {
@@ -317,14 +333,13 @@ video::cue {
 .description-content {
      overflow: hidden;
      max-height: 5em;
-     transition: max-height 0.3s ease-out;
+     transition: max-height 0.4s var(--transition-bounce);
      white-space: pre-wrap;
 }
 
 .video-description-box.expanded .description-content {
      max-height: 600px;
      overflow: auto;
-     transition: max-height 0.4s ease-in;
 }
 
 .show-more-btn {
@@ -379,16 +394,19 @@ video::cue {
      padding: 3px;
      cursor: pointer;
      border-radius: 8px;
-     transition: background-color 0.2s;
+     transition: background-color 0.2s, transform 0.2s var(--transition-bounce);
 }
 
 .up-next-item:hover {
      background-color: var(--button-hover-bg);
+     transform: translateX(4px);
 }
 
 .up-next-item.is-playing {
      background-color: var(--primary-accent-dark);
      color: #fff;
+     transform: scale(1.02);
+     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
 }
 
 .up-next-item.is-playing .item-uploader {
@@ -452,7 +470,7 @@ video::cue {
      right: 0;
      color: white;
      opacity: 0;
-     transition: opacity 0.2s ease-in-out;
+     transition: opacity 0.3s ease-in-out;
      background: linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent);
      cursor: default;
 }
@@ -483,14 +501,19 @@ video::cue {
      font-size: 24px;
      padding: 8px;
      cursor: pointer;
-     transition: transform 0.2s;
+     transition: transform 0.2s var(--transition-bounce), color 0.2s;
      display: flex;
      align-items: center;
      justify-content: center;
 }
 
 .control-button:hover {
-     transform: scale(1.1);
+     transform: scale(1.2);
+     color: var(--primary-accent);
+}
+
+.control-button:active {
+     transform: scale(0.9);
 }
 
 .control-button:disabled {
@@ -512,7 +535,7 @@ video::cue {
 .volume-slider-container {
      width: 0;
      opacity: 0;
-     transition: width 0.2s ease, opacity 0.2s ease;
+     transition: width 0.3s var(--transition-bounce), opacity 0.3s ease;
      display: flex;
      align-items: center;
      height: 30px;
@@ -530,6 +553,11 @@ video::cue {
      background-image: linear-gradient(var(--primary-accent), var(--primary-accent));
      background-size: var(--volume-progress) 100%;
      background-repeat: no-repeat;
+     transition: height 0.2s;
+}
+
+.volume-slider:hover {
+     height: 5px;
 }
 
 .volume-slider::-webkit-slider-thumb {
@@ -539,8 +567,8 @@ video::cue {
      height: 12px;
      background: #fff;
      border-radius: 50%;
-     transform: scale(1);
-     transition: transform 0.2s ease;
+     transform: scale(0);
+     transition: transform 0.2s var(--transition-bounce);
 }
 
 .volume-slider::-moz-range-thumb {
@@ -549,8 +577,8 @@ video::cue {
      background: #fff;
      border-radius: 50%;
      border: none;
-     transform: scale(1);
-     transition: transform 0.2s ease;
+     transform: scale(0);
+     transition: transform 0.2s var(--transition-bounce);
 }
 
 .volume-container:hover .volume-slider::-webkit-slider-thumb,
@@ -571,7 +599,7 @@ video::cue {
      height: 3px;
      width: 100%;
      position: relative;
-     transition: height 0.2s ease;
+     transition: height 0.2s var(--transition-bounce);
 }
 
 .timeline-progress {
@@ -582,7 +610,7 @@ video::cue {
 }
 
 .timeline-container:hover .timeline {
-     height: 5px;
+     height: 6px;
 }
 
 .timeline-progress::after {
@@ -591,11 +619,12 @@ video::cue {
      right: 0;
      top: 50%;
      transform: translate(50%, -50%) scale(0);
-     height: 12px;
-     width: 12px;
+     height: 14px;
+     width: 14px;
      background: var(--primary-accent);
      border-radius: 50%;
-     transition: transform 0.2s ease;
+     transition: transform 0.2s var(--transition-bounce);
+     box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
 }
 
 .timeline-container:hover .timeline-progress::after {
@@ -613,20 +642,21 @@ video::cue {
      position: absolute;
      right: 10px;
      bottom: 60px;
-     width: 280px;
+     width: 330px;
      display: none;
      opacity: 0;
-     transform: translateY(10px);
-     transition: opacity .2s ease, transform .2s ease;
+     transform: translateY(20px) scale(0.95);
+     transition: opacity .3s ease, transform .3s var(--transition-bounce);
      max-height: 400px;
      overflow-y: auto;
+     transform-origin: bottom right;
 }
 
 .settings-menu.active,
 .settings-submenu.active {
      display: block;
      opacity: 1;
-     transform: translateY(0);
+     transform: translateY(0) scale(1);
 }
 
 .settings-item,
@@ -637,6 +667,7 @@ video::cue {
      padding: 12px;
      cursor: pointer;
      border-radius: 8px;
+     transition: background-color 0.2s;
 }
 
 .settings-item.disabled {
@@ -747,6 +778,7 @@ body.light-theme .submenu-item:hover {
 
 .player-dropdown.open .player-dropdown-list {
      display: block;
+     animation: fadeIn 0.2s ease;
 }
 
 .player-dropdown-item {
@@ -784,6 +816,7 @@ body.light-theme .submenu-item:hover {
      padding: 6px 10px;
      border-radius: 6px;
      text-align: center;
+     transition: border-color 0.2s;
 }
 
 .sleep-timer-input-group input:focus {
@@ -798,6 +831,11 @@ body.light-theme .submenu-item:hover {
      padding: 6px 12px;
      border-radius: 6px;
      cursor: pointer;
+     transition: background-color 0.2s;
+}
+
+.sleep-timer-input-group button:hover {
+     background-color: var(--primary-accent-dark);
 }
 
 
