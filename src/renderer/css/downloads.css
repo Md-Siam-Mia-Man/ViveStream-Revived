@@ -32,12 +32,13 @@
      align-items: center;
      padding: 8px;
      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-     transition: all 0.2s ease;
+     transition: all 0.3s var(--transition-bounce);
 }
 
 .dl-input-container:focus-within {
      border-color: var(--primary-accent);
      box-shadow: 0 8px 30px color-mix(in srgb, var(--primary-accent) 20%, transparent);
+     transform: translateY(-2px);
 }
 
 .input-icon {
@@ -77,13 +78,14 @@
      font-weight: 600;
      cursor: pointer;
      color: var(--secondary-text);
-     transition: all 0.2s ease;
+     transition: all 0.2s var(--transition-bounce);
 }
 
 .dl-type-option.active {
      background: var(--primary-background);
      color: var(--primary-text);
      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+     transform: scale(1.05);
 }
 
 .dl-start-btn {
@@ -94,7 +96,7 @@
      height: 56px;
      border-radius: 12px;
      cursor: pointer;
-     transition: background-color 0.2s ease;
+     transition: background-color 0.2s ease, transform 0.2s var(--transition-bounce);
      display: flex;
      align-items: center;
      justify-content: center;
@@ -103,6 +105,11 @@
 
 .dl-start-btn:hover {
      background: var(--primary-accent-dark);
+     transform: scale(1.1);
+}
+
+.dl-start-btn:active {
+     transform: scale(0.95);
 }
 
 /* Config Grid */
@@ -124,12 +131,12 @@
      justify-content: center;
      gap: 12px;
      min-width: 0;
-     transition: transform 0.2s ease, box-shadow 0.2s ease;
+     transition: transform 0.2s var(--transition-bounce), box-shadow 0.2s ease;
 }
 
 .dl-config-item:hover {
-     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-     transform: translateY(-2px);
+     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+     transform: translateY(-4px);
 }
 
 .dl-config-item.hidden {
@@ -169,12 +176,13 @@
      border-radius: 8px;
      font-family: var(--font-body);
      font-size: 0.95rem;
-     transition: all 0.2s;
+     transition: all 0.2s var(--transition-bounce);
 }
 
 .dl-text-input:focus {
      outline: none;
      border-color: var(--primary-accent);
+     transform: scale(1.02);
 }
 
 .slider-container {
@@ -191,6 +199,7 @@
 
 input[type=range] {
      flex-grow: 1;
+     appearance: none;
      -webkit-appearance: none;
      height: 4px;
      background: var(--primary-background);
@@ -205,11 +214,11 @@ input[type=range]::-webkit-slider-thumb {
      border-radius: 50%;
      background: var(--primary-accent);
      cursor: pointer;
-     transition: transform 0.1s;
+     transition: transform 0.2s var(--transition-bounce);
 }
 
 input[type=range]::-webkit-slider-thumb:hover {
-     transform: scale(1.2);
+     transform: scale(1.3);
 }
 
 /* Custom Dropdown Styling matches Settings */
@@ -241,6 +250,7 @@ input[type=range]::-webkit-slider-thumb:hover {
      font-family: 'Material Symbols Outlined';
      font-size: 20px;
      color: var(--secondary-text);
+     transition: transform 0.3s var(--transition-bounce);
 }
 
 .custom-dl-dropdown.open .dropdown-selected::after {
@@ -261,7 +271,7 @@ input[type=range]::-webkit-slider-thumb:hover {
      opacity: 0;
      visibility: hidden;
      transform: translateY(-10px);
-     transition: all 0.2s ease;
+     transition: all 0.3s var(--transition-bounce);
      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
 }
 
@@ -354,6 +364,19 @@ input[type=range]::-webkit-slider-thumb:hover {
 
 .dl-tab-content.active {
      display: block;
+     animation: fadeIn 0.4s ease;
+}
+
+@keyframes fadeIn {
+     from {
+          opacity: 0;
+          transform: translateY(10px);
+     }
+
+     to {
+          opacity: 1;
+          transform: translateY(0);
+     }
 }
 
 /* Card Grid Layout for Downloads */
@@ -370,14 +393,27 @@ input[type=range]::-webkit-slider-thumb:hover {
      overflow: hidden;
      display: flex;
      flex-direction: column;
-     transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+     transition: transform 0.3s var(--transition-bounce), box-shadow 0.3s ease, border-color 0.2s;
      border: 1px solid transparent;
      position: relative;
+     animation: cardPop 0.4s var(--transition-bounce) both;
+}
+
+@keyframes cardPop {
+     from {
+          opacity: 0;
+          transform: scale(0.9);
+     }
+
+     to {
+          opacity: 1;
+          transform: scale(1);
+     }
 }
 
 .download-card:hover {
-     transform: translateY(-4px);
-     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+     transform: translateY(-6px);
+     box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
 }
 
 /* Error Glow Effect */
@@ -399,7 +435,11 @@ input[type=range]::-webkit-slider-thumb:hover {
      width: 100%;
      height: 100%;
      object-fit: cover;
-     transition: opacity 0.3s;
+     transition: opacity 0.3s, transform 0.5s ease;
+}
+
+.download-card:hover .dl-card-thumb {
+     transform: scale(1.1);
 }
 
 .dl-card-thumb-overlay {
@@ -423,6 +463,12 @@ input[type=range]::-webkit-slider-thumb:hover {
 .dl-card-play-icon {
      font-size: 48px;
      color: #fff;
+     transform: scale(0.8);
+     transition: transform 0.2s var(--transition-bounce);
+}
+
+.download-card:hover .dl-card-play-icon {
+     transform: scale(1);
 }
 
 .dl-card-content {
@@ -527,13 +573,18 @@ input[type=range]::-webkit-slider-thumb:hover {
      align-items: center;
      justify-content: center;
      cursor: pointer;
-     transition: all 0.2s;
+     transition: all 0.2s var(--transition-bounce);
 }
 
 .dl-action-btn:hover {
      background: var(--secondary-background);
      color: var(--primary-text);
      border-color: var(--primary-text);
+     transform: scale(1.15);
+}
+
+.dl-action-btn:active {
+     transform: scale(0.9);
 }
 
 .dl-action-btn.log-btn {
@@ -580,12 +631,14 @@ input[type=range]::-webkit-slider-thumb:hover {
      height: 300px;
      color: var(--secondary-text);
      grid-column: 1 / -1;
+     animation: fadeIn 0.5s ease;
 }
 
 .dl-empty-state span {
      font-size: 48px;
      margin-bottom: 12px;
      opacity: 0.5;
+     animation: float 3s ease-in-out infinite;
 }
 
 /* Toggle Switch Styles for Downloads Page */
@@ -631,7 +684,7 @@ input[type=range]::-webkit-slider-thumb:hover {
      left: 2px;
      bottom: 2px;
      background-color: white;
-     transition: .3s;
+     transition: .4s var(--transition-bounce);
      border-radius: 50%;
 }
 
