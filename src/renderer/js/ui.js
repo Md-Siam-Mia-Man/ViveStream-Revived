@@ -489,17 +489,35 @@ eventBus.on("ui:favorite_toggled", updateFavoriteUI);
 
 export function updateSearchPlaceholder(pageId) {
   let isSearchable = true;
-  // Settings page generally doesn't need global search
   if (pageId === "settings") {
     isSearchable = false;
   }
-  // Downloads page IS searchable now per requirements
 
-  homeSearchInput.placeholder = isSearchable
+  const placeholderText = isSearchable
     ? "Search videos, artists, playlists..."
     : "Search unavailable";
+
+  homeSearchInput.placeholder = placeholderText;
   homeSearchInput.disabled = !isSearchable;
   homeSearchInput.style.opacity = isSearchable ? "1" : "0.5";
+
+  // Dynamic Resizing Logic
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext("2d");
+  const computedStyle = window.getComputedStyle(homeSearchInput);
+  context.font = computedStyle.font;
+
+  // Calculate text width of the placeholder
+  const metrics = context.measureText(placeholderText);
+  // Base width + padding (left 42px + right 16px) + extra buffer
+  const neededWidth = Math.ceil(metrics.width) + 58 + 20;
+
+  // Set width, min 300px, max 600px
+  const finalWidth = Math.min(Math.max(neededWidth, 300), 600);
+  homeSearchInput.style.width = `${finalWidth}px`;
+
+  // Update focus width slightly larger
+  homeSearchInput.style.setProperty('--focus-width', `${finalWidth + 100}px`);
 
   lastActivePageId = pageId;
 }
@@ -509,13 +527,10 @@ const debouncedSearchHandler = debounce((term) => {
   const isDownloadsPage = !document.getElementById("downloads-page").classList.contains("hidden");
 
   if (isPlayerPage) {
-    // Player Page Search (filters Up Next)
     renderUpNextList({ searchTerm: term, sortKey: currentSort });
   } else if (isDownloadsPage) {
-    // Downloads Page Search
     eventBus.emit("search:downloads", term);
   } else {
-    // Global Library Search
     renderSearchPage(term);
   }
 }, 300);
@@ -608,7 +623,6 @@ function initializeMainEventListeners() {
 
     if (e.target.closest("#filter-btn")) {
       const btn = e.target.closest("#filter-btn");
-      // Find the filter panel in the currently active page (visible)
       const panel = document.querySelector(".page:not(.hidden) .filter-panel");
       if (panel) {
         panel.classList.toggle("visible");
