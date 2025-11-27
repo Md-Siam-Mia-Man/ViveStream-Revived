@@ -22,11 +22,67 @@
      flex-direction: column;
      gap: 12px;
      position: relative;
-     transition: transform 0.2s ease-out;
+     transition: transform 0.3s var(--transition-bounce);
+     /* Simple entry animation applied via JS or staggered delay */
+     animation: popIn 0.5s var(--transition-bounce) both;
+}
+
+/* Staggered animation delay for up to 20 items */
+.video-grid-item:nth-child(1) {
+     animation-delay: 0.05s;
+}
+
+.video-grid-item:nth-child(2) {
+     animation-delay: 0.1s;
+}
+
+.video-grid-item:nth-child(3) {
+     animation-delay: 0.15s;
+}
+
+.video-grid-item:nth-child(4) {
+     animation-delay: 0.2s;
+}
+
+.video-grid-item:nth-child(5) {
+     animation-delay: 0.25s;
+}
+
+.video-grid-item:nth-child(6) {
+     animation-delay: 0.3s;
+}
+
+.video-grid-item:nth-child(7) {
+     animation-delay: 0.35s;
+}
+
+.video-grid-item:nth-child(8) {
+     animation-delay: 0.4s;
+}
+
+.video-grid-item:nth-child(9) {
+     animation-delay: 0.45s;
+}
+
+.video-grid-item:nth-child(10) {
+     animation-delay: 0.5s;
+}
+
+@keyframes popIn {
+     from {
+          opacity: 0;
+          transform: scale(0.9) translateY(10px);
+     }
+
+     to {
+          opacity: 1;
+          transform: scale(1) translateY(0);
+     }
 }
 
 .video-grid-item:hover {
-     transform: translateY(-4px);
+     transform: translateY(-8px) scale(1.02);
+     z-index: 5;
 }
 
 .grid-thumbnail-container {
@@ -34,6 +90,12 @@
      cursor: pointer;
      border-radius: 12px;
      overflow: hidden;
+     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+     transition: box-shadow 0.3s ease;
+}
+
+.video-grid-item:hover .grid-thumbnail-container {
+     box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
 }
 
 .grid-thumbnail {
@@ -41,13 +103,13 @@
      aspect-ratio: 16/9;
      object-fit: cover;
      background-color: var(--secondary-background);
-     transition: border-radius 0.2s ease, transform 0.2s ease;
+     transition: border-radius 0.3s var(--transition-bounce), transform 0.4s ease-out;
      display: block;
 }
 
 .video-grid-item:hover .grid-thumbnail {
      border-radius: 4px;
-     transform: scale(1.05);
+     transform: scale(1.1);
 }
 
 .thumbnail-overlay-icon {
@@ -60,15 +122,17 @@
      justify-content: center;
      align-items: center;
      background-color: rgba(0, 0, 0, 0.5);
-     color: rgba(255, 255, 255, 0.7);
+     color: rgba(255, 255, 255, 0.9);
      font-size: 48px;
      opacity: 0;
-     transition: opacity 0.2s ease;
+     transform: scale(0.8);
+     transition: opacity 0.3s ease, transform 0.4s var(--transition-bounce);
      pointer-events: none;
 }
 
 .video-grid-item:hover .thumbnail-overlay-icon {
      opacity: 1;
+     transform: scale(1);
 }
 
 .thumbnail-duration {
@@ -82,6 +146,7 @@
      font-size: 0.8rem;
      font-weight: 500;
      z-index: 2;
+     backdrop-filter: blur(4px);
 }
 
 .grid-item-details {
@@ -121,12 +186,14 @@
      display: flex;
      gap: 8px;
      opacity: 0;
-     transition: opacity 0.2s ease;
+     transform: translateX(10px);
+     transition: opacity 0.3s ease, transform 0.3s var(--transition-bounce);
      pointer-events: none;
 }
 
 .video-grid-item:hover .grid-item-actions {
      opacity: 1;
+     transform: translateX(0);
      pointer-events: auto;
 }
 
@@ -142,12 +209,17 @@
      display: flex;
      align-items: center;
      justify-content: center;
-     transition: background-color 0.2s, color 0.2s;
+     transition: background-color 0.2s, color 0.2s, transform 0.2s var(--transition-bounce);
 }
 
 .grid-item-action-btn:hover {
      background-color: var(--secondary-background);
      color: var(--primary-text);
+     transform: scale(1.2);
+}
+
+.grid-item-action-btn:active {
+     transform: scale(0.9);
 }
 
 .grid-item-action-btn.favorite-btn.is-favorite .material-symbols-outlined {
@@ -156,11 +228,12 @@
 
 .grid-item-action-btn.favorite-btn .material-symbols-outlined {
      font-variation-settings: 'FILL' 0;
-     transition: font-variation-settings .2s;
+     transition: font-variation-settings 0.3s var(--transition-bounce), transform 0.3s;
 }
 
 .grid-item-action-btn.favorite-btn.is-favorite .material-symbols-outlined {
      font-variation-settings: 'FILL' 1;
+     transform: scale(1.1);
 }
 
 .filter-panel {
@@ -172,14 +245,17 @@
      border-radius: 16px;
      max-height: 0;
      opacity: 0;
-     transform: translateY(-10px);
-     transition: max-height 0.4s ease, opacity 0.4s ease, transform 0.4s ease, padding 0.4s ease, margin 0.4s ease;
+     transform: translateY(-20px);
+     transition: max-height 0.5s var(--transition-bounce), opacity 0.4s ease, transform 0.5s var(--transition-bounce), padding 0.4s ease, margin 0.4s ease;
+     overflow: hidden;
 }
 
 .filter-panel.visible {
      max-height: 500px;
      opacity: 1;
      transform: translateY(0);
+     margin-bottom: 24px;
+     padding: 8px 0;
 }
 
 .filter-group {
@@ -219,8 +295,10 @@
      top: 4px;
      background-color: var(--primary-accent);
      border-radius: 16px;
-     transition: left 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), width 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+     /* Bouncy indicator movement */
+     transition: left 0.4s var(--transition-bounce), width 0.4s var(--transition-bounce);
      z-index: 0;
+     box-shadow: 0 2px 8px color-mix(in srgb, var(--primary-accent) 40%, transparent);
 }
 
 .filter-btn.active {
@@ -239,6 +317,7 @@
      display: flex;
      flex-direction: column;
      gap: 16px;
+     animation: fadeSlideUp 0.5s var(--transition-bounce);
 }
 
 .search-section-title {
