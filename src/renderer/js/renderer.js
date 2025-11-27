@@ -121,12 +121,9 @@ export function showPage(pageId, isSubPage = false) {
     setHeaderActions(createHeaderActionsElement());
 
     // Ensure filter panel is present if not already appended
+    // Using class selector to avoid duplicate ID issues
     if (!playerPage.querySelector(".filter-panel")) {
       const panel = createFilterPanel();
-      // Insert before main content to match layout, or append.
-      // Player page layout is specific, might need specific container.
-      // Actually player page structure is <main class="main-content">...
-      // Filter panel usually goes into the page container.
       playerPage.insertBefore(panel, playerPage.firstChild);
     }
   }
