@@ -41,6 +41,15 @@ const downloadJobs = new Map();
 const pendingInfoJobs = new Map();
 const errorLogs = new Map();
 
+// --- Helper for Empty States ---
+function updateEmptyStates() {
+  const hasQueueItems = downloadQueueArea.children.length > 0;
+  queueEmptyState.classList.toggle("hidden", hasQueueItems);
+
+  const hasHistoryItems = historyListContainer.children.length > 0;
+  historyEmptyState.classList.toggle("hidden", hasHistoryItems);
+}
+
 // --- UI Logic ---
 
 function updateUIState() {
@@ -119,12 +128,6 @@ async function loadHistory() {
   const history = await window.electronAPI.historyGet();
   historyListContainer.innerHTML = "";
 
-  if (history.length === 0) {
-    historyEmptyState.classList.remove("hidden");
-    return;
-  }
-  historyEmptyState.classList.add("hidden");
-
   history.forEach(item => {
     const card = document.createElement("div");
     card.className = "download-card";
@@ -177,6 +180,7 @@ async function loadHistory() {
 
     historyListContainer.appendChild(card);
   });
+  updateEmptyStates();
 }
 
 // --- Search Filter Logic ---
@@ -185,20 +189,12 @@ eventBus.on("search:downloads", (searchTerm) => {
 
   // Filter active queue
   const queueCards = downloadQueueArea.querySelectorAll(".download-card");
-  let hasVisibleQueue = false;
   queueCards.forEach(card => {
     const title = card.querySelector(".dl-card-title").textContent.toLowerCase();
     const url = card.querySelector(".dl-card-uploader").textContent.toLowerCase();
     const matches = title.includes(term) || url.includes(term);
     card.classList.toggle("hidden", !matches);
-    if (matches) hasVisibleQueue = true;
   });
-
-  // Only show empty state if nothing matches AND queue actually has items
-  if (queueCards.length > 0 && !hasVisibleQueue) {
-    // We could add a "no search results" placeholder, but showing standard empty is confusing
-    // For now, simpler to just hide everything.
-  }
 
   // Filter history
   const historyCards = historyListContainer.querySelectorAll(".download-card");
@@ -250,8 +246,6 @@ startDownloadBtn.addEventListener("click", (e) => {
 });
 
 function createFetchingPlaceholder(url, jobId) {
-  queueEmptyState.classList.add("hidden");
-
   const card = document.createElement("div");
   card.className = "download-card";
   card.dataset.jobId = jobId;
@@ -281,6 +275,7 @@ function createFetchingPlaceholder(url, jobId) {
   `;
 
   downloadQueueArea.insertAdjacentElement("afterbegin", card);
+  updateEmptyStates();
 }
 
 function updateItemActions(item, status) {
@@ -365,7 +360,7 @@ downloadQueueArea.addEventListener("click", (e) => {
     else showNotification("No specific log available yet.", "info");
   }
 
-  if (downloadQueueArea.children.length === 0) queueEmptyState.classList.remove("hidden");
+  updateEmptyStates();
 });
 
 queueClearBtn.addEventListener("click", async () => {
@@ -375,7 +370,7 @@ queueClearBtn.addEventListener("click", async () => {
     loadHistory();
   } else {
     downloadQueueArea.innerHTML = "";
-    queueEmptyState.classList.remove("hidden");
+    updateEmptyStates();
   }
 });
 
@@ -409,9 +404,7 @@ function showErrorLog(errorData) {
 // IPC Listeners
 window.electronAPI.onDownloadQueueStart(({ infos, jobId }) => {
   const placeholder = downloadQueueArea.querySelector(`.download-card[data-job-id="${jobId}"]`);
-  if (!placeholder) return;
-
-  placeholder.remove();
+  if (placeholder) placeholder.remove();
   pendingInfoJobs.delete(jobId);
 
   infos.forEach(info => {
@@ -455,7 +448,7 @@ window.electronAPI.onDownloadQueueStart(({ infos, jobId }) => {
     errorLogs.set(info.id, { error: "Download in progress...", fullLog: "Waiting for output..." });
     downloadJobs.set(info.id, { ...info });
   });
-  queueEmptyState.classList.add("hidden");
+  updateEmptyStates();
 });
 
 window.electronAPI.onDownloadProgress((data) => {
