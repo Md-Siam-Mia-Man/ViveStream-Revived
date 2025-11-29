@@ -634,6 +634,11 @@ input[type=range]::-webkit-slider-thumb:hover {
      animation: fadeIn 0.5s ease;
 }
 
+/* Added specific rule to ensure hidden works */
+.dl-empty-state.hidden {
+     display: none !important;
+}
+
 .dl-empty-state span {
      font-size: 48px;
      margin-bottom: 12px;
