@@ -3,7 +3,8 @@
 
 <head>
     <meta charset="UTF-8" />
-    <meta http-equiv="Content-Security-Policy" content="font-src 'self' data:; script-src 'self' 'unsafe-inline';" />
+    <meta http-equiv="Content-Security-Policy"
+        content="font-src 'self' data:; script-src 'self' 'unsafe-inline'; img-src 'self' data: https: http:;" />
     <title>ViveStream</title>
     <link rel="stylesheet" href="../../assets/icons/index.css" />
     <link rel="stylesheet" href="./css/style.css" />
@@ -235,7 +236,7 @@
                             <button class="dl-tab-btn active" data-tab="queue">Active Queue</button>
                             <button class="dl-tab-btn" data-tab="history">History</button>
                             <div class="dl-tabs-actions">
-                                <button id="queue-clear-btn" class="icon-btn" title="Clear All"><span
+                                <button id="queue-clear-btn" class="icon-btn" title="Clear Queue"><span
                                         class="material-symbols-outlined">delete_sweep</span></button>
                             </div>
                         </div>
