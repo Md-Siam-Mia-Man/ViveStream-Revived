@@ -247,7 +247,6 @@
      opacity: 0;
      transform: translateY(-20px);
      transition: max-height 0.4s ease-out, opacity 0.4s ease, transform 0.4s var(--transition-bounce), margin 0.4s ease;
-     overflow: hidden;
      box-sizing: border-box;
 }
 
@@ -255,8 +254,6 @@
      max-height: 1000px;
      opacity: 1;
      transform: translateY(0);
-     margin-bottom: 24px;
-     padding: 8px 0;
 }
 
 .filter-group {
