@@ -18,11 +18,46 @@ function log(step, message) {
     console.log(`${colors.cyan}[${step}]${colors.reset} ${message}`);
 }
 
+function getPlatformConfig() {
+    switch (process.platform) {
+        case "win32":
+            return {
+                id: "win",
+                name: "Windows",
+                vendorFolder: "vendor/win",
+                cliFlag: "--win",
+                target: "nsis"
+            };
+        case "darwin":
+            return {
+                id: "mac",
+                name: "macOS",
+                vendorFolder: "vendor/mac",
+                cliFlag: "--mac",
+                target: "dmg"
+            };
+        case "linux":
+            return {
+                id: "linux",
+                name: "Linux",
+                vendorFolder: "vendor/linux",
+                cliFlag: "--linux",
+                target: "AppImage"
+            };
+        default:
+            throw new Error(`Unsupported platform: ${process.platform}`);
+    }
+}
+
 async function executeCommand(command, args, cwd) {
-    const commandString = `${command} ${args.join(" ")}`;
+    const isRebuild = args.includes("electron-rebuild");
 
     return new Promise((resolve, reject) => {
-        const child = spawn(commandString, {
+        const cmd = process.platform === "win32" && command === "npx" ? "npx.cmd" : command;
+        // Fix for [DEP0190]: Manually construct command string
+        const fullCommand = [cmd, ...args].map(a => a.includes(" ") ? `"${a}"` : a).join(" ");
+
+        const child = spawn(fullCommand, {
             cwd: cwd,
             shell: true,
             env: { ...process.env, NODE_NO_WARNINGS: 1 }
@@ -36,23 +71,26 @@ async function executeCommand(command, args, cwd) {
             const str = data.toString();
             const lowerStr = str.toLowerCase();
 
-            if ((lowerStr.includes("installing native dependencies") || lowerStr.includes("rebuild")) && !hasLoggedNative) {
-                console.log(`   ${colors.yellow}⧗  Compiling native dependencies...${colors.reset}`);
-                hasLoggedNative = true;
-            } else if (lowerStr.includes("downloading")) {
-                console.log(`   ${colors.gray}↓  Downloading resources...${colors.reset}`);
-            } else if (lowerStr.includes("packaging") && lowerStr.includes("win32") && !hasLoggedPackaging) {
-                console.log(`   ${colors.green}→  Packaging application...${colors.reset}`);
-                hasLoggedPackaging = true;
-            } else if (lowerStr.includes("nsis") && !hasLoggedNSIS) {
-                console.log(`   ${colors.green}→  Building Installer (NSIS)...${colors.reset}`);
-                hasLoggedNSIS = true;
+            if (isRebuild) {
+                if (!hasLoggedNative) {
+                    hasLoggedNative = true;
+                }
+            } else {
+                if (lowerStr.includes("downloading") && !lowerStr.includes("part")) {
+                    console.log(`   ${colors.gray}↓  Downloading resources...${colors.reset}`);
+                } else if (lowerStr.includes("packaging") && !hasLoggedPackaging) {
+                    console.log(`   ${colors.green}→  Packaging application...${colors.reset}`);
+                    hasLoggedPackaging = true;
+                } else if (lowerStr.includes("nsis") && !hasLoggedNSIS) {
+                    console.log(`   ${colors.green}→  Building Installer (NSIS)...${colors.reset}`);
+                    hasLoggedNSIS = true;
+                }
             }
         });
 
         child.stderr.on("data", (data) => {
             const str = data.toString();
-            if (str.toLowerCase().includes("error") && !str.includes("DeprecationWarning")) {
+            if (str.toLowerCase().includes("error") && !str.includes("DeprecationWarning") && !str.includes("postinstall")) {
                 console.error(`${colors.red}   [Error] ${str.trim()}${colors.reset}`);
             }
         });
@@ -64,13 +102,13 @@ async function executeCommand(command, args, cwd) {
     });
 }
 
-function findInstaller(dir) {
+function findInstaller(dir, ext) {
     if (!fs.existsSync(dir)) return null;
     const files = fs.readdirSync(dir);
     for (const file of files) {
         const fullPath = path.join(dir, file);
         const stat = fs.statSync(fullPath);
-        if (stat.isFile() && file.endsWith(".exe") && !file.includes("uninstaller")) {
+        if (stat.isFile() && file.endsWith(ext) && !file.includes("uninstaller") && !file.includes("blockmap")) {
             return { name: file, path: fullPath };
         }
     }
@@ -78,100 +116,145 @@ function findInstaller(dir) {
 }
 
 async function runBuild() {
+    const platformConfig = getPlatformConfig();
+    const rootDir = path.join(__dirname, "..");
+    const releaseDir = path.join(rootDir, "release");
+    const finalArtifactDir = path.join(releaseDir, platformConfig.id);
+
+    const iconPath = path.join(rootDir, "assets", "icon.ico");
+    const macIconPath = path.join(rootDir, "assets", "icon.icns");
+    const linuxIconPath = path.join(rootDir, "assets", "icon.png");
+    const tempConfigPath = path.join(rootDir, "temp-build-config.json");
+
     console.log(colors.cyan + "==================================================" + colors.reset);
     console.log(colors.cyan + "            ViveStream Custom Builder             " + colors.reset);
     console.log(colors.cyan + "==================================================" + colors.reset);
+    console.log(`   Target: ${colors.yellow}${platformConfig.name}${colors.reset}`);
 
-    const rootDir = path.join(__dirname, "..");
-    const releaseDir = path.join(rootDir, "release");
-    const winReleaseDir = path.join(releaseDir, "win");
-
-    // --------------------------------------------------------------------------
-    // STEP 1: CLEANUP
-    // --------------------------------------------------------------------------
     log("1/5", "Cleanup");
     if (fs.existsSync(releaseDir)) {
         try {
-            process.stdout.write("   Cleaning release directory... ");
             if (rimraf.sync) rimraf.sync(releaseDir);
-            else rimraf(releaseDir).catch(() => { });
-            console.log(colors.green + "Done." + colors.reset);
-        } catch (e) {
-            console.log(colors.red + "Failed." + colors.reset);
-        }
-    } else {
-        console.log("   Clean.");
+            else await rimraf(releaseDir);
+        } catch (e) { }
     }
+    console.log(`   ${colors.green}✔ Clean.${colors.reset}`);
 
-    // --------------------------------------------------------------------------
-    // STEP 2: NATIVE REBUILD
-    // --------------------------------------------------------------------------
     log("\n2/5", "Rebuilding Native Dependencies");
-    console.log(`   ${colors.yellow}⧗  Starting compilation (sqlite3)...${colors.reset}`);
-    // Use -f -w sqlite3 per your original working script
-    await executeCommand("electron-rebuild", ["-f", "-w", "sqlite3"], rootDir);
+    console.log(`   ${colors.yellow}⧗  Compiling sqlite3...${colors.reset}`);
+    await executeCommand("npx", ["electron-rebuild", "-f", "-w", "sqlite3"], rootDir);
     console.log(`   ${colors.green}✔  Rebuild Complete.${colors.reset}`);
 
-    // --------------------------------------------------------------------------
-    // STEP 3: EXECUTE BUILDER
-    // --------------------------------------------------------------------------
     log("\n3/5", "Packaging (electron-builder)");
-    console.log(`   ${colors.gray}→  Initializing...${colors.reset}`);
+    console.log(`   ${colors.gray}→  Generating configuration...${colors.reset}`);
 
-    // Explicitly force NSIS target
-    await executeCommand("electron-builder", ["--win", "nsis:x64"], rootDir);
-
-    // --------------------------------------------------------------------------
-    // STEP 4: ORGANIZE
-    // --------------------------------------------------------------------------
-    log("\n4/5", "Organizing Artifacts");
-
-    if (!fs.existsSync(winReleaseDir)) fs.mkdirSync(winReleaseDir, { recursive: true });
-
-    let found = findInstaller(releaseDir);
-
-    if (found) {
-        const dest = path.join(winReleaseDir, found.name);
-        try {
-            if (path.relative(found.path, dest) !== "") {
-                fs.renameSync(found.path, dest);
+    const buildConfig = {
+        appId: "com.vivestream.app",
+        productName: "ViveStream",
+        copyright: "Copyright © 2025 Md Siam Mia",
+        directories: {
+            output: "release",
+            buildResources: "assets"
+        },
+        files: [
+            "src/**/*",
+            "package.json",
+            "assets/**/*", // INCLUDE ASSETS IN ASAR
+            "!**/node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}",
+            "!**/node_modules/*/{test,__tests__,tests,powered-test,example,examples}",
+            "!**/node_modules/*.d.ts",
+            "!**/node_modules/.bin",
+            "!vendor/**/*", // Exclude binaries from ASAR
+            "!**/.git/**",
+            "!**/.github/**",
+            "!**/helpers/**"
+        ],
+        extraResources: [
+            {
+                from: platformConfig.vendorFolder,
+                to: platformConfig.vendorFolder,
+                filter: ["**/*"]
             }
-            console.log(`   ✔ Moved installer to: release/win/${found.name}`);
-        } catch (err) {
-            console.error(`   ✘ Failed to move installer: ${err.message}`);
+        ],
+        compression: "maximum",
+        asar: true,
+        win: {
+            target: "nsis",
+            icon: iconPath
+        },
+        nsis: {
+            oneClick: false,
+            perMachine: true,
+            allowToChangeInstallationDirectory: true,
+            createDesktopShortcut: true,
+            createStartMenuShortcut: true,
+            shortcutName: "ViveStream",
+            uninstallDisplayName: "ViveStream",
+            runAfterFinish: true,
+            deleteAppDataOnUninstall: false,
+            include: path.join(rootDir, "build", "installer.nsh"),
+            installerIcon: iconPath,
+            uninstallerIcon: iconPath
+        },
+        linux: {
+            target: "AppImage",
+            icon: linuxIconPath,
+            category: "Video"
+        },
+        mac: {
+            target: "dmg",
+            icon: macIconPath
         }
+    };
+
+    fs.writeFileSync(tempConfigPath, JSON.stringify(buildConfig, null, 2));
+
+    try {
+        await executeCommand("npx", ["electron-builder", "--config", "temp-build-config.json", platformConfig.cliFlag], rootDir);
+    } catch (e) {
+        if (fs.existsSync(tempConfigPath)) fs.unlinkSync(tempConfigPath);
+        throw e;
     }
 
-    // Cleanup artifacts
+    if (fs.existsSync(tempConfigPath)) fs.unlinkSync(tempConfigPath);
+
+    log("\n4/5", "Organizing Artifacts");
+    if (!fs.existsSync(finalArtifactDir)) fs.mkdirSync(finalArtifactDir, { recursive: true });
+
+    let ext = ".exe";
+    if (process.platform === "darwin") ext = ".dmg";
+    if (process.platform === "linux") ext = ".AppImage";
+
+    let found = findInstaller(releaseDir, ext);
+
+    if (found) {
+        const dest = path.join(finalArtifactDir, found.name);
+        try {
+            if (path.relative(found.path, dest) !== "") fs.renameSync(found.path, dest);
+            console.log(`   ✔ Moved installer to: release/${platformConfig.id}/${found.name}`);
+        } catch (err) { }
+    }
+
     if (fs.existsSync(releaseDir)) {
         const files = fs.readdirSync(releaseDir);
         for (const file of files) {
             const fullPath = path.join(releaseDir, file);
-            if (file === "win") continue;
-
+            if (file === platformConfig.id) continue;
             try {
-                if (fs.statSync(fullPath).isDirectory()) {
-                    rimraf.sync(fullPath);
-                } else {
-                    fs.unlinkSync(fullPath);
-                }
+                if (fs.statSync(fullPath).isDirectory()) rimraf.sync(fullPath);
+                else fs.unlinkSync(fullPath);
             } catch (e) { }
         }
     }
 
-    // --------------------------------------------------------------------------
-    // STEP 5: COMPLETE
-    // --------------------------------------------------------------------------
     log("\n5/5", "Complete");
-
-    const finalCheck = findInstaller(winReleaseDir);
+    const finalCheck = findInstaller(finalArtifactDir, ext);
 
     if (finalCheck) {
         console.log(`${colors.green}   Build Successful!${colors.reset}`);
         console.log(`   Installer: ${finalCheck.path}\n`);
     } else {
-        console.log(`${colors.yellow}   Build finished, but no installer was found in release/win/.${colors.reset}`);
-        console.log(`${colors.gray}   Please check the logs above for errors.${colors.reset}\n`);
+        console.log(`${colors.yellow}   Build finished, but no installer found.${colors.reset}\n`);
     }
 }
 
