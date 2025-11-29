@@ -1,27 +1,44 @@
+!include "MUI2.nsh"
+
+; ============================================================================
+; INSTALLER LOGIC
+; ============================================================================
+
+; Run at the very beginning of installation
 !macro customInit
-  # Custom initialization code goes here
+    ; No prompts here. Clean install.
 !macroend
 
-!macro customInstall
-  # Add an option to run on startup to the installer
-  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "${PRODUCT_NAME}" '"$INSTDIR\${APP_EXECUTABLE_FILENAME}'
-!macroend
+; ============================================================================
+; UNINSTALLER LOGIC
+; ============================================================================
 
-!macro customUninstall
-  # Clean up the startup registry key
-  DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "${PRODUCT_NAME}"
+; Run when the uninstaller initializes
+!macro customUnInit
+    ; Determine the user's home directory for the profile check
+    ExpandEnvStrings $0 "%USERPROFILE%"
+    
+    ; Ask the user if they want to delete their media library AND app data
+    ; MB_YESNO: Show Yes/No buttons
+    ; MB_ICONQUESTION: Show a question mark icon
+    ; MB_DEFBUTTON2: "No" is the default focused button (Safety)
+    MessageBox MB_YESNO|MB_ICONQUESTION|MB_DEFBUTTON2 \
+    "Do you want to delete your entire ViveStream Media Library and Database?$\n$\nLocations:$\n - $0\ViveStream (Media)$\n - $APPDATA\ViveStream (Database)$\n$\nWARNING: This action cannot be undone." \
+    IDYES delete_media IDNO keep_media
 
-  # Prompt the user to optionally delete their data
-  MessageBox MB_YESNO|MB_ICONQUESTION "Do you want to remove all user data, including your media library and settings?$\n$\nThis cannot be undone." IDYES deleteUserData
+    delete_media:
+        ; Delete the media folder in User Home
+        RMDir /r "$0\ViveStream"
+        
+        ; Delete the AppData folder (Database and Settings)
+        ; Check both common naming conventions just in case
+        RMDir /r "$APPDATA\ViveStream"
+        RMDir /r "$APPDATA\com.vivestream.app" 
+        Goto done
 
-  goto skipDelete
+    keep_media:
+        ; Do nothing, just uninstall the executable files (handled by standard uninstaller)
+        Goto done
 
-deleteUserData:
-  # Delete application data (database, settings)
-  RMDir /r "$APPDATA\${PRODUCT_NAME}"
-  # Delete user's media library
-  RMDir /r "$PROFILE\${PRODUCT_NAME}"
-
-skipDelete:
-  # Additional cleanup can go here
+    done:
 !macroend
