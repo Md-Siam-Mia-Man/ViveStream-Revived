@@ -88,4 +88,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
   onMediaKeyPlayPause: (cb) => ipcRenderer.on("media-key-play-pause", cb),
   onMediaKeyNextTrack: (cb) => ipcRenderer.on("media-key-next-track", cb),
   onMediaKeyPrevTrack: (cb) => ipcRenderer.on("media-key-prev-track", cb),
+
+  onPlayExternalFile: (cb) => ipcRenderer.on("app:play-external-file", (e, v) => cb(v)),
 });
