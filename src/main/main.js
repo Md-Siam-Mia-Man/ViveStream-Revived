@@ -46,7 +46,6 @@ const getVendorPath = (fileName) => {
 
 // Helper: Get path for Internal Assets (Icons, Fonts)
 const getAssetPath = (fileName) => {
-  // In Prod: resources/app.asar/src/main/../../assets -> resources/app.asar/assets
   return path.join(__dirname, "..", "..", "assets", fileName);
 };
 
@@ -80,6 +79,8 @@ const mediaPaths = [
 
 let tray = null;
 let win = null;
+// Store the file path if app was opened via file association before window ready
+let externalFilePath = null;
 
 mediaPaths.forEach((dir) => {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
@@ -94,6 +95,123 @@ const defaultSettings = {
   concurrentFragments: 1,
   speedLimit: "",
 };
+
+// --- Single Instance Lock & File Association Logic ---
+
+const gotTheLock = app.requestSingleInstanceLock();
+
+if (!gotTheLock) {
+  app.quit();
+} else {
+  app.on("second-instance", (event, commandLine, workingDirectory) => {
+    // Someone tried to run a second instance, we should focus our window.
+    if (win) {
+      if (win.isMinimized()) win.restore();
+      win.focus();
+
+      const file = getFileFromArgs(commandLine);
+      if (file) {
+        win.webContents.send("app:play-external-file", file);
+      }
+    }
+  });
+
+  // Handle file association startup on macOS
+  app.on("open-file", (event, path) => {
+    event.preventDefault();
+    if (win && win.webContents) {
+      win.webContents.send("app:play-external-file", path);
+    } else {
+      externalFilePath = path;
+    }
+  });
+
+  app.whenReady().then(async () => {
+    try {
+      await initializeYtDlp();
+      await db.initialize(app);
+
+      // Check for file in args (Windows/Linux)
+      if (!externalFilePath) {
+        externalFilePath = getFileFromArgs(process.argv);
+      }
+
+      createWindow();
+      createTray();
+
+      globalShortcut.register("MediaPlayPause", () =>
+        win?.webContents.send("media-key-play-pause")
+      );
+      globalShortcut.register("MediaNextTrack", () =>
+        win?.webContents.send("media-key-next-track")
+      );
+      globalShortcut.register("MediaPreviousTrack", () =>
+        win?.webContents.send("media-key-prev-track")
+      );
+    } catch (error) {
+      console.error("Failed during app startup:", error);
+      dialog.showErrorBox(
+        "Fatal Error",
+        `A critical error occurred during startup: ${error.message}`
+      );
+      app.quit();
+    }
+  }).catch((err) => {
+    console.error("Failed in app.whenReady promise chain:", err);
+    app.quit();
+  });
+}
+
+function getFileFromArgs(argv) {
+  // In dev, args might be: electron . "path/to/file"
+  // In prod, args might be: Vivestream.exe "path/to/file"
+  const relevantArgs = isDev ? argv.slice(2) : argv.slice(1);
+  for (const arg of relevantArgs) {
+    if (arg && !arg.startsWith("-") && fs.existsSync(arg)) {
+      const stat = fs.statSync(arg);
+      if (stat.isFile()) return arg;
+    }
+  }
+  return null;
+}
+
+// ... [Downloader Class Omitted - Unchanged] ...
+// Assuming the Downloader class is exactly as provided previously.
+// To keep the file valid, I will insert the minimal necessary parts or verify imports.
+// Since I must provide the COMPLETE file content, I will paste the Downloader class back in.
+
+function sanitizeFilename(filename) {
+  return filename.replace(/[\\/:"*?<>|]/g, "_");
+}
+
+function parseYtDlpError(stderr) {
+  if (stderr.includes("Could not copy") && stderr.includes("cookie database"))
+    return "Failed to access browser cookies. Please close your browser completely and retry.";
+  if (stderr.includes("Private video"))
+    return "This video is private and cannot be downloaded.";
+  if (stderr.includes("Video unavailable")) return "This video is unavailable.";
+  if (stderr.includes("is not available in your country"))
+    return "This video is geo-restricted and not available in your country.";
+  if (stderr.includes("Premiere will begin in"))
+    return "This video is a premiere and has not been released yet.";
+  if (stderr.includes("Invalid URL"))
+    return "The URL provided is invalid. Please check and try again.";
+  if (stderr.includes("429"))
+    return "Too many requests. YouTube may be temporarily limiting your connection.";
+  if (stderr.includes("HTTP Error 403: Forbidden"))
+    return "Download failed (403 Forbidden). YouTube may be blocking the request.";
+
+  const errorMatch = stderr.match(/ERROR: (.*)/);
+  if (errorMatch && errorMatch[1]) {
+    return errorMatch[1].trim();
+  }
+
+  if (stderr.trim()) {
+    return stderr.trim().split("\n").pop();
+  }
+
+  return "An unknown error occurred. Try updating the downloader in Settings.";
+}
 
 async function initializeYtDlp() {
   try {
@@ -139,45 +257,6 @@ function saveSettings(settings) {
   );
 }
 if (!fs.existsSync(settingsPath)) saveSettings(defaultSettings);
-
-// ... [Downloader Class Omitted for Brevity - No Changes Needed There] ...
-// Re-include Downloader class exactly as before from original file
-// (I am skipping pasting 300 lines of unchanged Downloader logic here to focus on the fix)
-// Assuming Downloader class code is here...
-// We must ensure the `Downloader` class uses the correct `ffmpegPath` variable defined above.
-
-function sanitizeFilename(filename) {
-  return filename.replace(/[\\/:"*?<>|]/g, "_");
-}
-
-function parseYtDlpError(stderr) {
-  if (stderr.includes("Could not copy") && stderr.includes("cookie database"))
-    return "Failed to access browser cookies. Please close your browser completely and retry.";
-  if (stderr.includes("Private video"))
-    return "This video is private and cannot be downloaded.";
-  if (stderr.includes("Video unavailable")) return "This video is unavailable.";
-  if (stderr.includes("is not available in your country"))
-    return "This video is geo-restricted and not available in your country.";
-  if (stderr.includes("Premiere will begin in"))
-    return "This video is a premiere and has not been released yet.";
-  if (stderr.includes("Invalid URL"))
-    return "The URL provided is invalid. Please check and try again.";
-  if (stderr.includes("429"))
-    return "Too many requests. YouTube may be temporarily limiting your connection.";
-  if (stderr.includes("HTTP Error 403: Forbidden"))
-    return "Download failed (403 Forbidden). YouTube may be blocking the request.";
-
-  const errorMatch = stderr.match(/ERROR: (.*)/);
-  if (errorMatch && errorMatch[1]) {
-    return errorMatch[1].trim();
-  }
-
-  if (stderr.trim()) {
-    return stderr.trim().split("\n").pop();
-  }
-
-  return "An unknown error occurred. Try updating the downloader in Settings.";
-}
 
 class Downloader {
   constructor() {
@@ -494,6 +573,14 @@ function createWindow() {
   win.on("unmaximize", () => win.webContents.send("window-maximized", false));
   win.on("closed", () => (win = null));
   if (isDev) win.webContents.openDevTools({ mode: "detach" });
+
+  win.webContents.on("did-finish-load", () => {
+    // If we have an external file pending, send it now
+    if (externalFilePath) {
+      win.webContents.send("app:play-external-file", externalFilePath);
+      externalFilePath = null; // Clear it so we don't replay on reload
+    }
+  });
 }
 
 function createTray() {
@@ -521,43 +608,6 @@ app.on("before-quit", async () => {
 });
 
 app.on("will-quit", () => globalShortcut.unregisterAll());
-
-app
-  .whenReady()
-  .then(async () => {
-    try {
-      await initializeYtDlp();
-      await db.initialize(app);
-      createWindow();
-      createTray();
-
-      globalShortcut.register("MediaPlayPause", () =>
-        win?.webContents.send("media-key-play-pause")
-      );
-      globalShortcut.register("MediaNextTrack", () =>
-        win?.webContents.send("media-key-next-track")
-      );
-      globalShortcut.register("MediaPreviousTrack", () =>
-        win?.webContents.send("media-key-prev-track")
-      );
-    } catch (error) {
-      console.error("Failed during app startup:", error);
-      dialog.showErrorBox(
-        "Fatal Error",
-        `A critical error occurred during startup: ${error.message}`
-      );
-      app.quit();
-    }
-  })
-  .catch((err) => {
-    console.error("Failed in app.whenReady promise chain:", err);
-    dialog.showErrorBox(
-      "Fatal Error",
-      `A critical error occurred in the promise chain: ${err.message}`
-    );
-    app.quit();
-  });
-
 app.on("window-all-closed", () => process.platform !== "darwin" && app.quit());
 app.on(
   "activate",
@@ -565,7 +615,6 @@ app.on(
 );
 
 ipcMain.handle("get-assets-path", () => {
-  // Use the new helper to get absolute asset path
   const assetsPath = getAssetPath("");
   return assetsPath.replace(/\\/g, "/");
 });
@@ -583,10 +632,6 @@ ipcMain.handle("open-vendor-folder", () => {
   const p = isDev ? path.join(__dirname, "..", "..", "vendor") : path.join(process.resourcesPath, "vendor");
   return shell.openPath(p);
 });
-
-// ... [Rest of IPC Handlers and Logic Omitted for Brevity - No Changes Needed] ...
-// I am including the specific changes for imports and exports below for completeness if needed, 
-// but they rely on ffmpegPath which is now correctly defined via getVendorPath.
 
 ipcMain.handle("get-settings", getSettings);
 ipcMain.handle("get-app-version", () => app.getVersion());
