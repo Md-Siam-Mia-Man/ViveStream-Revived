@@ -260,10 +260,7 @@ function initializeWindowControls() {
     window.electronAPI.maximizeWindow()
   );
   closeBtn.addEventListener("click", () => window.electronAPI.closeWindow());
-  window.electronAPI.onWindowMaximized((isMaximized) => {
-    const icon = maximizeBtn.querySelector("span");
-    icon.textContent = isMaximized ? "crop_square" : "fullscreen_exit";
-  });
+  // Removed logic that updated text content of spans, as they no longer exist.
 }
 
 function initializeContextMenu() {

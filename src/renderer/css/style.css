@@ -161,18 +161,6 @@ body.platform-mac .window-controls-container {
      transform: scale(0.95);
 }
 
-.window-control-btn .material-symbols-outlined {
-     font-size: 10px;
-     opacity: 0;
-     color: rgba(0, 0, 0, 0.6);
-     font-weight: 700;
-     transition: opacity 0.2s ease;
-}
-
-.window-control-btn:hover .material-symbols-outlined {
-     opacity: 1;
-}
-
 /* Colors */
 .window-control-btn.close-btn {
      background-color: #ff5f56;
@@ -435,6 +423,7 @@ button,
      flex-grow: 1;
      min-height: 0;
      position: relative;
+     overflow-x: hidden; /* Prevent horizontal scroll */
 }
 
 /* Sidebar */
@@ -531,6 +520,7 @@ button,
 .content-wrapper {
      flex-grow: 1;
      overflow-y: auto;
+     overflow-x: hidden; /* Prevent horizontal scroll */
      position: relative;
      scroll-behavior: smooth;
 }
