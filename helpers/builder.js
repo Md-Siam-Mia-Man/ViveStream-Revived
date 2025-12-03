@@ -176,11 +176,30 @@ async function runBuild() {
                 filter: ["**/*"]
             }
         ],
+        fileAssociations: [
+            {
+                ext: ["mp4", "mkv", "webm", "avi", "mov"],
+                name: "Video File",
+                description: "ViveStream Video",
+                mimeType: "video/*",
+                role: "Viewer",
+                icon: iconPath
+            },
+            {
+                ext: ["mp3", "m4a", "wav", "flac", "ogg", "opus"],
+                name: "Audio File",
+                description: "ViveStream Audio",
+                mimeType: "audio/*",
+                role: "Viewer",
+                icon: iconPath
+            }
+        ],
         compression: "maximum",
         asar: true,
         win: {
             target: "nsis",
-            icon: iconPath
+            icon: iconPath,
+            legalTrademarks: "ViveStream"
         },
         nsis: {
             oneClick: false,
@@ -199,11 +218,28 @@ async function runBuild() {
         linux: {
             target: "AppImage",
             icon: linuxIconPath,
-            category: "Video"
+            category: "Video",
+            mimeTypes: ["video/mp4", "video/x-matroska", "audio/mpeg", "audio/mp4"]
         },
         mac: {
             target: "dmg",
-            icon: macIconPath
+            icon: macIconPath,
+            extendInfo: {
+                CFBundleDocumentTypes: [
+                    {
+                        CFBundleTypeName: "Video File",
+                        CFBundleTypeRole: "Viewer",
+                        LSHandlerRank: "Alternate",
+                        LSItemContentTypes: ["public.movie"]
+                    },
+                    {
+                        CFBundleTypeName: "Audio File",
+                        CFBundleTypeRole: "Viewer",
+                        LSHandlerRank: "Alternate",
+                        LSItemContentTypes: ["public.audio"]
+                    }
+                ]
+            }
         }
     };
 
