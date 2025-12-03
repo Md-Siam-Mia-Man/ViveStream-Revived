@@ -121,7 +121,6 @@ export function showPage(pageId, isSubPage = false) {
     setHeaderActions(createHeaderActionsElement());
 
     // Ensure filter panel is present if not already appended
-    // Using class selector to avoid duplicate ID issues
     if (!playerPage.querySelector(".filter-panel")) {
       const panel = createFilterPanel();
       playerPage.insertBefore(panel, playerPage.firstChild);
@@ -426,6 +425,34 @@ function initializeAppEventListeners() {
   });
 }
 
+function initializeExternalFileHandler() {
+  window.electronAPI.onPlayExternalFile((filePath) => {
+    const fileName = filePath.split(/[\\/]/).pop();
+    const isAudio = /\.(mp3|m4a|wav|flac|opus)$/i.test(fileName);
+    const fileUrl = "file://" + filePath.replace(/\\/g, "/");
+
+    const tempVideoObject = {
+      id: `external-${Date.now()}`,
+      title: fileName,
+      creator: "External Media",
+      filePath: fileUrl,
+      coverPath: null,
+      type: isAudio ? "audio" : "video",
+      isFavorite: false,
+      upload_date: new Date().toISOString(),
+      duration: 0
+    };
+
+    // Play request for this temporary item
+    // We pass it as a single-item queue
+    eventBus.emit("player:play_request", {
+      index: 0,
+      queue: [tempVideoObject],
+      context: { type: "external", id: null, name: "External File" }
+    });
+  });
+}
+
 function applyTheme() {
   const savedTheme = localStorage.getItem("theme") || "dark";
   document.body.classList.toggle("light-theme", savedTheme === "light");
@@ -451,6 +478,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   initializePlaylistContextMenus();
   initializeSettingsPage();
   initializeAppEventListeners();
+  initializeExternalFileHandler();
   loadPlayerSettings();
   loadAppSettings();
   initializeMediaKeyListeners();
