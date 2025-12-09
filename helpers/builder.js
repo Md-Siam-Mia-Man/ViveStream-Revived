@@ -76,7 +76,7 @@ async function executeCommand(command, args, cwd) {
         // Fix for [DEP0190]: Manually construct command string
         const fullCommand = [cmd, ...args].map(a => a.includes(" ") ? `"${a}"` : a).join(" ");
 
-        // console.log(`Executing: ${fullCommand}`); // DEBUG: quiet down
+        // console.log(`Executing: ${fullCommand}`);
 
         const child = spawn(fullCommand, {
             cwd: cwd,
@@ -84,32 +84,15 @@ async function executeCommand(command, args, cwd) {
             env: { ...process.env, NODE_NO_WARNINGS: 1 }
         });
 
-        let hasLoggedPackaging = false;
-        let hasLoggedInstaller = false;
+        // Use stdio inherit if possible? No, we want to capture/filter sometimes, but here we want full output.
+        // But for maximum reliability in seeing errors, let's just log everything.
 
         child.stdout.on("data", (data) => {
-            const str = data.toString();
-            const lowerStr = str.toLowerCase();
-
-            if (lowerStr.includes("downloading") && !lowerStr.includes("part")) {
-                console.log(`   ${colors.gray}↓  Downloading resources...${colors.reset}`);
-            } else if (lowerStr.includes("packaging") && !hasLoggedPackaging) {
-                console.log(`   ${colors.green}→  Packaging application...${colors.reset}`);
-                hasLoggedPackaging = true;
-            } else if ((lowerStr.includes("msi") || lowerStr.includes("nsis") || lowerStr.includes("dmg")) && !hasLoggedInstaller) {
-                console.log(`   ${colors.green}→  Building Installer...${colors.reset}`);
-                hasLoggedInstaller = true;
-            } else if (lowerStr.includes("rebuilding native dependencies")) {
-                console.log(`   ${colors.yellow}⧗  Rebuilding native dependencies...${colors.reset}`);
-            }
+             process.stdout.write(data); // Write directly to stdout to preserve formatting/colors
         });
 
         child.stderr.on("data", (data) => {
-            const str = data.toString();
-            // Filter out some noise
-            if (str.toLowerCase().includes("error") && !str.includes("DeprecationWarning") && !str.includes("postinstall")) {
-                console.error(`${colors.red}   [Error] ${str.trim()}${colors.reset}`);
-            }
+             process.stderr.write(data); // Write directly to stderr
         });
 
         child.on("close", (code) => {
@@ -196,25 +179,10 @@ async function runBuild() {
         });
     }
 
-    // Fix for AppImage builder failing on array 'ext'.
-    // We provide separate entries if needed, or try string.
-    // Electron builder usually supports arrays, but the AppImage tool seems picky in this environment.
-    // Let's try expanding them into individual associations which is verbose but safe.
-
     const videoExts = ["mp4", "mkv", "webm", "avi", "mov"];
     const audioExts = ["mp3", "m4a", "wav", "flac", "ogg", "opus"];
 
     const fileAssociations = [];
-
-    // Combine them into a single string might work for some targets, but let's try
-    // simply NOT using the array if Linux is the target, or finding a format that works.
-    //
-    // Actually, looking at docs, 'ext' can be string or array.
-    // The error `expects " or n, but found [` suggests the specific tool (app-builder-bin)
-    // invoked for AppImage generation is parsing strictly.
-    //
-    // Strategy: For Linux, we will try to just not set fileAssociations at top level if it crashes,
-    // OR we set them as single entries.
 
     // Let's try single entry per extension.
     videoExts.forEach(ext => {
@@ -279,26 +247,17 @@ async function runBuild() {
             target: platformConfig.id === "linux" ? platformConfig.target : "AppImage",
             icon: linuxIconPath,
             category: "Video",
-            mimeTypes: ["video/mp4", "video/x-matroska", "audio/mpeg", "audio/mp4"]
+            mimeTypes: ["video/mp4", "video/x-matroska", "audio/mpeg", "audio/mp4"],
+            maintainer: "Md Siam Mia <support@vivestream.app>"
         },
         mac: {
             target: platformConfig.id === "mac" ? platformConfig.target : "dmg",
             icon: macIconPath,
+            category: "public.app-category.video",
+            // Removed conflicting extendInfo.CFBundleDocumentTypes to rely on fileAssociations
             extendInfo: {
-                CFBundleDocumentTypes: [
-                    {
-                        CFBundleTypeName: "Video File",
-                        CFBundleTypeRole: "Viewer",
-                        LSHandlerRank: "Alternate",
-                        LSItemContentTypes: ["public.movie"]
-                    },
-                    {
-                        CFBundleTypeName: "Audio File",
-                        CFBundleTypeRole: "Viewer",
-                        LSHandlerRank: "Alternate",
-                        LSItemContentTypes: ["public.audio"]
-                    }
-                ]
+                // Keep other extendInfo if any, or leave empty/remove if not needed.
+                // We'll leave the object in case we need to add things back, but empty for now.
             }
         }
     };
