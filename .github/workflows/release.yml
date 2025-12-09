@@ -63,6 +63,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y rpm libarchive-tools flatpak flatpak-builder snapd
+          # Install Snapcraft for snap builds (required for strict snap packaging)
+          sudo snap install snapcraft --classic
 
       - name: Clean Cache (Optional)
         if: ${{ inputs.clean_cache }}
