@@ -1,7 +1,10 @@
 const { spawn } = require("child_process");
 const fs = require("fs");
 const path = require("path");
-const rimraf = require("rimraf");
+// Rimraf v6 compat
+const rimrafPkg = require("rimraf");
+const rimraf = rimrafPkg.rimraf || rimrafPkg;
+const rimrafSync = rimrafPkg.rimrafSync || rimrafPkg.sync;
 
 process.env.NODE_NO_WARNINGS = "1";
 
@@ -176,7 +179,7 @@ async function runBuild() {
     log("1/5", "Cleanup");
     if (fs.existsSync(releaseDir)) {
         try {
-            if (rimraf.sync) rimraf.sync(releaseDir);
+            if (rimrafSync) rimrafSync(releaseDir);
             else await rimraf(releaseDir);
         } catch (e) { }
     }
@@ -191,7 +194,23 @@ async function runBuild() {
     console.log(`   ${colors.gray}→  Generating configuration...${colors.reset}`);
 
     const extraResources = [];
-    if (fs.existsSync(path.join(rootDir, platformConfig.vendorFolder))) {
+    const vendorPath = path.join(rootDir, platformConfig.vendorFolder);
+    if (fs.existsSync(vendorPath)) {
+        // Ensure execute permissions for binaries
+        try {
+            const vendorFiles = fs.readdirSync(vendorPath);
+            for (const file of vendorFiles) {
+                const fullPath = path.join(vendorPath, file);
+                // Skip .gitkeep, etc
+                if (!file.startsWith(".")) {
+                    fs.chmodSync(fullPath, "755");
+                    console.log(`   ${colors.gray}Fixed permissions for ${file}${colors.reset}`);
+                }
+            }
+        } catch (e) {
+            console.log(`   ${colors.yellow}Warning: Could not fix permissions for vendor files: ${e.message}${colors.reset}`);
+        }
+
         extraResources.push({
             from: platformConfig.vendorFolder,
             to: platformConfig.vendorFolder,
@@ -323,7 +342,10 @@ async function runBuild() {
             const fullPath = path.join(releaseDir, file);
             if (file === platformConfig.id) continue;
             try {
-                if (fs.statSync(fullPath).isDirectory()) rimraf.sync(fullPath);
+                if (fs.statSync(fullPath).isDirectory()) {
+                    if (rimrafSync) rimrafSync(fullPath);
+                    else await rimraf(fullPath);
+                }
                 else fs.unlinkSync(fullPath);
             } catch (e) { }
         }
