@@ -47,7 +47,7 @@ function getPlatformConfig() {
                 name: "Windows",
                 vendorFolder: "vendor/win",
                 cliFlag: "--win",
-                target: targets.length > 0 ? targets : "nsis"
+                target: targets.length > 0 ? targets : "msi"
             };
         case "darwin":
             return {
@@ -71,12 +71,12 @@ function getPlatformConfig() {
 }
 
 async function executeCommand(command, args, cwd) {
-    const isRebuild = args.includes("electron-rebuild");
-
     return new Promise((resolve, reject) => {
         const cmd = process.platform === "win32" && command === "npx" ? "npx.cmd" : command;
         // Fix for [DEP0190]: Manually construct command string
         const fullCommand = [cmd, ...args].map(a => a.includes(" ") ? `"${a}"` : a).join(" ");
+
+        // console.log(`Executing: ${fullCommand}`); // DEBUG: quiet down
 
         const child = spawn(fullCommand, {
             cwd: cwd,
@@ -84,33 +84,29 @@ async function executeCommand(command, args, cwd) {
             env: { ...process.env, NODE_NO_WARNINGS: 1 }
         });
 
-        let hasLoggedNative = false;
         let hasLoggedPackaging = false;
-        let hasLoggedNSIS = false;
+        let hasLoggedInstaller = false;
 
         child.stdout.on("data", (data) => {
             const str = data.toString();
             const lowerStr = str.toLowerCase();
 
-            if (isRebuild) {
-                if (!hasLoggedNative) {
-                    hasLoggedNative = true;
-                }
-            } else {
-                if (lowerStr.includes("downloading") && !lowerStr.includes("part")) {
-                    console.log(`   ${colors.gray}↓  Downloading resources...${colors.reset}`);
-                } else if (lowerStr.includes("packaging") && !hasLoggedPackaging) {
-                    console.log(`   ${colors.green}→  Packaging application...${colors.reset}`);
-                    hasLoggedPackaging = true;
-                } else if (lowerStr.includes("nsis") && !hasLoggedNSIS) {
-                    console.log(`   ${colors.green}→  Building Installer (NSIS)...${colors.reset}`);
-                    hasLoggedNSIS = true;
-                }
+            if (lowerStr.includes("downloading") && !lowerStr.includes("part")) {
+                console.log(`   ${colors.gray}↓  Downloading resources...${colors.reset}`);
+            } else if (lowerStr.includes("packaging") && !hasLoggedPackaging) {
+                console.log(`   ${colors.green}→  Packaging application...${colors.reset}`);
+                hasLoggedPackaging = true;
+            } else if ((lowerStr.includes("msi") || lowerStr.includes("nsis") || lowerStr.includes("dmg")) && !hasLoggedInstaller) {
+                console.log(`   ${colors.green}→  Building Installer...${colors.reset}`);
+                hasLoggedInstaller = true;
+            } else if (lowerStr.includes("rebuilding native dependencies")) {
+                console.log(`   ${colors.yellow}⧗  Rebuilding native dependencies...${colors.reset}`);
             }
         });
 
         child.stderr.on("data", (data) => {
             const str = data.toString();
+            // Filter out some noise
             if (str.toLowerCase().includes("error") && !str.includes("DeprecationWarning") && !str.includes("postinstall")) {
                 console.error(`${colors.red}   [Error] ${str.trim()}${colors.reset}`);
             }
@@ -131,7 +127,7 @@ function moveArtifacts(sourceDir, destDir) {
     const movedFiles = [];
 
     const interestingExtensions = [
-        ".exe", ".dmg", ".AppImage", ".deb", ".rpm", ".snap", ".flatpak", ".tar.gz", ".tar.xz", ".zip", ".blockmap"
+        ".exe", ".msi", ".dmg", ".AppImage", ".deb", ".rpm", ".snap", ".flatpak", ".tar.gz", ".tar.xz", ".zip", ".blockmap"
     ];
 
     for (const file of files) {
@@ -184,8 +180,8 @@ async function runBuild() {
     console.log(`   ${colors.green}✔ Clean.${colors.reset}`);
 
     log("\n2/5", "Rebuilding Native Dependencies");
-    console.log(`   ${colors.yellow}⧗  Compiling sqlite3...${colors.reset}`);
-    await executeCommand("npx", ["electron-rebuild", "-f", "-w", "sqlite3"], rootDir);
+    // Use electron-builder's install-app-deps which handles rebuilding correctly using @electron/rebuild logic internally
+    await executeCommand("npx", ["electron-builder", "install-app-deps"], rootDir);
     console.log(`   ${colors.green}✔  Rebuild Complete.${colors.reset}`);
 
     log("\n3/5", "Packaging (electron-builder)");
@@ -199,6 +195,49 @@ async function runBuild() {
             filter: ["**/*"]
         });
     }
+
+    // Fix for AppImage builder failing on array 'ext'.
+    // We provide separate entries if needed, or try string.
+    // Electron builder usually supports arrays, but the AppImage tool seems picky in this environment.
+    // Let's try expanding them into individual associations which is verbose but safe.
+
+    const videoExts = ["mp4", "mkv", "webm", "avi", "mov"];
+    const audioExts = ["mp3", "m4a", "wav", "flac", "ogg", "opus"];
+
+    const fileAssociations = [];
+
+    // Combine them into a single string might work for some targets, but let's try
+    // simply NOT using the array if Linux is the target, or finding a format that works.
+    //
+    // Actually, looking at docs, 'ext' can be string or array.
+    // The error `expects " or n, but found [` suggests the specific tool (app-builder-bin)
+    // invoked for AppImage generation is parsing strictly.
+    //
+    // Strategy: For Linux, we will try to just not set fileAssociations at top level if it crashes,
+    // OR we set them as single entries.
+
+    // Let's try single entry per extension.
+    videoExts.forEach(ext => {
+        fileAssociations.push({
+            ext: ext, // Single string
+            name: "Video File",
+            description: "ViveStream Video",
+            mimeType: "video/" + (ext === "mkv" ? "x-matroska" : ext),
+            role: "Viewer",
+            icon: iconPath
+        });
+    });
+
+    audioExts.forEach(ext => {
+        fileAssociations.push({
+             ext: ext, // Single string
+             name: "Audio File",
+             description: "ViveStream Audio",
+             mimeType: "audio/" + (ext === "m4a" ? "mp4" : ext),
+             role: "Viewer",
+             icon: iconPath
+        });
+    });
 
     const buildConfig = {
         appId: "com.vivestream.app",
@@ -222,44 +261,19 @@ async function runBuild() {
             "!**/helpers/**"
         ],
         extraResources: extraResources,
-        fileAssociations: [
-            {
-                ext: ["mp4", "mkv", "webm", "avi", "mov"],
-                name: "Video File",
-                description: "ViveStream Video",
-                mimeType: "video/*",
-                role: "Viewer",
-                icon: iconPath
-            },
-            {
-                ext: ["mp3", "m4a", "wav", "flac", "ogg", "opus"],
-                name: "Audio File",
-                description: "ViveStream Audio",
-                mimeType: "audio/*",
-                role: "Viewer",
-                icon: iconPath
-            }
-        ],
+        fileAssociations: fileAssociations,
         compression: "maximum",
         asar: true,
         win: {
-            target: platformConfig.id === "win" ? platformConfig.target : "nsis",
+            target: platformConfig.id === "win" ? platformConfig.target : "msi",
             icon: iconPath,
             legalTrademarks: "ViveStream"
         },
-        nsis: {
+        msi: {
             oneClick: false,
             perMachine: true,
-            allowToChangeInstallationDirectory: true,
-            createDesktopShortcut: true,
-            createStartMenuShortcut: true,
-            shortcutName: "ViveStream",
-            uninstallDisplayName: "ViveStream",
             runAfterFinish: true,
-            deleteAppDataOnUninstall: false,
-            include: path.join(rootDir, "build", "installer.nsh"),
-            installerIcon: iconPath,
-            uninstallerIcon: iconPath
+            shortcutName: "ViveStream"
         },
         linux: {
             target: platformConfig.id === "linux" ? platformConfig.target : "AppImage",
