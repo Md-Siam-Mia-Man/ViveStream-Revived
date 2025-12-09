@@ -15,6 +15,7 @@ const { spawn } = require("child_process");
 const crypto = require("crypto");
 const url = require("url");
 const db = require("./database");
+const { parseArtistNames } = require("./utils");
 
 app.commandLine.appendSwitch("enable-begin-frame-scheduling");
 app.commandLine.appendSwitch("enable-native-gpu-memory-buffers");
@@ -487,9 +488,7 @@ class Downloader {
       if (fs.existsSync(descriptionPath)) fs.unlinkSync(descriptionPath);
 
       const artistString = info.artist || info.creator || info.uploader;
-      const artistNames = artistString
-        ? artistString.split(/[,;&]/).map((name) => name.trim())
-        : [];
+      const artistNames = parseArtistNames(artistString);
 
       if (artistNames.length > 0) {
         for (const name of artistNames) {
