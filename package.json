@@ -8,6 +8,13 @@
   "scripts": {
     "start": "electron .",
     "build": "node helpers/builder.js",
+    "build:linux:all": "node helpers/builder.js --linux --target=all",
+    "build:linux:rpm": "node helpers/builder.js --linux --target=rpm",
+    "build:linux:deb": "node helpers/builder.js --linux --target=deb",
+    "build:linux:appimage": "node helpers/builder.js --linux --target=AppImage",
+    "build:linux:flatpak": "node helpers/builder.js --linux --target=flatpak",
+    "build:linux:snap": "node helpers/builder.js --linux --target=snap",
+    "build:linux:tar": "node helpers/builder.js --linux --target=tar.gz,tar.xz",
     "postinstall": "electron-builder install-app-deps"
   },
   "keywords": [],

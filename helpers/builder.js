@@ -18,7 +18,28 @@ function log(step, message) {
     console.log(`${colors.cyan}[${step}]${colors.reset} ${message}`);
 }
 
+function parseTargets() {
+    const args = process.argv.slice(2);
+    let targets = [];
+
+    // Check for --target argument
+    args.forEach(arg => {
+        if (arg.startsWith("--target=")) {
+            const val = arg.split("=")[1];
+            if (val === "all") {
+                targets = ["AppImage", "deb", "rpm", "snap", "flatpak", "tar.gz", "tar.xz"];
+            } else {
+                targets = val.split(",").map(t => t.trim());
+            }
+        }
+    });
+
+    return targets;
+}
+
 function getPlatformConfig() {
+    const targets = parseTargets();
+
     switch (process.platform) {
         case "win32":
             return {
@@ -26,7 +47,7 @@ function getPlatformConfig() {
                 name: "Windows",
                 vendorFolder: "vendor/win",
                 cliFlag: "--win",
-                target: "nsis"
+                target: targets.length > 0 ? targets : "nsis"
             };
         case "darwin":
             return {
@@ -34,7 +55,7 @@ function getPlatformConfig() {
                 name: "macOS",
                 vendorFolder: "vendor/mac",
                 cliFlag: "--mac",
-                target: "dmg"
+                target: targets.length > 0 ? targets : "dmg"
             };
         case "linux":
             return {
@@ -42,7 +63,7 @@ function getPlatformConfig() {
                 name: "Linux",
                 vendorFolder: "vendor/linux",
                 cliFlag: "--linux",
-                target: "AppImage"
+                target: targets.length > 0 ? targets : ["AppImage"]
             };
         default:
             throw new Error(`Unsupported platform: ${process.platform}`);
@@ -102,17 +123,38 @@ async function executeCommand(command, args, cwd) {
     });
 }
 
-function findInstaller(dir, ext) {
-    if (!fs.existsSync(dir)) return null;
-    const files = fs.readdirSync(dir);
+function moveArtifacts(sourceDir, destDir) {
+    if (!fs.existsSync(sourceDir)) return [];
+    if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive: true });
+
+    const files = fs.readdirSync(sourceDir);
+    const movedFiles = [];
+
+    const interestingExtensions = [
+        ".exe", ".dmg", ".AppImage", ".deb", ".rpm", ".snap", ".flatpak", ".tar.gz", ".tar.xz", ".zip", ".blockmap"
+    ];
+
     for (const file of files) {
-        const fullPath = path.join(dir, file);
+        const fullPath = path.join(sourceDir, file);
         const stat = fs.statSync(fullPath);
-        if (stat.isFile() && file.endsWith(ext) && !file.includes("uninstaller") && !file.includes("blockmap")) {
-            return { name: file, path: fullPath };
+
+        if (stat.isDirectory()) continue;
+
+        // Check extension or if it ends with one of the extensions
+        const isInteresting = interestingExtensions.some(ext => file.endsWith(ext));
+
+        // Also move .yml files for auto-updater
+        const isYml = file.endsWith(".yml");
+
+        if (isInteresting || isYml) {
+             const dest = path.join(destDir, file);
+             try {
+                if (path.relative(fullPath, dest) !== "") fs.renameSync(fullPath, dest);
+                movedFiles.push(file);
+             } catch(e) {}
         }
     }
-    return null;
+    return movedFiles;
 }
 
 async function runBuild() {
@@ -129,7 +171,8 @@ async function runBuild() {
     console.log(colors.cyan + "==================================================" + colors.reset);
     console.log(colors.cyan + "            ViveStream Custom Builder             " + colors.reset);
     console.log(colors.cyan + "==================================================" + colors.reset);
-    console.log(`   Target: ${colors.yellow}${platformConfig.name}${colors.reset}`);
+    console.log(`   Target Platform: ${colors.yellow}${platformConfig.name}${colors.reset}`);
+    console.log(`   Target Formats:  ${colors.yellow}${Array.isArray(platformConfig.target) ? platformConfig.target.join(", ") : platformConfig.target}${colors.reset}`);
 
     log("1/5", "Cleanup");
     if (fs.existsSync(releaseDir)) {
@@ -147,6 +190,15 @@ async function runBuild() {
 
     log("\n3/5", "Packaging (electron-builder)");
     console.log(`   ${colors.gray}→  Generating configuration...${colors.reset}`);
+
+    const extraResources = [];
+    if (fs.existsSync(path.join(rootDir, platformConfig.vendorFolder))) {
+        extraResources.push({
+            from: platformConfig.vendorFolder,
+            to: platformConfig.vendorFolder,
+            filter: ["**/*"]
+        });
+    }
 
     const buildConfig = {
         appId: "com.vivestream.app",
@@ -169,13 +221,7 @@ async function runBuild() {
             "!**/.github/**",
             "!**/helpers/**"
         ],
-        extraResources: [
-            {
-                from: platformConfig.vendorFolder,
-                to: platformConfig.vendorFolder,
-                filter: ["**/*"]
-            }
-        ],
+        extraResources: extraResources,
         fileAssociations: [
             {
                 ext: ["mp4", "mkv", "webm", "avi", "mov"],
@@ -197,7 +243,7 @@ async function runBuild() {
         compression: "maximum",
         asar: true,
         win: {
-            target: "nsis",
+            target: platformConfig.id === "win" ? platformConfig.target : "nsis",
             icon: iconPath,
             legalTrademarks: "ViveStream"
         },
@@ -216,13 +262,13 @@ async function runBuild() {
             uninstallerIcon: iconPath
         },
         linux: {
-            target: "AppImage",
+            target: platformConfig.id === "linux" ? platformConfig.target : "AppImage",
             icon: linuxIconPath,
             category: "Video",
             mimeTypes: ["video/mp4", "video/x-matroska", "audio/mpeg", "audio/mp4"]
         },
         mac: {
-            target: "dmg",
+            target: platformConfig.id === "mac" ? platformConfig.target : "dmg",
             icon: macIconPath,
             extendInfo: {
                 CFBundleDocumentTypes: [
@@ -255,22 +301,13 @@ async function runBuild() {
     if (fs.existsSync(tempConfigPath)) fs.unlinkSync(tempConfigPath);
 
     log("\n4/5", "Organizing Artifacts");
-    if (!fs.existsSync(finalArtifactDir)) fs.mkdirSync(finalArtifactDir, { recursive: true });
 
-    let ext = ".exe";
-    if (process.platform === "darwin") ext = ".dmg";
-    if (process.platform === "linux") ext = ".AppImage";
-
-    let found = findInstaller(releaseDir, ext);
-
-    if (found) {
-        const dest = path.join(finalArtifactDir, found.name);
-        try {
-            if (path.relative(found.path, dest) !== "") fs.renameSync(found.path, dest);
-            console.log(`   ✔ Moved installer to: release/${platformConfig.id}/${found.name}`);
-        } catch (err) { }
+    const movedFiles = moveArtifacts(releaseDir, finalArtifactDir);
+    if (movedFiles && movedFiles.length > 0) {
+        movedFiles.forEach(f => console.log(`   ✔ Moved: ${f}`));
     }
 
+    // Cleanup rest
     if (fs.existsSync(releaseDir)) {
         const files = fs.readdirSync(releaseDir);
         for (const file of files) {
@@ -284,13 +321,11 @@ async function runBuild() {
     }
 
     log("\n5/5", "Complete");
-    const finalCheck = findInstaller(finalArtifactDir, ext);
-
-    if (finalCheck) {
+    if (movedFiles && movedFiles.length > 0) {
         console.log(`${colors.green}   Build Successful!${colors.reset}`);
-        console.log(`   Installer: ${finalCheck.path}\n`);
+        console.log(`   Artifacts are in: release/${platformConfig.id}/\n`);
     } else {
-        console.log(`${colors.yellow}   Build finished, but no installer found.${colors.reset}\n`);
+        console.log(`${colors.yellow}   Build finished, but no artifacts moved.${colors.reset}\n`);
     }
 }
 
