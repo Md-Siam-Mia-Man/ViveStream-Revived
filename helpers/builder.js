@@ -89,8 +89,10 @@ async function executeCommand(command, args, cwd) {
 
         child.stdout.on("data", (data) => {
             const str = data.toString();
-            const lowerStr = str.toLowerCase();
+            // Log everything for debugging if needed, but keeping it clean for now unless verbose
+            // console.log(str.trimEnd());
 
+            const lowerStr = str.toLowerCase();
             if (lowerStr.includes("downloading") && !lowerStr.includes("part")) {
                 console.log(`   ${colors.gray}↓  Downloading resources...${colors.reset}`);
             } else if (lowerStr.includes("packaging") && !hasLoggedPackaging) {
@@ -106,9 +108,10 @@ async function executeCommand(command, args, cwd) {
 
         child.stderr.on("data", (data) => {
             const str = data.toString();
-            // Filter out some noise
-            if (str.toLowerCase().includes("error") && !str.includes("DeprecationWarning") && !str.includes("postinstall")) {
-                console.error(`${colors.red}   [Error] ${str.trim()}${colors.reset}`);
+            // Log all stderr to ensure we see fatal errors.
+            // Filter out DeprecationWarning and known noise
+            if (!str.includes("DeprecationWarning") && !str.includes("postinstall")) {
+                console.error(`${colors.red}${str.trimEnd()}${colors.reset}`);
             }
         });
 
@@ -206,16 +209,6 @@ async function runBuild() {
 
     const fileAssociations = [];
 
-    // Combine them into a single string might work for some targets, but let's try
-    // simply NOT using the array if Linux is the target, or finding a format that works.
-    //
-    // Actually, looking at docs, 'ext' can be string or array.
-    // The error `expects " or n, but found [` suggests the specific tool (app-builder-bin)
-    // invoked for AppImage generation is parsing strictly.
-    //
-    // Strategy: For Linux, we will try to just not set fileAssociations at top level if it crashes,
-    // OR we set them as single entries.
-
     // Let's try single entry per extension.
     videoExts.forEach(ext => {
         fileAssociations.push({
@@ -279,11 +272,13 @@ async function runBuild() {
             target: platformConfig.id === "linux" ? platformConfig.target : "AppImage",
             icon: linuxIconPath,
             category: "Video",
-            mimeTypes: ["video/mp4", "video/x-matroska", "audio/mpeg", "audio/mp4"]
+            mimeTypes: ["video/mp4", "video/x-matroska", "audio/mpeg", "audio/mp4"],
+            maintainer: "Md Siam Mia <support@vivestream.app>"
         },
         mac: {
             target: platformConfig.id === "mac" ? platformConfig.target : "dmg",
             icon: macIconPath,
+            category: "public.app-category.video",
             extendInfo: {
                 CFBundleDocumentTypes: [
                     {
