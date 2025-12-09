@@ -11,7 +11,7 @@ on:
 
 jobs:
   build-linux:
-    runs-on: ubuntu-20.04  # Using 20.04 for better GLIBC compatibility with older distros
+    runs-on: ubuntu-24.04  # Upgraded to newer Ubuntu for better tool support
     
     steps:
       - name: Checkout Code
@@ -26,8 +26,8 @@ jobs:
       - name: Install System Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y rpm libarchive-tools flatpak flatpak-builder
-          # Snapcraft is pre-installed on Ubuntu runners, but we ensure requirements met
+          sudo apt-get install -y rpm libarchive-tools flatpak flatpak-builder snapd
+          # Ensure snapcraft is available or handle its absence if running in docker
 
       - name: Clean Cache (Optional)
         if: ${{ inputs.clean_cache }}
@@ -41,10 +41,8 @@ jobs:
 
       - name: Build All Targets
         # This uses the command we added to package.json
-        # Electron-builder will auto-download Docker images for Snap builds if needed
         run: npm run build:linux:all
         env:
-          # GitHub Token is needed for some electron-builder publishing steps or snap logic
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
 
       - name: Upload Artifacts
@@ -52,10 +50,11 @@ jobs:
         with:
           name: Linux-Builds
           path: |
-            release/*.AppImage
-            release/*.deb
-            release/*.rpm
-            release/*.snap
-            release/*.flatpak
-            release/*.tar.gz
+            release/linux/*.AppImage
+            release/linux/*.deb
+            release/linux/*.rpm
+            release/linux/*.snap
+            release/linux/*.flatpak
+            release/linux/*.tar.gz
+            release/linux/*.tar.xz
           retention-days: 5
