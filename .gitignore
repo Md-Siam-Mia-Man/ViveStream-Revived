@@ -1,10 +1,6 @@
 /node_modules
 /release
 *.txt
-*.exe
-ffmpeg
-ffprobe
-yt-dlp
-yt-dlp_linux
-yt-dlp_macos
 Release_Notes.md
+*.exe
+!vendor/**
