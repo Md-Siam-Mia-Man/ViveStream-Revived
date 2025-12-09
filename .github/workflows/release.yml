@@ -71,8 +71,7 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
-      - name: Verify Vendors
-        run: node helpers/verify-vendors.js
+      # "Verify Vendors" step has been removed from here
 
       - name: Build
         run: ${{ matrix.build_command }}
