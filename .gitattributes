@@ -1,1 +1,5 @@
 *.exe filter=lfs diff=lfs merge=lfs -text
+yt-dlp_macos filter=lfs diff=lfs merge=lfs -text
+vendor/**/ffmpeg filter=lfs diff=lfs merge=lfs -text
+vendor/**/ffprobe filter=lfs diff=lfs merge=lfs -text
+vendor/**/yt-dlp filter=lfs diff=lfs merge=lfs -text
