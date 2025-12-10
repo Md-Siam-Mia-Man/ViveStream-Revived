@@ -4,3 +4,4 @@
 Release_Notes.md
 *.exe
 !vendor/**
+python-portable
