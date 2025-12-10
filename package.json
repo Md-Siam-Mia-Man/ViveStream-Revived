@@ -3,7 +3,7 @@
   "version": "7.6.0",
   "description": "Your personal, offline, and stylish media sanctuary. Revived.",
   "main": "src/main/main.js",
-  "author": "Md Siam Mia <support@vivestream.app>",
+  "author": "Md Siam Mia",
   "license": "MIT",
   "scripts": {
     "start": "electron .",
@@ -30,5 +30,9 @@
     "knex": "^3.1.0",
     "sortablejs": "^1.15.6",
     "sqlite3": "^5.1.7"
+  },
+  "build": {
+    "appId": "com.vivestream.revived.app",
+    "productName": "ViveStream Revived"
   }
 }
