@@ -28,6 +28,8 @@ jobs:
               release/linux/*.tar.gz
               release/linux/*.tar.xz
 
+          # Windows and Mac will fail until you push those folders to the secondary repo
+          # You can comment them out if you only want to test Linux now
           - platform: Windows
             os: windows-latest
             build_command: npm run build
@@ -39,16 +41,28 @@ jobs:
             artifact_path: release/mac/*.dmg
 
     steps:
-      - name: Checkout Code
+      - name: Checkout Source Code
         uses: actions/checkout@v4
         with:
-          lfs: false  # Avoid LFS entirely
+          lfs: false
+
+      # --- CLONE PYTHON ENVIRONMENT ---
+      - name: Checkout Portable Python
+        uses: actions/checkout@v4
+        with:
+          repository: Md-Siam-Mia-Main/python-portable
+          path: python-portable
+          lfs: false # We are NOT using LFS, we are using chunks
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
+
+      # --- REASSEMBLE CHUNKS ---
+      - name: Reassemble Large Files
+        run: node helpers/large-file-manager.js join
 
       - name: Install System Dependencies (Linux)
         if: matrix.platform == 'Linux'
@@ -61,10 +75,22 @@ jobs:
         if: ${{ inputs.clean_cache }}
         run: npm cache clean --force
 
-      - name: Install Dependencies
+      - name: Install NPM Dependencies
         run: npm ci
 
-      - name: Build (verbose, capture logs)
+      # --- PERMISSIONS & VERIFICATION ---
+      - name: Verify Environment (Linux)
+        if: matrix.platform == 'Linux'
+        run: |
+          chmod -R +x python-portable/python-linux-gnu/bin
+          ls -lh python-portable/python-linux-gnu/bin/python3
+          ./python-portable/python-linux-gnu/bin/python3 --version
+
+      - name: Verify Environment (macOS)
+        if: matrix.platform == 'macOS'
+        run: chmod -R +x python-portable/python-mac-darwin/bin
+
+      - name: Build
         run: |
           mkdir -p logs
           ${{ matrix.build_command }} 2>&1 | tee logs/packaging.log
