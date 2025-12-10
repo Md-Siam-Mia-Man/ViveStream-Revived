@@ -147,11 +147,11 @@ function moveArtifacts(sourceDir, destDir) {
         const isYml = file.endsWith(".yml");
 
         if (isInteresting || isYml) {
-             const dest = path.join(destDir, file);
-             try {
+            const dest = path.join(destDir, file);
+            try {
                 if (path.relative(fullPath, dest) !== "") fs.renameSync(fullPath, dest);
                 movedFiles.push(file);
-             } catch(e) {}
+            } catch (e) { }
         }
     }
     return movedFiles;
@@ -240,12 +240,12 @@ async function runBuild() {
 
     audioExts.forEach(ext => {
         fileAssociations.push({
-             ext: ext, // Single string
-             name: "Audio File",
-             description: "ViveStream Audio",
-             mimeType: "audio/" + (ext === "m4a" ? "mp4" : ext),
-             role: "Viewer",
-             icon: iconPath
+            ext: ext, // Single string
+            name: "Audio File",
+            description: "ViveStream Audio",
+            mimeType: "audio/" + (ext === "m4a" ? "mp4" : ext),
+            role: "Viewer",
+            icon: iconPath
         });
     });
 
@@ -296,6 +296,7 @@ async function runBuild() {
             target: platformConfig.id === "mac" ? platformConfig.target : "dmg",
             icon: macIconPath,
             category: "public.app-category.video",
+            identity: null, // REQUIRED: This allows building on CI without a Developer ID Certificate
             extendInfo: {
                 CFBundleDocumentTypes: [
                     {
