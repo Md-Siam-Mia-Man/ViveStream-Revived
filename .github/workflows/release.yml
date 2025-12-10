@@ -45,11 +45,13 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
-          lfs: true  # Initialize LFS
+          lfs: false  # Do NOT download all LFS files; we pull selectively below
 
       # Pull only the specific binaries we need for this platform to save time/bandwidth
       - name: Pull Vendor Binaries (LFS)
-        run: git lfs pull --include "${{ matrix.lfs_pattern }}"
+        run: |
+          git lfs install
+          git lfs pull --include "${{ matrix.lfs_pattern }}"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
