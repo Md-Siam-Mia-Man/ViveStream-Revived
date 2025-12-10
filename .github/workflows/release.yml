@@ -25,8 +25,6 @@ jobs:
               release/linux/*.deb
               release/linux/*.rpm
               release/linux/*.snap
-              release/linux/*.tar.gz
-              release/linux/*.tar.xz
 
           # Windows and Mac will fail until you push those folders to the secondary repo
           # You can comment them out if you only want to test Linux now
@@ -96,8 +94,8 @@ jobs:
           ${{ matrix.build_command }} 2>&1 | tee logs/packaging.log
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          DEBUG: electron-builder
-          NPM_CONFIG_LOGLEVEL: verbose
+          # DEBUG: electron-builder  <-- Removed to reduce verbosity
+          # NPM_CONFIG_LOGLEVEL: verbose <-- Removed to reduce verbosity
 
       - name: Upload Packaging Logs
         if: failure() || success()

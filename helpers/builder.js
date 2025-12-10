@@ -21,6 +21,10 @@ function log(step, message) {
     console.log(`${colors.cyan}[${step}]${colors.reset} ${message}`);
 }
 
+function parseVerbose() {
+    return process.argv.includes("--verbose");
+}
+
 function parseTargets() {
     const args = process.argv.slice(2);
     let targets = [];
@@ -30,7 +34,8 @@ function parseTargets() {
         if (arg.startsWith("--target=")) {
             const val = arg.split("=")[1];
             if (val === "all") {
-                targets = ["AppImage", "deb", "rpm", "snap", "flatpak", "tar.gz", "tar.xz"];
+                // EXCLUDED tar.gz and tar.xz as requested
+                targets = ["AppImage", "deb", "rpm", "snap", "flatpak"];
             } else {
                 targets = val.split(",").map(t => t.trim());
             }
@@ -80,6 +85,7 @@ function getPlatformConfig() {
 }
 
 async function executeCommand(command, args, cwd) {
+    const verbose = parseVerbose();
     return new Promise((resolve, reject) => {
         const cmd = process.platform === "win32" && command === "npx" ? "npx.cmd" : command;
         const fullCommand = [cmd, ...args].map(a => a.includes(" ") ? `"${a}"` : a).join(" ");
@@ -92,28 +98,51 @@ async function executeCommand(command, args, cwd) {
 
         let hasLoggedPackaging = false;
         let hasLoggedInstaller = false;
+        let hasLoggedSigning = false;
+        let hasLoggedPublishing = false;
 
         child.stdout.on("data", (data) => {
             const str = data.toString();
-            console.log(str.trimEnd());
+            // In verbose mode, print everything
+            if (verbose) {
+                console.log(str.trimEnd());
+            }
 
+            // Always try to detect key steps for custom logging
             const lowerStr = str.toLowerCase();
+
             if (lowerStr.includes("downloading") && !lowerStr.includes("part")) {
                 console.log(`   ${colors.gray}↓  Downloading resources...${colors.reset}`);
             } else if (lowerStr.includes("packaging") && !hasLoggedPackaging) {
                 console.log(`   ${colors.green}→  Packaging application...${colors.reset}`);
                 hasLoggedPackaging = true;
-            } else if ((lowerStr.includes("msi") || lowerStr.includes("nsis") || lowerStr.includes("dmg")) && !hasLoggedInstaller) {
+            } else if ((lowerStr.includes("msi") || lowerStr.includes("nsis") || lowerStr.includes("dmg") || lowerStr.includes("snap") || lowerStr.includes("deb") || lowerStr.includes("rpm")) && !hasLoggedInstaller && lowerStr.includes("building")) {
                 console.log(`   ${colors.green}→  Building Installer...${colors.reset}`);
                 hasLoggedInstaller = true;
             } else if (lowerStr.includes("rebuilding native dependencies")) {
                 console.log(`   ${colors.yellow}⧗  Rebuilding native dependencies...${colors.reset}`);
+            } else if (lowerStr.includes("signing") && !hasLoggedSigning) {
+                console.log(`   ${colors.yellow}✎  Signing...${colors.reset}`);
+                hasLoggedSigning = true;
+            } else if (lowerStr.includes("publishing") && !hasLoggedPublishing) {
+                 console.log(`   ${colors.green}☁  Publishing...${colors.reset}`);
+                 hasLoggedPublishing = true;
             }
         });
 
         child.stderr.on("data", (data) => {
             const str = data.toString();
-            console.error(`${colors.red}${str.trimEnd()}${colors.reset}`);
+            // Suppress warnings in non-verbose mode unless it looks like an error
+            // electron-builder puts a lot of info in stderr
+            if (verbose) {
+                console.error(`${colors.red}${str.trimEnd()}${colors.reset}`);
+            } else {
+                 // Minimal error logging or filtering
+                 // If it contains "Error", we probably want to see it
+                 if (str.toLowerCase().includes("error") || str.toLowerCase().includes("failed")) {
+                     console.error(`${colors.red}${str.trimEnd()}${colors.reset}`);
+                 }
+            }
         });
 
         child.on("close", (code) => {
@@ -131,7 +160,7 @@ function moveArtifacts(sourceDir, destDir) {
     const movedFiles = [];
 
     const interestingExtensions = [
-        ".exe", ".msi", ".dmg", ".AppImage", ".deb", ".rpm", ".snap", ".flatpak", ".tar.gz", ".tar.xz", ".zip", ".blockmap"
+        ".exe", ".msi", ".dmg", ".AppImage", ".deb", ".rpm", ".snap", ".flatpak", ".zip", ".blockmap"
     ];
 
     for (const file of files) {
@@ -165,12 +194,15 @@ async function runBuild() {
     const linuxIconPath = path.join(rootDir, "assets", "icon.png");
     const tempConfigPath = path.join(rootDir, "temp-build-config.json");
 
+    const verbose = parseVerbose();
+
     console.log(colors.cyan + "==================================================" + colors.reset);
     console.log(colors.cyan + "            ViveStream Custom Builder             " + colors.reset);
     console.log(colors.cyan + "==================================================" + colors.reset);
     console.log(`   Target Platform: ${colors.yellow}${platformConfig.name}${colors.reset}`);
     console.log(`   Target Formats:  ${colors.yellow}${Array.isArray(platformConfig.target) ? platformConfig.target.join(", ") : platformConfig.target}${colors.reset}`);
     console.log(`   Bundling Python: ${colors.yellow}${platformConfig.pythonSource}${colors.reset}`);
+    console.log(`   Verbose Logging: ${verbose ? colors.green + "ON" : colors.gray + "OFF"}${colors.reset}`);
 
     log("1/5", "Cleanup");
     if (fs.existsSync(releaseDir)) {
@@ -182,6 +214,7 @@ async function runBuild() {
     console.log(`   ${colors.green}✔ Clean.${colors.reset}`);
 
     log("\n2/5", "Rebuilding Native Dependencies");
+    // install-app-deps doesn't usually need arguments, but maybe we should silence it too?
     await executeCommand("npx", ["electron-builder", "install-app-deps"], rootDir);
     console.log(`   ${colors.green}✔  Rebuild Complete.${colors.reset}`);
 
@@ -315,8 +348,15 @@ async function runBuild() {
 
     fs.writeFileSync(tempConfigPath, JSON.stringify(buildConfig, null, 2));
 
+    // Add publish flag if GH_TOKEN is present
+    const builderArgs = ["electron-builder", "--config", "temp-build-config.json", platformConfig.cliFlag];
+    if (process.env.GH_TOKEN) {
+        console.log(`   ${colors.yellow}✔ GitHub Token detected, enabling publish...${colors.reset}`);
+        builderArgs.push("--publish", "always");
+    }
+
     try {
-        await executeCommand("npx", ["electron-builder", "--config", "temp-build-config.json", platformConfig.cliFlag], rootDir);
+        await executeCommand("npx", builderArgs, rootDir);
     } catch (e) {
         if (fs.existsSync(tempConfigPath)) fs.unlinkSync(tempConfigPath);
         throw e;
