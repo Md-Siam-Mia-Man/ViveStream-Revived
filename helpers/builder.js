@@ -48,7 +48,8 @@ function getPlatformConfig() {
             return {
                 id: "win",
                 name: "Windows",
-                vendorFolder: "vendor/win",
+                // Path relative to project root
+                pythonSource: "python-portable/python-win-x64",
                 cliFlag: "--win",
                 target: targets.length > 0 ? targets : "msi"
             };
@@ -56,15 +57,20 @@ function getPlatformConfig() {
             return {
                 id: "mac",
                 name: "macOS",
-                vendorFolder: "vendor/mac",
+                pythonSource: "python-portable/python-mac-darwin",
                 cliFlag: "--mac",
                 target: targets.length > 0 ? targets : "dmg"
             };
         case "linux":
+            // Check which linux folder exists (gnu or musl)
+            const gnuPath = "python-portable/python-linux-gnu";
+            const muslPath = "python-portable/python-linux-musl";
+            const pythonSource = fs.existsSync(path.join(__dirname, "..", gnuPath)) ? gnuPath : muslPath;
+
             return {
                 id: "linux",
                 name: "Linux",
-                vendorFolder: "vendor/linux",
+                pythonSource: pythonSource,
                 cliFlag: "--linux",
                 target: targets.length > 0 ? targets : ["AppImage"]
             };
@@ -76,10 +82,7 @@ function getPlatformConfig() {
 async function executeCommand(command, args, cwd) {
     return new Promise((resolve, reject) => {
         const cmd = process.platform === "win32" && command === "npx" ? "npx.cmd" : command;
-        // Fix for [DEP0190]: Manually construct command string
         const fullCommand = [cmd, ...args].map(a => a.includes(" ") ? `"${a}"` : a).join(" ");
-
-        // console.log(`Executing: ${fullCommand}`); // DEBUG: quiet down
 
         const child = spawn(fullCommand, {
             cwd: cwd,
@@ -92,7 +95,6 @@ async function executeCommand(command, args, cwd) {
 
         child.stdout.on("data", (data) => {
             const str = data.toString();
-            // Log everything for debugging if needed, but keeping it clean for now unless verbose
             console.log(str.trimEnd());
 
             const lowerStr = str.toLowerCase();
@@ -111,8 +113,6 @@ async function executeCommand(command, args, cwd) {
 
         child.stderr.on("data", (data) => {
             const str = data.toString();
-            // Log all stderr to ensure we see fatal errors.
-            // Filter out DeprecationWarning and known noise
             console.error(`${colors.red}${str.trimEnd()}${colors.reset}`);
         });
 
@@ -140,10 +140,7 @@ function moveArtifacts(sourceDir, destDir) {
 
         if (stat.isDirectory()) continue;
 
-        // Check extension or if it ends with one of the extensions
         const isInteresting = interestingExtensions.some(ext => file.endsWith(ext));
-
-        // Also move .yml files for auto-updater
         const isYml = file.endsWith(".yml");
 
         if (isInteresting || isYml) {
@@ -173,6 +170,7 @@ async function runBuild() {
     console.log(colors.cyan + "==================================================" + colors.reset);
     console.log(`   Target Platform: ${colors.yellow}${platformConfig.name}${colors.reset}`);
     console.log(`   Target Formats:  ${colors.yellow}${Array.isArray(platformConfig.target) ? platformConfig.target.join(", ") : platformConfig.target}${colors.reset}`);
+    console.log(`   Bundling Python: ${colors.yellow}${platformConfig.pythonSource}${colors.reset}`);
 
     log("1/5", "Cleanup");
     if (fs.existsSync(releaseDir)) {
@@ -184,7 +182,6 @@ async function runBuild() {
     console.log(`   ${colors.green}✔ Clean.${colors.reset}`);
 
     log("\n2/5", "Rebuilding Native Dependencies");
-    // Use electron-builder's install-app-deps which handles rebuilding correctly using @electron/rebuild logic internally
     await executeCommand("npx", ["electron-builder", "install-app-deps"], rootDir);
     console.log(`   ${colors.green}✔  Rebuild Complete.${colors.reset}`);
 
@@ -192,44 +189,43 @@ async function runBuild() {
     console.log(`   ${colors.gray}→  Generating configuration...${colors.reset}`);
 
     const extraResources = [];
-    const vendorPath = path.join(rootDir, platformConfig.vendorFolder);
-    if (fs.existsSync(vendorPath)) {
-        // Ensure execute permissions for binaries
-        try {
-            const vendorFiles = fs.readdirSync(vendorPath);
-            for (const file of vendorFiles) {
-                const fullPath = path.join(vendorPath, file);
-                // Skip .gitkeep, etc
-                if (!file.startsWith(".")) {
-                    fs.chmodSync(fullPath, "755");
-                    console.log(`   ${colors.gray}Fixed permissions for ${file}${colors.reset}`);
+
+    // Bundle the Portable Python Environment
+    if (platformConfig.pythonSource) {
+        const pythonPath = path.join(rootDir, platformConfig.pythonSource);
+        if (fs.existsSync(pythonPath)) {
+            // Ensure permissions on Linux/Mac
+            if (process.platform !== "win32") {
+                try {
+                    // Make bin directory executable
+                    const binDir = path.join(pythonPath, "bin");
+                    if (fs.existsSync(binDir)) {
+                        fs.readdirSync(binDir).forEach(f => {
+                            fs.chmodSync(path.join(binDir, f), "755");
+                        });
+                    }
+                } catch (e) {
+                    console.warn("Could not set permissions on python binaries:", e.message);
                 }
             }
-        } catch (e) {
-            console.log(`   ${colors.yellow}Warning: Could not fix permissions for vendor files: ${e.message}${colors.reset}`);
+
+            extraResources.push({
+                from: platformConfig.pythonSource,
+                to: platformConfig.pythonSource, // Preserves structure in resources/
+                filter: ["**/*"]
+            });
+        } else {
+            console.warn(`${colors.red}WARNING: Portable Python not found at ${platformConfig.pythonSource}${colors.reset}`);
         }
-
-        extraResources.push({
-            from: platformConfig.vendorFolder,
-            to: platformConfig.vendorFolder,
-            filter: ["**/*"]
-        });
     }
-
-    // Fix for AppImage builder failing on array 'ext'.
-    // We provide separate entries if needed, or try string.
-    // Electron builder usually supports arrays, but the AppImage tool seems picky in this environment.
-    // Let's try expanding them into individual associations which is verbose but safe.
 
     const videoExts = ["mp4", "mkv", "webm", "avi", "mov"];
     const audioExts = ["mp3", "m4a", "wav", "flac", "ogg", "opus"];
-
     const fileAssociations = [];
 
-    // Let's try single entry per extension.
     videoExts.forEach(ext => {
         fileAssociations.push({
-            ext: ext, // Single string
+            ext: ext,
             name: "Video File",
             description: "ViveStream Video",
             mimeType: "video/" + (ext === "mkv" ? "x-matroska" : ext),
@@ -240,7 +236,7 @@ async function runBuild() {
 
     audioExts.forEach(ext => {
         fileAssociations.push({
-            ext: ext, // Single string
+            ext: ext,
             name: "Audio File",
             description: "ViveStream Audio",
             mimeType: "audio/" + (ext === "m4a" ? "mp4" : ext),
@@ -260,12 +256,13 @@ async function runBuild() {
         files: [
             "src/**/*",
             "package.json",
-            "assets/**/*", // INCLUDE ASSETS IN ASAR
+            "assets/**/*",
             "!**/node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}",
             "!**/node_modules/*/{test,__tests__,tests,powered-test,example,examples}",
             "!**/node_modules/*.d.ts",
             "!**/node_modules/.bin",
-            "!vendor/**/*", // Exclude binaries from ASAR
+            "!vendor/**/*",
+            "!python-portable/**/*", // Exclude root, we add specific platform via extraResources
             "!**/.git/**",
             "!**/.github/**",
             "!**/helpers/**"
@@ -296,7 +293,7 @@ async function runBuild() {
             target: platformConfig.id === "mac" ? platformConfig.target : "dmg",
             icon: macIconPath,
             category: "public.app-category.video",
-            identity: null, // REQUIRED: This allows building on CI without a Developer ID Certificate
+            identity: null,
             extendInfo: {
                 CFBundleDocumentTypes: [
                     {
@@ -334,7 +331,6 @@ async function runBuild() {
         movedFiles.forEach(f => console.log(`   ✔ Moved: ${f}`));
     }
 
-    // Cleanup rest
     if (fs.existsSync(releaseDir)) {
         const files = fs.readdirSync(releaseDir);
         for (const file of files) {
