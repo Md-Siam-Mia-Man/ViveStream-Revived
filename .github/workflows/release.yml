@@ -19,14 +19,13 @@ jobs:
         include:
           - platform: Linux
             os: ubuntu-24.04
-            build_command: npm run build:linux:all
+            build_command: npm run build:linux:ci
             lfs_pattern: vendor/linux/**
             artifact_path: |
               release/linux/*.AppImage
               release/linux/*.deb
               release/linux/*.rpm
               release/linux/*.snap
-              release/linux/*.flatpak
               release/linux/*.tar.gz
               release/linux/*.tar.xz
 
@@ -62,7 +61,7 @@ jobs:
         if: matrix.platform == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y rpm libarchive-tools flatpak flatpak-builder snapd
+          sudo apt-get install -y rpm libarchive-tools flatpak flatpak-builder snapd fakeroot dpkg-dev libsecret-1-dev libfuse2 libgl1-mesa-dev build-essential
           # Install Snapcraft for snap builds (required for strict snap packaging)
           sudo snap install snapcraft --classic
 
@@ -75,10 +74,21 @@ jobs:
 
       # "Verify Vendors" step has been removed from here
 
-      - name: Build
-        run: ${{ matrix.build_command }}
+      - name: Build (verbose, capture logs)
+        run: |
+          mkdir -p logs
+          # enable electron-builder debug + verbose npm logs, capture everything
+          DEBUG=electron-builder NPM_CONFIG_LOGLEVEL=verbose ${{ matrix.build_command }} 2>&1 | tee logs/packaging.log
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Packaging Logs
+        if: failure() || success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.platform }}-logs
+          path: logs/packaging.log
+          retention-days: 5
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4

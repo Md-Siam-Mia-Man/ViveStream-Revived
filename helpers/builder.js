@@ -93,7 +93,7 @@ async function executeCommand(command, args, cwd) {
         child.stdout.on("data", (data) => {
             const str = data.toString();
             // Log everything for debugging if needed, but keeping it clean for now unless verbose
-            // console.log(str.trimEnd());
+            console.log(str.trimEnd());
 
             const lowerStr = str.toLowerCase();
             if (lowerStr.includes("downloading") && !lowerStr.includes("part")) {
@@ -113,9 +113,7 @@ async function executeCommand(command, args, cwd) {
             const str = data.toString();
             // Log all stderr to ensure we see fatal errors.
             // Filter out DeprecationWarning and known noise
-            if (!str.includes("DeprecationWarning") && !str.includes("postinstall")) {
-                console.error(`${colors.red}${str.trimEnd()}${colors.reset}`);
-            }
+            console.error(`${colors.red}${str.trimEnd()}${colors.reset}`);
         });
 
         child.on("close", (code) => {
