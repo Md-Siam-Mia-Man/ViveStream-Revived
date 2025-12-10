@@ -7,17 +7,15 @@ const { execSync } = require("child_process");
 
 const vendorRoot = path.join(__dirname, "../vendor");
 
+// Only download for Windows. Linux/Mac use system binaries.
 const binaries = {
-    win: { name: "yt-dlp.exe", url: "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe" },
-    linux: { name: "yt-dlp", url: "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp" },
-    mac: { name: "yt-dlp_macos", url: "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos" }
+    win: { name: "yt-dlp.exe", url: "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe" }
 };
 
 function ensureDir(dir) {
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 }
 
-// Download function that follows 302 redirects
 function download(url, dest) {
     return new Promise((resolve, reject) => {
         const file = fs.createWriteStream(dest);
@@ -25,7 +23,6 @@ function download(url, dest) {
         function request(urlToGet) {
             https.get(urlToGet, { headers: { "User-Agent": "Mozilla/5.0 (Node.js downloader)" } }, res => {
                 if ([301, 302, 307, 308].includes(res.statusCode)) {
-                    // Follow redirect
                     return request(res.headers.location);
                 }
                 if (res.statusCode !== 200) {
@@ -54,12 +51,6 @@ function download(url, dest) {
     });
 }
 
-function makeExecutable(file) {
-    if (process.platform !== "win32") {
-        try { execSync(`chmod +x "${file}"`); } catch (e) { console.error(`Failed to chmod ${file}`, e); }
-    }
-}
-
 (async () => {
     try {
         console.log(`Vendor root: ${vendorRoot}`);
@@ -69,10 +60,9 @@ function makeExecutable(file) {
             const dest = path.join(folder, info.name);
             console.log(`Downloading ${info.name} for ${platform}...`);
             await download(info.url, dest);
-            makeExecutable(dest);
             console.log(`Saved to ${dest}`);
         }
-        console.log("All binaries downloaded successfully.");
+        console.log("Windows binary downloaded successfully.");
     } catch (err) {
         console.error("Download failed:", err);
         process.exit(1);
