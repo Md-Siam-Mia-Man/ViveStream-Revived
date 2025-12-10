@@ -20,8 +20,8 @@
   },
   "keywords": [],
   "devDependencies": {
-    "@electron/rebuild": "^4.0.1",
-    "electron": "^39.2.4",
+    "@electron/rebuild": "^4.0.2",
+    "electron": "^39.2.6",
     "electron-builder": "^26.0.12",
     "rimraf": "^6.1.2"
   },
