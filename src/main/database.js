@@ -1,6 +1,7 @@
 const path = require("path");
 const fs = require("fs");
 const knex = require("knex");
+const { parseArtistNames } = require("./utils");
 
 let db;
 
@@ -563,10 +564,9 @@ async function regenerateArtists() {
       const existingLink = await db("video_artists").where({ videoId: video.id }).first();
       if (existingLink) continue;
 
-      const artistNames = video.creator.split(/[,;&]/).map((name) => name.trim());
+      const artistNames = parseArtistNames(video.creator);
 
       for (const name of artistNames) {
-        if (!name) continue;
         const artist = await findOrCreateArtist(name, video.coverPath);
         if (artist) {
           const linked = await linkVideoToArtist(video.id, artist.id);
