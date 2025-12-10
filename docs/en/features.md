@@ -1,0 +1,31 @@
+# Core Features
+
+- 📥 **Versatile Downloader:**
+  - **YouTube & More:** Download videos and entire playlists from YouTube and other supported sites. ViveStream automatically creates local playlists for you.
+  - **Smart Downloads:** Already have a video? ViveStream skips re-downloading it but updates its "date added" so it appears with the rest of its playlist.
+  - **Import Local Files:** Add your existing media files from your computer directly into the ViveStream library. Thumbnails are automatically generated for local videos.
+- ✂️ **Advanced Download Controls:**
+  - Clip specific sections using start/end times.
+  - Automatically split videos by their chapters into individual files.
+  - Remove sponsored segments, intros, and outros with SponsorBlock integration.
+  - Download subtitles for videos (official and auto-generated).
+  - Use cookies from your browser to access members-only or age-restricted content.
+- 📚 **Robust Library Management:**
+  - **Powerful Search:** Instantly find what you're for with fuzzy search across videos, artists, and playlists. Results are neatly organized by category.
+  - **Advanced Filtering:** Filter your library and favorites by media type (video/audio), duration, and source (YouTube/local).
+  - **Full Metadata Control:** Edit titles, artists, and descriptions with a seamless inline editor directly on the player page.
+  - **Playlists:** Create custom playlists, add media with a drag-and-drop interface, and upload custom cover images.
+  - **Artists:** Media is automatically sorted by artist. Upload custom profile images for your favorite creators.
+  - **Favorites:** A dedicated, filterable section for your most-loved content.
+- 🎬 **High-Performance Integrated Player:**
+  - **Context-Aware Queue:** When you play from a playlist, artist page, or favorites, the "Up Next" queue is intelligently populated and visually grouped.
+  - **Gapless Playback:** Intelligent preloading ensures seamless, uninterrupted playback.
+  - **Sleep Timer:** Set a timer to stop playback after a certain number of tracks, a set duration in minutes, or at a specific time of day.
+  - **System Media Keys:** Control playback with your keyboard's media keys, even when the app is in the background.
+  - **Full Feature Set:** Includes theater mode, fullscreen, miniplayer, playback speed control, and subtitle support.
+- ⚙️ **Maintenance & Customization:**
+  - **Smart Installer & Uninstaller:** A professional setup experience with options to run on startup, launch after install, and a smart uninstaller that gives you full control over your data during uninstallation.
+  - **Visual Progress for File Operations:** Monitor the progress of large file imports and library exports with a real-time progress bar in the settings page.
+  - **Export Library:** Save a copy of any media file or your entire library to another location, with files named by their proper titles.
+  - **Reinitialize App:** A one-click function to clear the app's cache, rescan media files, and clean up any orphaned entries from the database.
+- 📦 **All-in-One & Standalone:** No need to install Python, yt-dlp, or FFmpeg separately. Everything is bundled and ready to go.
