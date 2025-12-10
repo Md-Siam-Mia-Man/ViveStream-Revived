@@ -33,34 +33,7 @@ if (isDev) {
   );
 }
 
-const platform = process.platform;
-const exeSuffix = platform === "win32" ? ".exe" : "";
-const platformDir = platform === "win32" ? "win" : platform === "darwin" ? "mac" : "linux";
-
-// Helper: Get path for External Resources (Binaries)
-const getVendorPath = (fileName) => {
-  const basePath = isDev
-    ? path.join(__dirname, "..", "..", "vendor", platformDir)
-    : path.join(process.resourcesPath, "vendor", platformDir);
-  return path.join(basePath, fileName);
-};
-
-// Helper: Get path for Internal Assets (Icons, Fonts)
-const getAssetPath = (fileName) => {
-  return path.join(__dirname, "..", "..", "assets", fileName);
-};
-
-// Vendor Binaries (External)
-const bundledYtDlpPath = getVendorPath(`yt-dlp${exeSuffix}`);
-const ffmpegPath = getVendorPath(`ffmpeg${exeSuffix}`);
-const ffprobePath = getVendorPath(`ffprobe${exeSuffix}`);
-
-// User Data Binary Copy
-const userYtDlpPath = path.join(app.getPath("userData"), `yt-dlp${exeSuffix}`);
-let ytDlpPath = userYtDlpPath;
-
-// Assets (Internal)
-const iconPath = getAssetPath("icon.ico");
+// --- Path & Environment Configuration ---
 
 const userHomePath = app.getPath("home");
 const viveStreamPath = path.join(userHomePath, "ViveStream");
@@ -80,13 +53,22 @@ const mediaPaths = [
 
 let tray = null;
 let win = null;
-// Store the file path if app was opened via file association before window ready
 let externalFilePath = null;
+let resolvedFfmpegPath = null; // Stores the path resolved from static-ffmpeg
 
+// Assets
+const getAssetPath = (fileName) => {
+  return path.join(__dirname, "..", "..", "assets", fileName);
+};
+const iconFileName = process.platform === "win32" ? "icon.ico" : "icon.png";
+const iconPath = getAssetPath(iconFileName);
+
+// Ensure directories exist
 mediaPaths.forEach((dir) => {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 });
 
+// Default Settings
 const defaultSettings = {
   concurrentDownloads: 3,
   cookieBrowser: "none",
@@ -97,7 +79,99 @@ const defaultSettings = {
   speedLimit: "",
 };
 
-// --- Single Instance Lock & File Association Logic ---
+// --- Portable Python Logic ---
+
+/**
+ * Resolves the path to the Portable Python executable based on the platform.
+ */
+function getPythonDetails() {
+  const root = isDev
+    ? path.join(__dirname, "..", "..", "python-portable")
+    : path.join(process.resourcesPath, "python-portable");
+
+  let pythonPath = null;
+  let binDir = null;
+
+  if (process.platform === "win32") {
+    // Assuming python-win-x64 structure for Windows
+    const winDir = path.join(root, "python-win-x64");
+    if (fs.existsSync(winDir)) {
+      pythonPath = path.join(winDir, "python.exe");
+      binDir = path.join(winDir, "Scripts");
+    } else {
+      pythonPath = "python"; // Fallback
+    }
+  } else if (process.platform === "darwin") {
+    const macDir = path.join(root, "python-mac-darwin");
+    pythonPath = path.join(macDir, "bin", "python3");
+    binDir = path.join(macDir, "bin");
+  } else {
+    // Linux
+    const linuxGnu = path.join(root, "python-linux-gnu");
+    const linuxMusl = path.join(root, "python-linux-musl");
+
+    if (fs.existsSync(linuxGnu)) {
+      pythonPath = path.join(linuxGnu, "bin", "python3");
+      binDir = path.join(linuxGnu, "bin");
+    } else if (fs.existsSync(linuxMusl)) {
+      pythonPath = path.join(linuxMusl, "bin", "python3");
+      binDir = path.join(linuxMusl, "bin");
+    } else {
+      pythonPath = "python3";
+    }
+  }
+
+  return { pythonPath, binDir };
+}
+
+/**
+ * spawns a process using the Portable Python environment.
+ * Automatically injects the python bin directory into PATH.
+ */
+function spawnPython(args, options = {}) {
+  const { pythonPath, binDir } = getPythonDetails();
+
+  const env = { ...process.env, ...options.env };
+  if (binDir) {
+    const pathKey = process.platform === 'win32' ? 'Path' : 'PATH';
+    env[pathKey] = `${binDir}${path.delimiter}${env[pathKey] || ''}`;
+  }
+
+  return spawn(pythonPath, args, { ...options, env });
+}
+
+/**
+ * Asks Python where static-ffmpeg stored the binary.
+ */
+async function resolveStaticFfmpeg() {
+  const { pythonPath } = getPythonDetails();
+  const script = `
+import sys
+try:
+    import static_ffmpeg.run
+    ffmpeg, _ = static_ffmpeg.run.get_or_fetch_platform_executables_else_raise()
+    print(ffmpeg)
+except Exception:
+    pass
+`;
+  return new Promise((resolve) => {
+    const proc = spawnPython(["-c", script]);
+    let output = "";
+    proc.stdout.on("data", (d) => (output += d.toString()));
+    proc.on("close", () => {
+      const p = output.trim();
+      if (p && fs.existsSync(p)) {
+        console.log("Resolved FFmpeg path:", p);
+        resolve(p);
+      } else {
+        console.warn("Could not resolve static-ffmpeg path. Video merging might fail.");
+        resolve(null);
+      }
+    });
+  });
+}
+
+// --- App Lifecycle ---
 
 const gotTheLock = app.requestSingleInstanceLock();
 
@@ -105,11 +179,9 @@ if (!gotTheLock) {
   app.quit();
 } else {
   app.on("second-instance", (event, commandLine, workingDirectory) => {
-    // Someone tried to run a second instance, we should focus our window.
     if (win) {
       if (win.isMinimized()) win.restore();
       win.focus();
-
       const file = getFileFromArgs(commandLine);
       if (file) {
         win.webContents.send("app:play-external-file", file);
@@ -117,7 +189,6 @@ if (!gotTheLock) {
     }
   });
 
-  // Handle file association startup on macOS
   app.on("open-file", (event, path) => {
     event.preventDefault();
     if (win && win.webContents) {
@@ -129,10 +200,14 @@ if (!gotTheLock) {
 
   app.whenReady().then(async () => {
     try {
-      await initializeYtDlp();
+      const { pythonPath } = getPythonDetails();
+      console.log("Initializing using Python Runtime:", pythonPath);
+
+      // Resolve FFmpeg before starting DB or UI
+      resolvedFfmpegPath = await resolveStaticFfmpeg();
+
       await db.initialize(app);
 
-      // Check for file in args (Windows/Linux)
       if (!externalFilePath) {
         externalFilePath = getFileFromArgs(process.argv);
       }
@@ -164,8 +239,6 @@ if (!gotTheLock) {
 }
 
 function getFileFromArgs(argv) {
-  // In dev, args might be: electron . "path/to/file"
-  // In prod, args might be: Vivestream.exe "path/to/file"
   const relevantArgs = isDev ? argv.slice(2) : argv.slice(1);
   for (const arg of relevantArgs) {
     if (arg && !arg.startsWith("-") && fs.existsSync(arg)) {
@@ -175,11 +248,6 @@ function getFileFromArgs(argv) {
   }
   return null;
 }
-
-// ... [Downloader Class Omitted - Unchanged] ...
-// Assuming the Downloader class is exactly as provided previously.
-// To keep the file valid, I will insert the minimal necessary parts or verify imports.
-// Since I must provide the COMPLETE file content, I will paste the Downloader class back in.
 
 function sanitizeFilename(filename) {
   return filename.replace(/[\\/:"*?<>|]/g, "_");
@@ -201,6 +269,8 @@ function parseYtDlpError(stderr) {
     return "Too many requests. YouTube may be temporarily limiting your connection.";
   if (stderr.includes("HTTP Error 403: Forbidden"))
     return "Download failed (403 Forbidden). YouTube may be blocking the request.";
+  if (stderr.includes("ffmpeg not found") || stderr.includes("FFmpegPostProcessorError"))
+    return "FFmpeg binary missing. Please ensure static-ffmpeg is installed correctly.";
 
   const errorMatch = stderr.match(/ERROR: (.*)/);
   if (errorMatch && errorMatch[1]) {
@@ -211,27 +281,7 @@ function parseYtDlpError(stderr) {
     return stderr.trim().split("\n").pop();
   }
 
-  return "An unknown error occurred. Try updating the downloader in Settings.";
-}
-
-async function initializeYtDlp() {
-  try {
-    const userPathExists = await fse.pathExists(userYtDlpPath);
-    if (!userPathExists) {
-      if (await fse.pathExists(bundledYtDlpPath)) {
-        await fse.copy(bundledYtDlpPath, userYtDlpPath);
-      } else {
-        console.warn("Bundled yt-dlp not found at:", bundledYtDlpPath);
-      }
-    }
-    ytDlpPath = userYtDlpPath;
-  } catch (error) {
-    console.error(
-      "Failed to initialize user yt-dlp, falling back to bundled version:",
-      error
-    );
-    ytDlpPath = bundledYtDlpPath;
-  }
+  return "An unknown error occurred.";
 }
 
 function getSettings() {
@@ -240,7 +290,6 @@ function getSettings() {
       const saved = JSON.parse(fs.readFileSync(settingsPath, "utf-8"));
       return { ...defaultSettings, ...saved };
     } catch (e) {
-      console.error("Error reading settings.json, using defaults.", e);
       return defaultSettings;
     }
   }
@@ -258,6 +307,8 @@ function saveSettings(settings) {
   );
 }
 if (!fs.existsSync(settingsPath)) saveSettings(defaultSettings);
+
+// --- Downloader Class ---
 
 class Downloader {
   constructor() {
@@ -303,12 +354,14 @@ class Downloader {
       videoInfo.webpage_url ||
       `https://www.youtube.com/watch?v=${videoInfo.id}`;
 
+    // Execute via python module: python -m yt_dlp
+    let pythonArgs = ['-m', 'yt_dlp'];
+
     let args = [
+      ...pythonArgs,
       requestUrl,
       "-o",
       path.join(videoPath, "%(id)s.%(ext)s"),
-      "--ffmpeg-location",
-      path.dirname(ffmpegPath),
       "--progress",
       "-v",
       "--retries",
@@ -321,6 +374,11 @@ class Downloader {
       "--embed-metadata",
       "--embed-chapters",
     ];
+
+    // Important: Tell yt-dlp where ffmpeg is
+    if (resolvedFfmpegPath) {
+      args.push("--ffmpeg-location", path.dirname(resolvedFfmpegPath));
+    }
 
     if (job.downloadType === "video") {
       const qualityFilter =
@@ -357,9 +415,10 @@ class Downloader {
       args.push("--cookies-from-browser", this.settings.cookieBrowser);
     if (this.settings.speedLimit) args.push("-r", this.settings.speedLimit);
 
-    console.log(`[Downloader] Executing: ${ytDlpPath} ${args.join(" ")}`);
+    const { pythonPath } = getPythonDetails();
+    console.log(`[Downloader] Executing: ${pythonPath} ${args.join(" ")}`);
 
-    const proc = spawn(ytDlpPath, args);
+    const proc = spawnPython(args);
     this.activeDownloads.set(videoInfo.id, proc);
 
     let stderrOutput = "";
@@ -399,14 +458,14 @@ class Downloader {
 
     proc.on("error", (err) => {
       console.error(`Failed to start download process for ${videoInfo.id}:`, err);
-      stderrOutput = `Failed to start yt-dlp process. Error: ${err.message}`;
+      stderrOutput = `Failed to start Python process. Error: ${err.message}`;
     });
 
     proc.on("close", async (code) => {
       clearTimeout(stallTimeout);
       this.activeDownloads.delete(videoInfo.id);
 
-      const fullLog = `COMMAND EXECUTED:\n${ytDlpPath} ${args.join(" ")}\n\nVERBOSE LOG:\n${stderrOutput}`;
+      const fullLog = `COMMAND EXECUTED:\n${pythonPath} ${args.join(" ")}\n\nVERBOSE LOG:\n${stderrOutput}`;
 
       if (code === 0) {
         await this.postProcess(videoInfo, job, fullLog);
@@ -550,6 +609,8 @@ class Downloader {
 }
 const downloader = new Downloader();
 
+// --- Window Management ---
+
 function createWindow() {
   win = new BrowserWindow({
     width: 1400,
@@ -574,10 +635,9 @@ function createWindow() {
   if (isDev) win.webContents.openDevTools({ mode: "detach" });
 
   win.webContents.on("did-finish-load", () => {
-    // If we have an external file pending, send it now
     if (externalFilePath) {
       win.webContents.send("app:play-external-file", externalFilePath);
-      externalFilePath = null; // Clear it so we don't replay on reload
+      externalFilePath = null;
     }
   });
 }
@@ -613,6 +673,8 @@ app.on(
   () => BrowserWindow.getAllWindows().length === 0 && createWindow()
 );
 
+// --- IPC Handlers ---
+
 ipcMain.handle("get-assets-path", () => {
   const assetsPath = getAssetPath("");
   return assetsPath.replace(/\\/g, "/");
@@ -628,8 +690,15 @@ ipcMain.on("open-external", (e, url) => shell.openExternal(url));
 ipcMain.handle("open-media-folder", () => shell.openPath(viveStreamPath));
 ipcMain.handle("open-database-folder", () => shell.openPath(app.getPath("userData")));
 ipcMain.handle("open-vendor-folder", () => {
-  const p = isDev ? path.join(__dirname, "..", "..", "vendor") : path.join(process.resourcesPath, "vendor");
-  return shell.openPath(p);
+  const { binDir } = getPythonDetails();
+  if (binDir && fs.existsSync(binDir)) {
+    return shell.openPath(binDir);
+  }
+  return dialog.showMessageBox(win, {
+    type: "info",
+    message: "Binary Folder",
+    detail: "Using Portable Python environment. Bin folder not readily accessible."
+  });
 });
 
 ipcMain.handle("get-settings", getSettings);
@@ -707,7 +776,9 @@ ipcMain.handle("videos:touch", async (e, videoIds) => {
 });
 
 ipcMain.on("download-video", (e, { downloadOptions, jobId }) => {
+  // Use Python Module execution
   const args = [
+    "-m", "yt_dlp",
     downloadOptions.url,
     "--dump-json",
     "-v",
@@ -717,9 +788,10 @@ ipcMain.on("download-video", (e, { downloadOptions, jobId }) => {
   if (settings.cookieBrowser && settings.cookieBrowser !== "none")
     args.push("--cookies-from-browser", settings.cookieBrowser);
 
-  console.log(`[InfoFetch] Executing: ${ytDlpPath} ${args.join(" ")}`);
+  const { pythonPath } = getPythonDetails();
+  console.log(`[InfoFetch] Executing: ${pythonPath} ${args.join(" ")}`);
 
-  const proc = spawn(ytDlpPath, args);
+  const proc = spawnPython(args);
   let j = "";
   let errorOutput = "";
 
@@ -733,7 +805,7 @@ ipcMain.on("download-video", (e, { downloadOptions, jobId }) => {
 
   proc.on("error", (err) => {
     console.error("Failed to start info process:", err);
-    errorOutput = `Failed to start yt-dlp process. Error: ${err.message}`;
+    errorOutput = `Failed to start Python process. Error: ${err.message}`;
   });
 
   proc.on("close", async (c) => {
@@ -764,7 +836,7 @@ ipcMain.on("download-video", (e, { downloadOptions, jobId }) => {
           });
       }
     } else {
-      const fullLog = `COMMAND EXECUTED:\n${ytDlpPath} ${args.join(" ")}\n\nVERBOSE LOG:\n${errorOutput}`;
+      const fullLog = `COMMAND EXECUTED:\n${pythonPath} ${args.join(" ")}\n\nVERBOSE LOG:\n${errorOutput}`;
       if (win)
         win.webContents.send("download-info-error", {
           jobId,
@@ -774,16 +846,22 @@ ipcMain.on("download-video", (e, { downloadOptions, jobId }) => {
     }
   });
 });
+
 ipcMain.on("cancel-download", (e, id) => downloader.cancelDownload(id));
 ipcMain.on("retry-download", (e, job) => downloader.retryDownload(job));
+
+// Updater now uses pip
 ipcMain.handle("updater:check-yt-dlp", () => {
   return new Promise((resolve) => {
-    const proc = spawn(ytDlpPath, ["-U"]);
+    // python -m pip install -U yt-dlp
+    const args = ["-m", "pip", "install", "-U", "yt-dlp"];
+    const proc = spawnPython(args);
+
     proc.stdout.on("data", (data) =>
       win.webContents.send("updater:yt-dlp-progress", data.toString())
     );
     proc.stderr.on("data", (data) =>
-      win.webContents.send("updater:yt-dlp-progress", `ERROR: ${data}`)
+      win.webContents.send("updater:yt-dlp-progress", `LOG: ${data}`)
     );
     proc.on("close", (code) => resolve({ success: code === 0 }));
   });
@@ -833,37 +911,31 @@ ipcMain.handle("media:import-files", async () => {
     ],
   });
   if (canceled || filePaths.length === 0) return { success: true, count: 0 };
+
   let importedCount = 0;
   for (let i = 0; i < filePaths.length; i++) {
     const filePath = filePaths[i];
     try {
-      const ffprobeArgs = [
-        "-v",
-        "quiet",
-        "-print_format",
-        "json",
-        "-show_format",
-        "-show_streams",
-        filePath,
-      ];
+      // Use yt-dlp to dump json for local file (more robust than calling ffmpeg manually)
+      const args = ["-m", "yt_dlp", "--dump-json", `file:${filePath}`];
+
       const { stdout: metaJson } = await new Promise((resolve, reject) => {
-        const ffprobeProc = spawn(ffprobePath, ffprobeArgs);
+        const proc = spawnPython(args);
         let stdout = "";
         let stderr = "";
-        ffprobeProc.stdout.on("data", (data) => (stdout += data));
-        ffprobeProc.stderr.on("data", (data) => (stderr += data));
-        ffprobeProc.on("close", (code) =>
+        proc.stdout.on("data", (data) => (stdout += data));
+        proc.stderr.on("data", (data) => (stderr += data));
+        proc.on("close", (code) =>
           code === 0 ? resolve({ stdout, stderr }) : reject(new Error(stderr))
         );
-        ffprobeProc.on("error", (err) => reject(err));
+        proc.on("error", (err) => reject(err));
       });
 
       const meta = JSON.parse(metaJson);
-      const format = meta.format.tags || {};
-      const videoStream = meta.streams.find((s) => s.codec_type === "video");
 
       const newId = crypto.randomUUID();
-      const newFileName = `${newId}${path.extname(filePath)}`;
+      const extension = path.extname(filePath);
+      const newFileName = `${newId}${extension}`;
       const newFilePath = path.join(videoPath, newFileName);
 
       await copyWithProgress(filePath, newFilePath, {
@@ -875,62 +947,42 @@ ipcMain.handle("media:import-files", async () => {
 
       let coverUri = null;
       const finalCoverPath = path.join(coverPath, `${newId}.jpg`);
-      const hasEmbeddedPic =
-        videoStream &&
-        videoStream.disposition &&
-        videoStream.disposition.attached_pic;
 
-      if (hasEmbeddedPic) {
-        const ffmpegCoverArgs = [
-          "-i",
-          newFilePath,
-          "-map",
-          "0:v",
-          "-map",
-          "-0:V",
-          "-c",
-          "copy",
-          finalCoverPath,
-        ];
-        await new Promise((resolve) => {
-          spawn(ffmpegPath, ffmpegCoverArgs)
-            .on("close", () => resolve())
-            .on("error", () => resolve());
-        });
-      } else if (videoStream) {
-        const ffmpegThumbArgs = [
-          "-i",
-          newFilePath,
-          "-ss",
-          "00:00:05",
-          "-vframes",
-          "1",
-          finalCoverPath,
-        ];
-        await new Promise((resolve) => {
-          spawn(ffmpegPath, ffmpegThumbArgs)
-            .on("close", () => resolve())
-            .on("error", () => resolve());
-        });
+      // Attempt to extract cover using ffmpeg
+      try {
+        if (resolvedFfmpegPath) {
+          const isAudio = meta.acodec && !meta.vcodec;
+          // Extract embedded art or snapshot
+          const ffmpegArgs = isAudio ?
+            ["-i", newFilePath, "-an", "-vcodec", "copy", finalCoverPath] :
+            ["-i", newFilePath, "-ss", "00:00:05", "-vframes", "1", finalCoverPath];
+
+          await new Promise((resolve) => {
+            const p = spawn(resolvedFfmpegPath, ffmpegArgs);
+            p.on("close", resolve);
+            p.on("error", () => resolve());
+          });
+
+          if (fs.existsSync(finalCoverPath)) {
+            coverUri = url.pathToFileURL(finalCoverPath).href;
+          }
+        }
+      } catch (e) {
+        console.warn("Thumbnail extraction failed:", e);
       }
 
-      if (fs.existsSync(finalCoverPath)) {
-        coverUri = url.pathToFileURL(finalCoverPath).href;
-      }
-
-      const artistString =
-        format.artist || format.ARTIST || format.composer || "Unknown Artist";
-      const title = format.title || format.TITLE || path.parse(filePath).name;
+      const artistString = meta.artist || meta.creator || meta.uploader || "Unknown Artist";
+      const title = meta.title || path.parse(filePath).name;
 
       const videoData = {
         id: newId,
         title: title,
         creator: artistString,
-        description: format.comment || format.COMMENT || "",
-        duration: parseFloat(meta.format.duration),
+        description: meta.description || "",
+        duration: meta.duration,
         filePath: url.pathToFileURL(newFilePath).href,
         coverPath: coverUri,
-        type: videoStream ? "video" : "audio",
+        type: (meta.vcodec && meta.vcodec !== "none") ? "video" : "audio",
         downloadedAt: new Date().toISOString(),
         source: "local",
       };
