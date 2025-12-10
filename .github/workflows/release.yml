@@ -20,7 +20,6 @@ jobs:
           - platform: Linux
             os: ubuntu-24.04
             build_command: npm run build:linux:ci
-            lfs_pattern: vendor/linux/**
             artifact_path: |
               release/linux/*.AppImage
               release/linux/*.deb
@@ -32,26 +31,18 @@ jobs:
           - platform: Windows
             os: windows-latest
             build_command: npm run build
-            lfs_pattern: vendor/win/**
             artifact_path: release/win/*.msi
 
           - platform: macOS
             os: macos-latest
             build_command: npm run build
-            lfs_pattern: vendor/mac/**
             artifact_path: release/mac/*.dmg
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
-          lfs: false  # Do NOT download all LFS files; we pull selectively below
-
-      # Pull only the specific binaries we need for this platform to save time/bandwidth
-      - name: Pull Vendor Binaries (LFS)
-        run: |
-          git lfs install
-          git lfs pull --include "${{ matrix.lfs_pattern }}"
+          lfs: false  # Avoid LFS entirely
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -64,7 +55,6 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y rpm libarchive-tools flatpak flatpak-builder snapd fakeroot dpkg-dev libsecret-1-dev libfuse2 libgl1-mesa-dev build-essential
-          # Install Snapcraft for snap builds (required for strict snap packaging)
           sudo snap install snapcraft --classic
 
       - name: Clean Cache (Optional)
@@ -74,15 +64,14 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
-      # "Verify Vendors" step has been removed from here
-
       - name: Build (verbose, capture logs)
         run: |
           mkdir -p logs
-          # enable electron-builder debug + verbose npm logs, capture everything
-          DEBUG=electron-builder NPM_CONFIG_LOGLEVEL=verbose ${{ matrix.build_command }} 2>&1 | tee logs/packaging.log
+          ${{ matrix.build_command }} 2>&1 | tee logs/packaging.log
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DEBUG: electron-builder
+          NPM_CONFIG_LOGLEVEL: verbose
 
       - name: Upload Packaging Logs
         if: failure() || success()
