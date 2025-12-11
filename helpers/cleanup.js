@@ -48,7 +48,7 @@ const RECURSIVE_DELETE_PATTERNS = [
 const SITE_PACKAGES_CLEANUP_RULES = [
     { pkg: 'docutils', remove: ['languages', 'parsers'] },
     { pkg: 'urllib3', remove: ['contrib/emscripten'] },
-    { pkg: 'pip', remove: ['_vendor/rich', '_vendor/pygments'] }, // Optional: pip vendors can be heavy
+    // REMOVED: pip vendor cleanup (this was breaking pip updates)
     { pkg: 'yt_dlp', remove: ['__pyinstaller'] },
     { pkg: 'babel', remove: ['locale-data'] }, // If present
     { pkg: 'numpy', remove: ['tests', 'doc'] }, // If present
@@ -172,13 +172,6 @@ function walkAndClean(currentDir) {
             }
         } else {
             // File Cleanup
-            // Remove compiled python files to save space (they regenerate if needed, but slower startup)
-            // User complained about slow startup, so maybe KEEP .pyc?
-            // Actually, .pyc mismatch causes issues. Portable envs usually come with them.
-            // Let's delete .pyc to ensure clean state, or keep them? 
-            // "Initializing python env taking soo long" -> missing .pyc can cause this on first run.
-            // However, bulk deletion usually helps reduce size significantly. 
-            // Let's delete junk extensions only.
             if (item.endsWith('.pdb') || item.endsWith('.whl') || item.endsWith('.txt') || item.endsWith('.md')) {
                 // Keep requirements.txt or LICENSE.txt in root? No, delete broadly except known configs.
                 if (item.toLowerCase() !== 'license.txt' && item.toLowerCase() !== 'python314._pth') {
