@@ -17,6 +17,7 @@ const url = require("url");
 const db = require("./database");
 const { parseArtistNames } = require("./utils");
 
+// Performance flags
 app.commandLine.appendSwitch("enable-begin-frame-scheduling");
 app.commandLine.appendSwitch("enable-native-gpu-memory-buffers");
 app.commandLine.appendSwitch("enable-gpu-rasterization");
@@ -27,14 +28,10 @@ app.commandLine.appendSwitch("ignore-gpu-blocklist");
 const isDev = !app.isPackaged;
 
 if (isDev) {
-  app.commandLine.appendSwitch(
-    "disable-features",
-    "Autofill,ComponentUpdateServices"
-  );
+  app.commandLine.appendSwitch("disable-features", "Autofill,ComponentUpdateServices");
 }
 
-// --- Path & Environment Configuration ---
-
+// --- Path Configuration ---
 const userHomePath = app.getPath("home");
 const viveStreamPath = path.join(userHomePath, "ViveStream");
 const videoPath = path.join(viveStreamPath, "videos");
@@ -43,32 +40,29 @@ const playlistCoverPath = path.join(coverPath, "playlists");
 const artistCoverPath = path.join(coverPath, "artists");
 const subtitlePath = path.join(viveStreamPath, "subtitles");
 const settingsPath = path.join(app.getPath("userData"), "settings.json");
-const mediaPaths = [
-  videoPath,
-  coverPath,
-  playlistCoverPath,
-  artistCoverPath,
-  subtitlePath,
-];
+const mediaPaths = [videoPath, coverPath, playlistCoverPath, artistCoverPath, subtitlePath];
 
 let tray = null;
 let win = null;
 let externalFilePath = null;
-let resolvedFfmpegPath = null; // Stores the path resolved from static-ffmpeg
+
+// --- FFmpeg & Python State ---
+let resolvedFfmpegPath = null;
+let pythonDetails = null;
+let ffmpegResolutionPromise = null;
 
 // Assets
-const getAssetPath = (fileName) => {
-  return path.join(__dirname, "..", "..", "assets", fileName);
-};
+const getAssetPath = (fileName) => path.join(__dirname, "..", "..", "assets", fileName);
+// Windows uses .ico, Mac uses .icns (handled by builder), Linux/Web uses .png
 const iconFileName = process.platform === "win32" ? "icon.ico" : "icon.png";
 const iconPath = getAssetPath(iconFileName);
 
-// Ensure directories exist
+// Ensure directories
 mediaPaths.forEach((dir) => {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 });
 
-// Default Settings
+// Settings
 const defaultSettings = {
   concurrentDownloads: 3,
   cookieBrowser: "none",
@@ -79,12 +73,30 @@ const defaultSettings = {
   speedLimit: "",
 };
 
-// --- Portable Python Logic ---
+// --- Helper Functions ---
 
-/**
- * Resolves the path to the Portable Python executable based on the platform.
- */
+function getSettings() {
+  if (fs.existsSync(settingsPath)) {
+    try {
+      const saved = JSON.parse(fs.readFileSync(settingsPath, "utf-8"));
+      return { ...defaultSettings, ...saved };
+    } catch (e) {
+      return defaultSettings;
+    }
+  }
+  return defaultSettings;
+}
+
+function saveSettings(settings) {
+  const settingsDir = path.dirname(settingsPath);
+  if (!fs.existsSync(settingsDir)) fs.mkdirSync(settingsDir, { recursive: true });
+  fs.writeFileSync(settingsPath, JSON.stringify({ ...getSettings(), ...settings }, null, 2));
+}
+if (!fs.existsSync(settingsPath)) saveSettings(defaultSettings);
+
 function getPythonDetails() {
+  if (pythonDetails) return pythonDetails; // Cache it
+
   const root = isDev
     ? path.join(__dirname, "..", "..", "python-portable")
     : path.join(process.resourcesPath, "python-portable");
@@ -93,81 +105,133 @@ function getPythonDetails() {
   let binDir = null;
 
   if (process.platform === "win32") {
-    // Assuming python-win-x64 structure for Windows
     const winDir = path.join(root, "python-win-x64");
     if (fs.existsSync(winDir)) {
       pythonPath = path.join(winDir, "python.exe");
       binDir = path.join(winDir, "Scripts");
     } else {
-      pythonPath = "python"; // Fallback
+      pythonPath = "python";
     }
   } else if (process.platform === "darwin") {
     const macDir = path.join(root, "python-mac-darwin");
-    pythonPath = path.join(macDir, "bin", "python3");
-    binDir = path.join(macDir, "bin");
+    // Mac structure usually has python inside bin
+    if (fs.existsSync(path.join(macDir, "bin", "python3"))) {
+      pythonPath = path.join(macDir, "bin", "python3");
+      binDir = path.join(macDir, "bin");
+    } else {
+      pythonPath = "python3"; // Fallback to system
+    }
   } else {
     // Linux
     const linuxGnu = path.join(root, "python-linux-gnu");
     const linuxMusl = path.join(root, "python-linux-musl");
+    let targetDir = null;
 
-    if (fs.existsSync(linuxGnu)) {
-      pythonPath = path.join(linuxGnu, "bin", "python3");
-      binDir = path.join(linuxGnu, "bin");
-    } else if (fs.existsSync(linuxMusl)) {
-      pythonPath = path.join(linuxMusl, "bin", "python3");
-      binDir = path.join(linuxMusl, "bin");
+    if (fs.existsSync(linuxGnu)) targetDir = linuxGnu;
+    else if (fs.existsSync(linuxMusl)) targetDir = linuxMusl;
+
+    if (targetDir) {
+      pythonPath = path.join(targetDir, "bin", "python3");
+      binDir = path.join(targetDir, "bin");
     } else {
       pythonPath = "python3";
     }
   }
 
-  return { pythonPath, binDir };
+  pythonDetails = { pythonPath, binDir };
+  return pythonDetails;
 }
 
-/**
- * spawns a process using the Portable Python environment.
- * Automatically injects the python bin directory into PATH.
- */
 function spawnPython(args, options = {}) {
   const { pythonPath, binDir } = getPythonDetails();
-
   const env = { ...process.env, ...options.env };
   if (binDir) {
     const pathKey = process.platform === 'win32' ? 'Path' : 'PATH';
     env[pathKey] = `${binDir}${path.delimiter}${env[pathKey] || ''}`;
   }
-
+  // Force unbuffered output for realtime logs
+  env['PYTHONUNBUFFERED'] = '1';
   return spawn(pythonPath, args, { ...options, env });
 }
 
 /**
- * Asks Python where static-ffmpeg stored the binary.
+ * Robust FFmpeg resolver.
+ * 1. Tries static_ffmpeg python module.
+ * 2. Scans python bin/Scripts folder.
+ * 3. Scans site-packages/static_ffmpeg/bin.
  */
-async function resolveStaticFfmpeg() {
-  const { pythonPath } = getPythonDetails();
-  const script = `
-import sys
+function startFfmpegResolution() {
+  return new Promise(async (resolve) => {
+    const { pythonPath, binDir } = getPythonDetails();
+    console.log("Resolving FFmpeg...");
+
+    // 1. Try Python Script (Most reliable for static-ffmpeg)
+    const script = `
+import sys, os
 try:
     import static_ffmpeg.run
     ffmpeg, _ = static_ffmpeg.run.get_or_fetch_platform_executables_else_raise()
     print(ffmpeg)
-except Exception:
-    pass
+except Exception as e:
+    print("ERR:" + str(e))
 `;
-  return new Promise((resolve) => {
-    const proc = spawnPython(["-c", script]);
-    let output = "";
-    proc.stdout.on("data", (d) => (output += d.toString()));
-    proc.on("close", () => {
-      const p = output.trim();
-      if (p && fs.existsSync(p)) {
-        console.log("Resolved FFmpeg path:", p);
+    let pythonOutput = "";
+    try {
+      await new Promise((res) => {
+        const proc = spawnPython(["-c", script]);
+        proc.stdout.on("data", (d) => (pythonOutput += d.toString()));
+        proc.on("close", () => res());
+        proc.on("error", () => res());
+      });
+
+      const p = pythonOutput.trim();
+      if (p && !p.startsWith("ERR:") && fs.existsSync(p)) {
+        console.log("FFmpeg found via static_ffmpeg:", p);
+
+        // Ensure execution permissions on Unix
+        if (process.platform !== 'win32') {
+          try { fs.chmodSync(p, 0o755); } catch (e) { console.error("Could not chmod ffmpeg:", e); }
+        }
+
+        resolvedFfmpegPath = p;
         resolve(p);
-      } else {
-        console.warn("Could not resolve static-ffmpeg path. Video merging might fail.");
-        resolve(null);
+        return;
       }
-    });
+    } catch (e) { }
+
+    // 2. Fallback: Check binDir (Scripts on Windows, bin on Unix)
+    if (binDir) {
+      const exe = process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg";
+      const candidate = path.join(binDir, exe);
+      if (fs.existsSync(candidate)) {
+        console.log("FFmpeg found in bin dir:", candidate);
+        if (process.platform !== 'win32') {
+          try { fs.chmodSync(candidate, 0o755); } catch (e) { }
+        }
+        resolvedFfmpegPath = candidate;
+        resolve(candidate);
+        return;
+      }
+    }
+
+    // 3. Fallback: Deep scan in site-packages
+    // Windows: Lib/site-packages/static_ffmpeg/bin/win32/ffmpeg.exe
+    // Linux: lib/python3.14/site-packages/static_ffmpeg/bin/linux/ffmpeg
+    // This is messy to predict exactly due to python version in path, so we mostly rely on step 1.
+    // However, for Windows specifically, the path is stable:
+    if (process.platform === "win32") {
+      const baseDir = path.dirname(path.dirname(binDir)); // Up from Scripts to python root
+      const possible = path.join(baseDir, "Lib", "site-packages", "static_ffmpeg", "bin", "win32", "ffmpeg.exe");
+      if (fs.existsSync(possible)) {
+        console.log("FFmpeg found in site-packages:", possible);
+        resolvedFfmpegPath = possible;
+        resolve(possible);
+        return;
+      }
+    }
+
+    console.warn("FFmpeg NOT found. Video merging may fail.");
+    resolve(null);
   });
 }
 
@@ -178,14 +242,12 @@ const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
   app.quit();
 } else {
-  app.on("second-instance", (event, commandLine, workingDirectory) => {
+  app.on("second-instance", (event, commandLine) => {
     if (win) {
       if (win.isMinimized()) win.restore();
       win.focus();
       const file = getFileFromArgs(commandLine);
-      if (file) {
-        win.webContents.send("app:play-external-file", file);
-      }
+      if (file) win.webContents.send("app:play-external-file", file);
     }
   });
 
@@ -200,12 +262,13 @@ if (!gotTheLock) {
 
   app.whenReady().then(async () => {
     try {
+      // Start FFmpeg resolution in background (NON-BLOCKING)
+      ffmpegResolutionPromise = startFfmpegResolution();
+
       const { pythonPath } = getPythonDetails();
-      console.log("Initializing using Python Runtime:", pythonPath);
+      console.log("App Ready. Python:", pythonPath);
 
-      // Resolve FFmpeg before starting DB or UI
-      resolvedFfmpegPath = await resolveStaticFfmpeg();
-
+      // Initialize DB (usually fast)
       await db.initialize(app);
 
       if (!externalFilePath) {
@@ -215,26 +278,15 @@ if (!gotTheLock) {
       createWindow();
       createTray();
 
-      globalShortcut.register("MediaPlayPause", () =>
-        win?.webContents.send("media-key-play-pause")
-      );
-      globalShortcut.register("MediaNextTrack", () =>
-        win?.webContents.send("media-key-next-track")
-      );
-      globalShortcut.register("MediaPreviousTrack", () =>
-        win?.webContents.send("media-key-prev-track")
-      );
+      globalShortcut.register("MediaPlayPause", () => win?.webContents.send("media-key-play-pause"));
+      globalShortcut.register("MediaNextTrack", () => win?.webContents.send("media-key-next-track"));
+      globalShortcut.register("MediaPreviousTrack", () => win?.webContents.send("media-key-prev-track"));
+
     } catch (error) {
-      console.error("Failed during app startup:", error);
-      dialog.showErrorBox(
-        "Fatal Error",
-        `A critical error occurred during startup: ${error.message}`
-      );
+      console.error("Startup Error:", error);
+      dialog.showErrorBox("Startup Error", error.message);
       app.quit();
     }
-  }).catch((err) => {
-    console.error("Failed in app.whenReady promise chain:", err);
-    app.quit();
   });
 }
 
@@ -254,61 +306,14 @@ function sanitizeFilename(filename) {
 }
 
 function parseYtDlpError(stderr) {
-  if (stderr.includes("Could not copy") && stderr.includes("cookie database"))
-    return "Failed to access browser cookies. Please close your browser completely and retry.";
-  if (stderr.includes("Private video"))
-    return "This video is private and cannot be downloaded.";
+  if (stderr.includes("ffmpeg not found")) return "FFmpeg binary missing. Please re-run the app or check internet connection.";
+  if (stderr.includes("Private video")) return "This video is private.";
   if (stderr.includes("Video unavailable")) return "This video is unavailable.";
-  if (stderr.includes("is not available in your country"))
-    return "This video is geo-restricted and not available in your country.";
-  if (stderr.includes("Premiere will begin in"))
-    return "This video is a premiere and has not been released yet.";
-  if (stderr.includes("Invalid URL"))
-    return "The URL provided is invalid. Please check and try again.";
-  if (stderr.includes("429"))
-    return "Too many requests. YouTube may be temporarily limiting your connection.";
-  if (stderr.includes("HTTP Error 403: Forbidden"))
-    return "Download failed (403 Forbidden). YouTube may be blocking the request.";
-  if (stderr.includes("ffmpeg not found") || stderr.includes("FFmpegPostProcessorError"))
-    return "FFmpeg binary missing. Please ensure static-ffmpeg is installed correctly.";
-
-  const errorMatch = stderr.match(/ERROR: (.*)/);
-  if (errorMatch && errorMatch[1]) {
-    return errorMatch[1].trim();
-  }
-
-  if (stderr.trim()) {
-    return stderr.trim().split("\n").pop();
-  }
-
-  return "An unknown error occurred.";
+  const match = stderr.match(/ERROR: (.*)/);
+  return match ? match[1].trim() : (stderr.split("\n").pop() || "Unknown error");
 }
 
-function getSettings() {
-  if (fs.existsSync(settingsPath)) {
-    try {
-      const saved = JSON.parse(fs.readFileSync(settingsPath, "utf-8"));
-      return { ...defaultSettings, ...saved };
-    } catch (e) {
-      return defaultSettings;
-    }
-  }
-  return defaultSettings;
-}
-
-function saveSettings(settings) {
-  const settingsDir = path.dirname(settingsPath);
-  if (!fs.existsSync(settingsDir)) {
-    fs.mkdirSync(settingsDir, { recursive: true });
-  }
-  fs.writeFileSync(
-    settingsPath,
-    JSON.stringify({ ...getSettings(), ...settings }, null, 2)
-  );
-}
-if (!fs.existsSync(settingsPath)) saveSettings(defaultSettings);
-
-// --- Downloader Class ---
+// --- Downloader ---
 
 class Downloader {
   constructor() {
@@ -329,10 +334,7 @@ class Downloader {
     this.processQueue();
   }
   processQueue() {
-    while (
-      this.activeDownloads.size < this.settings.concurrentDownloads &&
-      this.queue.length > 0
-    ) {
+    while (this.activeDownloads.size < this.settings.concurrentDownloads && this.queue.length > 0) {
       this.startDownload(this.queue.shift());
     }
   }
@@ -342,47 +344,46 @@ class Downloader {
   }
   shutdown() {
     this.queue = [];
-    for (const process of this.activeDownloads.values()) {
-      process.kill();
-    }
+    for (const process of this.activeDownloads.values()) process.kill();
     this.activeDownloads.clear();
   }
 
-  startDownload(job) {
+  async startDownload(job) {
+    // Ensure FFmpeg is resolved before starting actual download
+    if (!resolvedFfmpegPath) {
+      console.log("Waiting for FFmpeg resolution...");
+      await ffmpegResolutionPromise;
+    }
+
     const { videoInfo } = job;
-    const requestUrl =
-      videoInfo.webpage_url ||
-      `https://www.youtube.com/watch?v=${videoInfo.id}`;
+    const requestUrl = videoInfo.webpage_url || `https://www.youtube.com/watch?v=${videoInfo.id}`;
 
-    // Execute via python module: python -m yt_dlp
-    let pythonArgs = ['-m', 'yt_dlp'];
-
+    // On Linux/Mac, ensure we use -m yt_dlp to use the module within our portable env
+    // and rely on the shebang/env of spawnPython
     let args = [
-      ...pythonArgs,
+      "-m", "yt_dlp",
       requestUrl,
-      "-o",
-      path.join(videoPath, "%(id)s.%(ext)s"),
+      "-o", path.join(videoPath, "%(id)s.%(ext)s"),
       "--progress",
-      "-v",
-      "--retries",
-      "5",
+      "--newline",
+      "--retries", "10",
       "--write-info-json",
       "--write-thumbnail",
-      "--convert-thumbnails",
-      "jpg",
+      "--convert-thumbnails", "jpg",
       "--write-description",
       "--embed-metadata",
       "--embed-chapters",
+      "--no-mtime"
     ];
 
-    // Important: Tell yt-dlp where ffmpeg is
     if (resolvedFfmpegPath) {
       args.push("--ffmpeg-location", path.dirname(resolvedFfmpegPath));
+    } else {
+      console.warn("Starting download WITHOUT FFmpeg. Merging will fail.");
     }
 
     if (job.downloadType === "video") {
-      const qualityFilter =
-        job.quality === "best" ? "" : `[height<=${job.quality}]`;
+      const qualityFilter = job.quality === "best" ? "" : `[height<=${job.quality}]`;
       const formatString = `bestvideo[ext=mp4]${qualityFilter}+bestaudio[ext=m4a]/bestvideo[vcodec^=avc]${qualityFilter}+bestaudio/best[ext=mp4]/best`;
       args.push("-f", formatString, "--merge-output-format", "mp4");
 
@@ -390,33 +391,20 @@ class Downloader {
         args.push("--write-subs", "--sub-langs", "en.*,-live_chat");
         if (this.settings.downloadAutoSubs) args.push("--write-auto-subs");
       }
-    } else if (job.downloadType === "audio") {
-      args.push(
-        "-x",
-        "--audio-format",
-        job.audioFormat,
-        "--audio-quality",
-        job.audioQuality.toString()
-      );
-      if (job.embedThumbnail) {
-        args.push("--embed-thumbnail");
-      }
+    } else {
+      args.push("-x", "--audio-format", job.audioFormat, "--audio-quality", job.audioQuality.toString());
+      if (job.embedThumbnail) args.push("--embed-thumbnail");
     }
 
     if (job.playlistItems) args.push("--playlist-items", job.playlistItems);
     if (job.liveFromStart) args.push("--live-from-start");
     if (this.settings.removeSponsors) args.push("--sponsorblock-remove", "all");
-    if (this.settings.concurrentFragments > 1)
-      args.push(
-        "--concurrent-fragments",
-        this.settings.concurrentFragments.toString()
-      );
-    if (this.settings.cookieBrowser && this.settings.cookieBrowser !== "none")
-      args.push("--cookies-from-browser", this.settings.cookieBrowser);
+    if (this.settings.concurrentFragments > 1) args.push("--concurrent-fragments", this.settings.concurrentFragments.toString());
+    if (this.settings.cookieBrowser && this.settings.cookieBrowser !== "none") args.push("--cookies-from-browser", this.settings.cookieBrowser);
     if (this.settings.speedLimit) args.push("-r", this.settings.speedLimit);
 
     const { pythonPath } = getPythonDetails();
-    console.log(`[Downloader] Executing: ${pythonPath} ${args.join(" ")}`);
+    console.log(`[Downloader] Starting: ${videoInfo.id}`);
 
     const proc = spawnPython(args);
     this.activeDownloads.set(videoInfo.id, proc);
@@ -427,21 +415,17 @@ class Downloader {
     const resetStallTimer = () => {
       clearTimeout(stallTimeout);
       stallTimeout = setTimeout(() => {
-        stderrOutput += "\n[System]: Download stalled for over 90 seconds and was cancelled.";
+        stderrOutput += "\n[System]: Download stalled (90s timeout).";
         proc.kill();
       }, 90000);
     };
-
     resetStallTimer();
 
     proc.stdout.on("data", (data) => {
       resetStallTimer();
-      const m = data
-        .toString()
-        .match(
-          /\[download\]\s+(\d+\.?\d*)%\s+of\s+~?\s*([\d.]+\w+)\s+at\s+([\d.]+\w+\/s)\s+ETA\s+([\d:]+)/
-        );
-      if (m && win)
+      const str = data.toString();
+      const m = str.match(/\[download\]\s+(\d+\.?\d*)%\s+of\s+~?\s*([\d.]+\w+)\s+at\s+([\d.]+\w+\/s)\s+ETA\s+([\d:]+)/);
+      if (m && win) {
         win.webContents.send("download-progress", {
           id: videoInfo.id,
           percent: parseFloat(m[1]),
@@ -449,6 +433,7 @@ class Downloader {
           currentSpeed: m[3],
           eta: m[4],
         });
+      }
     });
 
     proc.stderr.on("data", (data) => {
@@ -456,36 +441,29 @@ class Downloader {
       stderrOutput += data.toString();
     });
 
-    proc.on("error", (err) => {
-      console.error(`Failed to start download process for ${videoInfo.id}:`, err);
-      stderrOutput = `Failed to start Python process. Error: ${err.message}`;
-    });
-
     proc.on("close", async (code) => {
       clearTimeout(stallTimeout);
       this.activeDownloads.delete(videoInfo.id);
 
-      const fullLog = `COMMAND EXECUTED:\n${pythonPath} ${args.join(" ")}\n\nVERBOSE LOG:\n${stderrOutput}`;
-
       if (code === 0) {
-        await this.postProcess(videoInfo, job, fullLog);
+        await this.postProcess(videoInfo, job, `CMD: ${args.join(" ")}\n\nLOG:\n${stderrOutput}`);
       } else if (code !== null) {
         const errorMsg = parseYtDlpError(stderrOutput);
         await db.addToHistory({
           url: videoInfo.webpage_url,
-          title: videoInfo.title || videoInfo.url,
+          title: videoInfo.title,
           type: job.downloadType,
           thumbnail: videoInfo.thumbnail,
           status: "failed"
         });
-
-        if (win)
+        if (win) {
           win.webContents.send("download-error", {
             id: videoInfo.id,
             error: errorMsg,
-            fullLog: fullLog,
-            job,
+            fullLog: stderrOutput,
+            job
           });
+        }
       }
       this.processQueue();
     });
@@ -493,75 +471,58 @@ class Downloader {
 
   async postProcess(videoInfo, job, fullLog) {
     try {
-      const infoJsonPath = path.join(videoPath, `${videoInfo.id}.info.json`);
-      if (!fs.existsSync(infoJsonPath)) {
-        throw new Error(
-          `Post-processing failed: Could not find .info.json for video ID ${videoInfo.id}`
-        );
-      }
+      // Find info json
+      const files = fs.readdirSync(videoPath);
+      const infoFile = files.find(f => f.startsWith(videoInfo.id) && f.endsWith('.info.json'));
 
+      if (!infoFile) throw new Error("Could not find metadata file.");
+
+      const infoJsonPath = path.join(videoPath, infoFile);
       const info = JSON.parse(fs.readFileSync(infoJsonPath, "utf-8"));
-
-      let mediaFilePath;
-      if (job.downloadType === "audio") {
-        const expectedExt =
-          job.audioFormat === "best" ? info.aext : job.audioFormat;
-        mediaFilePath = path.join(videoPath, `${info.id}.${expectedExt}`);
-      } else {
-        mediaFilePath = path.join(videoPath, `${info.id}.${info.ext}`);
-      }
-
-      if (!fs.existsSync(mediaFilePath)) {
-        throw new Error(
-          `Post-processing failed: Media file not found for video ID ${info.id}`
-        );
-      }
-
       fs.unlinkSync(infoJsonPath);
 
+      // Find actual media file
+      const mediaFile = files.find(f => f.startsWith(videoInfo.id) && !f.endsWith('.json') && !f.endsWith('.description') && !f.endsWith('.jpg') && !f.endsWith('.webp') && !f.endsWith('.vtt'));
+
+      if (!mediaFile) throw new Error("Media file not found after download.");
+      const mediaFilePath = path.join(videoPath, mediaFile);
+
+      // Handle Cover
       let finalCoverPath = null;
-      const tempCoverPath = path.join(videoPath, `${videoInfo.id}.jpg`);
-      if (fs.existsSync(tempCoverPath)) {
+      const thumbFile = files.find(f => f.startsWith(videoInfo.id) && (f.endsWith('.jpg') || f.endsWith('.webp')));
+      if (thumbFile) {
         finalCoverPath = path.join(coverPath, `${info.id}.jpg`);
-        await fse.move(tempCoverPath, finalCoverPath, { overwrite: true });
+        await fse.move(path.join(videoPath, thumbFile), finalCoverPath, { overwrite: true });
       }
-      const finalCoverUri = finalCoverPath
-        ? url.pathToFileURL(finalCoverPath).href
-        : null;
+      const finalCoverUri = finalCoverPath ? url.pathToFileURL(finalCoverPath).href : null;
 
+      // Handle Subs
       let subFileUri = null;
-      if (job.downloadType === "video") {
-        const potentialSubs = fs.readdirSync(videoPath).filter(f => f.startsWith(videoInfo.id) && f.endsWith('.vtt'));
-        if (potentialSubs.length > 0) {
-          const tempSubPath = path.join(videoPath, potentialSubs[0]);
-          const finalSubPath = path.join(subtitlePath, `${info.id}.vtt`);
-          fs.renameSync(tempSubPath, finalSubPath);
-          subFileUri = url.pathToFileURL(finalSubPath).href;
-        }
+      const subFile = files.find(f => f.startsWith(videoInfo.id) && f.endsWith('.vtt'));
+      if (subFile) {
+        const destSub = path.join(subtitlePath, `${info.id}.vtt`);
+        await fse.move(path.join(videoPath, subFile), destSub, { overwrite: true });
+        subFileUri = url.pathToFileURL(destSub).href;
       }
 
-      const descriptionPath = path.join(
-        videoPath,
-        `${videoInfo.id}.description`
-      );
-      if (fs.existsSync(descriptionPath)) fs.unlinkSync(descriptionPath);
+      // Cleanup desc
+      const descFile = files.find(f => f.startsWith(videoInfo.id) && f.endsWith('.description'));
+      if (descFile) fs.unlinkSync(path.join(videoPath, descFile));
 
+      // DB Logic
       const artistString = info.artist || info.creator || info.uploader;
       const artistNames = parseArtistNames(artistString);
 
-      if (artistNames.length > 0) {
-        for (const name of artistNames) {
-          if (!name) continue;
-          const artist = await db.findOrCreateArtist(name, finalCoverUri);
-          if (artist) await db.linkVideoToArtist(info.id, artist.id);
-        }
+      for (const name of artistNames) {
+        const artist = await db.findOrCreateArtist(name, finalCoverUri);
+        if (artist) await db.linkVideoToArtist(info.id, artist.id);
       }
 
       const videoData = {
         id: info.id,
         title: info.title,
         uploader: info.uploader,
-        creator: artistString || null,
+        creator: artistString,
         description: info.description,
         duration: info.duration,
         upload_date: info.upload_date,
@@ -573,13 +534,11 @@ class Downloader {
         type: job.downloadType === "audio" ? "audio" : "video",
         downloadedAt: new Date().toISOString(),
         isFavorite: false,
-        source: "youtube",
+        source: "youtube"
       };
 
       await db.addOrUpdateVideo(videoData);
-      if (job.playlistId) {
-        await db.addVideoToPlaylist(job.playlistId, videoData.id);
-      }
+      if (job.playlistId) await db.addVideoToPlaylist(job.playlistId, videoData.id);
 
       await db.addToHistory({
         url: info.webpage_url,
@@ -589,27 +548,17 @@ class Downloader {
         status: "success"
       });
 
-      if (win)
-        win.webContents.send("download-complete", {
-          id: videoInfo.id,
-          videoData,
-          fullLog
-        });
+      if (win) win.webContents.send("download-complete", { id: videoInfo.id, videoData, fullLog });
+
     } catch (e) {
-      console.error(`Post-processing failed for ${videoInfo.id}:`, e);
-      if (win)
-        win.webContents.send("download-error", {
-          id: videoInfo.id,
-          error: e.message || "Post-processing failed.",
-          fullLog: fullLog + `\n\nPOST-PROCESSING ERROR:\n${e.stack}`,
-          job,
-        });
+      console.error(`Post-Process Error (${videoInfo.id}):`, e);
+      if (win) win.webContents.send("download-error", { id: videoInfo.id, error: "Processing failed: " + e.message, fullLog, job });
     }
   }
 }
 const downloader = new Downloader();
 
-// --- Window Management ---
+// --- Window ---
 
 function createWindow() {
   win = new BrowserWindow({
@@ -627,12 +576,19 @@ function createWindow() {
     frame: false,
     icon: iconPath,
     title: "ViveStream",
+    show: false
   });
+
   win.loadFile(path.join(__dirname, "..", "renderer", "index.html"));
+
+  win.once('ready-to-show', () => {
+    win.show();
+    if (isDev) win.webContents.openDevTools({ mode: "detach" });
+  });
+
   win.on("maximize", () => win.webContents.send("window-maximized", true));
   win.on("unmaximize", () => win.webContents.send("window-maximized", false));
   win.on("closed", () => (win = null));
-  if (isDev) win.webContents.openDevTools({ mode: "detach" });
 
   win.webContents.on("did-finish-load", () => {
     if (externalFilePath) {
@@ -645,18 +601,10 @@ function createWindow() {
 function createTray() {
   tray = new Tray(iconPath);
   tray.setToolTip("ViveStream");
-  tray.setContextMenu(
-    Menu.buildFromTemplate([
-      { label: "Show App", click: () => win.show() },
-      {
-        label: "Quit",
-        click: () => {
-          app.isQuitting = true;
-          app.quit();
-        },
-      },
-    ])
-  );
+  tray.setContextMenu(Menu.buildFromTemplate([
+    { label: "Show App", click: () => win.show() },
+    { label: "Quit", click: () => { app.isQuitting = true; app.quit(); } }
+  ]));
   tray.on("click", () => win.show());
 }
 
@@ -665,184 +613,91 @@ app.on("before-quit", async () => {
   downloader.shutdown();
   await db.shutdown();
 });
-
 app.on("will-quit", () => globalShortcut.unregisterAll());
 app.on("window-all-closed", () => process.platform !== "darwin" && app.quit());
-app.on(
-  "activate",
-  () => BrowserWindow.getAllWindows().length === 0 && createWindow()
-);
+app.on("activate", () => !win && createWindow());
 
 // --- IPC Handlers ---
 
-ipcMain.handle("get-assets-path", () => {
-  const assetsPath = getAssetPath("");
-  return assetsPath.replace(/\\/g, "/");
-});
-
+ipcMain.handle("get-assets-path", () => getAssetPath("").replace(/\\/g, "/"));
 ipcMain.on("minimize-window", () => win.minimize());
-ipcMain.on("maximize-window", () =>
-  win.isMaximized() ? win.unmaximize() : win.maximize()
-);
+ipcMain.on("maximize-window", () => win.isMaximized() ? win.unmaximize() : win.maximize());
 ipcMain.on("close-window", () => win.close());
 ipcMain.on("tray-window", () => win.hide());
-ipcMain.on("open-external", (e, url) => shell.openExternal(url));
+ipcMain.on("open-external", (e, u) => shell.openExternal(u));
 ipcMain.handle("open-media-folder", () => shell.openPath(viveStreamPath));
 ipcMain.handle("open-database-folder", () => shell.openPath(app.getPath("userData")));
 ipcMain.handle("open-vendor-folder", () => {
   const { binDir } = getPythonDetails();
-  if (binDir && fs.existsSync(binDir)) {
-    return shell.openPath(binDir);
-  }
-  return dialog.showMessageBox(win, {
-    type: "info",
-    message: "Binary Folder",
-    detail: "Using Portable Python environment. Bin folder not readily accessible."
-  });
+  if (binDir) shell.openPath(binDir);
 });
 
 ipcMain.handle("get-settings", getSettings);
 ipcMain.handle("get-app-version", () => app.getVersion());
-ipcMain.on("save-settings", (e, s) => {
-  saveSettings(s);
-  downloader.updateSettings(getSettings());
-});
+ipcMain.on("save-settings", (e, s) => { saveSettings(s); downloader.updateSettings(getSettings()); });
 ipcMain.handle("reset-app", () => {
   saveSettings(defaultSettings);
   if (win) win.webContents.send("clear-local-storage");
-  mediaPaths.forEach((dir) => {
-    fs.readdirSync(dir).forEach((file) => {
-      if (file.endsWith(".part")) fs.unlinkSync(path.join(dir, file));
-    });
-  });
   return getSettings();
 });
+
 ipcMain.handle("get-library", () => db.getLibrary());
 ipcMain.handle("toggle-favorite", (e, id) => db.toggleFavorite(id));
 ipcMain.handle("clear-all-media", async () => {
-  try {
-    for (const dir of mediaPaths) await fse.emptyDir(dir);
-    const result = await db.clearAllMedia();
-    return result;
-  } catch (e) {
-    return { success: false, error: e.message };
-  }
+  for (const dir of mediaPaths) await fse.emptyDir(dir);
+  return await db.clearAllMedia();
 });
-
 ipcMain.handle("db:delete", async () => {
-  try {
-    await db.shutdown();
-    const dbPath = path.join(app.getPath("userData"), "ViveStream.db");
-    if (fs.existsSync(dbPath)) fs.unlinkSync(dbPath);
-    app.relaunch();
-    app.exit(0);
-    return { success: true };
-  } catch (e) {
-    return { success: false, error: e.message };
-  }
+  await db.shutdown();
+  const p = path.join(app.getPath("userData"), "ViveStream.db");
+  if (fs.existsSync(p)) fs.unlinkSync(p);
+  app.relaunch();
+  app.exit(0);
 });
-
 ipcMain.handle("delete-video", async (e, id) => {
-  const video = await db.getVideoById(id);
-  if (!video) return { success: false, message: "Video not found in DB." };
-  [video.filePath, video.coverPath, video.subtitlePath]
-    .filter(Boolean)
-    .forEach((uri) => {
+  const v = await db.getVideoById(id);
+  if (!v) return { success: false };
+  [v.filePath, v.coverPath, v.subtitlePath].forEach(uri => {
+    if (uri) {
       try {
         const p = url.fileURLToPath(uri);
         if (fs.existsSync(p)) fs.unlinkSync(p);
-      } catch (err) {
-        console.error(`Failed to delete file ${uri}:`, err);
-      }
-    });
+      } catch (e) { }
+    }
+  });
   return await db.deleteVideo(id);
 });
-
-ipcMain.handle("video:update-metadata", (e, videoId, metadata) =>
-  db.updateVideoMetadata(videoId, metadata)
-);
-
-ipcMain.handle("videos:touch", async (e, videoIds) => {
-  try {
-    await db
-      .db("videos")
-      .whereIn("id", videoIds)
-      .update({ downloadedAt: new Date().toISOString() });
-    return { success: true };
-  } catch (error) {
-    console.error("Error touching videos:", error);
-    return { success: false, error: error.message };
-  }
-});
+ipcMain.handle("video:update-metadata", (e, id, meta) => db.updateVideoMetadata(id, meta));
+ipcMain.handle("videos:touch", (e, ids) => db.db("videos").whereIn("id", ids).update({ downloadedAt: new Date().toISOString() }));
 
 ipcMain.on("download-video", (e, { downloadOptions, jobId }) => {
-  // Use Python Module execution
-  const args = [
-    "-m", "yt_dlp",
-    downloadOptions.url,
-    "--dump-json",
-    "-v",
-    "--flat-playlist",
-  ];
-  const settings = getSettings();
-  if (settings.cookieBrowser && settings.cookieBrowser !== "none")
-    args.push("--cookies-from-browser", settings.cookieBrowser);
-
-  const { pythonPath } = getPythonDetails();
-  console.log(`[InfoFetch] Executing: ${pythonPath} ${args.join(" ")}`);
+  const args = ["-m", "yt_dlp", downloadOptions.url, "--dump-json", "--flat-playlist", "--no-warnings"];
+  const s = getSettings();
+  if (s.cookieBrowser && s.cookieBrowser !== "none") args.push("--cookies-from-browser", s.cookieBrowser);
 
   const proc = spawnPython(args);
-  let j = "";
-  let errorOutput = "";
+  let json = "";
+  let err = "";
 
-  const timeout = setTimeout(() => {
-    proc.kill();
-    errorOutput += "\n[System]: Network timeout: The request took too long to complete.";
-  }, 30000);
+  proc.stdout.on("data", (d) => (json += d));
+  proc.stderr.on("data", (d) => (err += d));
 
-  proc.stdout.on("data", (d) => (j += d));
-  proc.stderr.on("data", (d) => (errorOutput += d));
-
-  proc.on("error", (err) => {
-    console.error("Failed to start info process:", err);
-    errorOutput = `Failed to start Python process. Error: ${err.message}`;
-  });
-
-  proc.on("close", async (c) => {
-    clearTimeout(timeout);
-    if (c === 0 && j.trim()) {
+  proc.on("close", async (code) => {
+    if (code === 0 && json.trim()) {
       try {
-        const infos = j
-          .trim()
-          .split("\n")
-          .map((l) => JSON.parse(l));
+        const infos = json.trim().split("\n").map(l => JSON.parse(l));
         let playlistId = null;
         if (infos.length > 0 && infos[0].playlist_title) {
-          const playlist = await db.findOrCreatePlaylistByName(
-            infos[0].playlist_title
-          );
-          if (playlist) playlistId = playlist.id;
+          const pl = await db.findOrCreatePlaylistByName(infos[0].playlist_title);
+          if (pl) playlistId = pl.id;
         }
-
         if (win) win.webContents.send("download-queue-start", { infos, jobId });
-        downloader.addToQueue(
-          infos.map((i) => ({ ...downloadOptions, videoInfo: i, playlistId }))
-        );
-      } catch (parseError) {
-        if (win)
-          win.webContents.send("download-info-error", {
-            jobId,
-            error: "Failed to parse video information.",
-          });
+        downloader.addToQueue(infos.map(i => ({ ...downloadOptions, videoInfo: i, playlistId })));
+      } catch (e) {
+        if (win) win.webContents.send("download-info-error", { jobId, error: "Failed to parse info." });
       }
     } else {
-      const fullLog = `COMMAND EXECUTED:\n${pythonPath} ${args.join(" ")}\n\nVERBOSE LOG:\n${errorOutput}`;
-      if (win)
-        win.webContents.send("download-info-error", {
-          jobId,
-          error: parseYtDlpError(errorOutput),
-          fullLog: fullLog
-        });
+      if (win) win.webContents.send("download-info-error", { jobId, error: parseYtDlpError(err), fullLog: err });
     }
   });
 });
@@ -850,308 +705,151 @@ ipcMain.on("download-video", (e, { downloadOptions, jobId }) => {
 ipcMain.on("cancel-download", (e, id) => downloader.cancelDownload(id));
 ipcMain.on("retry-download", (e, job) => downloader.retryDownload(job));
 
-// Updater now uses pip
 ipcMain.handle("updater:check-yt-dlp", () => {
   return new Promise((resolve) => {
-    // python -m pip install -U yt-dlp
-    const args = ["-m", "pip", "install", "-U", "yt-dlp"];
-    const proc = spawnPython(args);
+    // Update yt-dlp AND static-ffmpeg
+    const proc = spawnPython(["-m", "pip", "install", "-U", "yt-dlp", "static-ffmpeg"]);
+    proc.stdout.on("data", (d) => win.webContents.send("updater:yt-dlp-progress", d.toString()));
+    proc.stderr.on("data", (d) => win.webContents.send("updater:yt-dlp-progress", d.toString()));
 
-    proc.stdout.on("data", (data) =>
-      win.webContents.send("updater:yt-dlp-progress", data.toString())
-    );
-    proc.stderr.on("data", (data) =>
-      win.webContents.send("updater:yt-dlp-progress", `LOG: ${data}`)
-    );
-    proc.on("close", (code) => resolve({ success: code === 0 }));
+    proc.on("close", (c) => {
+      if (c === 0) {
+        // Re-hydrate ffmpeg paths if needed
+        const hydrate = spawnPython(["-c", "import static_ffmpeg; static_ffmpeg.add_paths()"]);
+        hydrate.on("close", () => resolve({ success: true }));
+      } else {
+        resolve({ success: false });
+      }
+    });
   });
 });
 
-async function copyWithProgress(source, dest, eventPayload) {
-  const totalSize = (await fs.promises.stat(source)).size;
-  let copiedSize = 0;
-  let lastUpdate = 0;
-
-  const sourceStream = fs.createReadStream(source);
-  const destStream = fs.createWriteStream(dest);
-
-  sourceStream.on("data", (chunk) => {
-    copiedSize += chunk.length;
-
-    const now = Date.now();
-    if (now - lastUpdate > 100 || copiedSize === totalSize) {
-      lastUpdate = now;
-      const progress = totalSize > 0 ? Math.round((copiedSize / totalSize) * 100) : 100;
-      if (win) {
-        win.webContents.send("file-operation-progress", {
-          ...eventPayload,
-          progress,
-        });
-      }
-    }
-  });
-
-  sourceStream.pipe(destStream);
-
-  return new Promise((resolve, reject) => {
-    destStream.on("finish", resolve);
-    destStream.on("error", reject);
-    sourceStream.on("error", reject);
-  });
-}
-
+// File Import/Export logic
 ipcMain.handle("media:import-files", async () => {
-  const { canceled, filePaths } = await dialog.showOpenDialog(win, {
-    properties: ["openFile", "multiSelections"],
-    filters: [
-      {
-        name: "Media Files",
-        extensions: ["mp4", "mkv", "webm", "mp3", "m4a", "flac", "opus", "wav"],
-      },
-    ],
-  });
+  const { canceled, filePaths } = await dialog.showOpenDialog(win, { properties: ["openFile", "multiSelections"] });
   if (canceled || filePaths.length === 0) return { success: true, count: 0 };
 
-  let importedCount = 0;
+  let count = 0;
   for (let i = 0; i < filePaths.length; i++) {
-    const filePath = filePaths[i];
+    const fp = filePaths[i];
     try {
-      // Use yt-dlp to dump json for local file (more robust than calling ffmpeg manually)
-      const args = ["-m", "yt_dlp", "--dump-json", `file:${filePath}`, "--enable-file-urls"];
-
-      const { stdout: metaJson } = await new Promise((resolve, reject) => {
-        const proc = spawnPython(args);
-        let stdout = "";
-        let stderr = "";
-        proc.stdout.on("data", (data) => (stdout += data));
-        proc.stderr.on("data", (data) => (stderr += data));
-        proc.on("close", (code) =>
-          code === 0 ? resolve({ stdout, stderr }) : reject(new Error(stderr))
-        );
-        proc.on("error", (err) => reject(err));
+      const { stdout } = await new Promise((res) => {
+        const p = spawnPython(["-m", "yt_dlp", "--dump-json", `file:${fp}`, "--no-warnings"]);
+        let o = ""; p.stdout.on("data", d => o += d); p.on("close", () => res({ stdout: o }));
       });
 
-      const meta = JSON.parse(metaJson);
+      const meta = JSON.parse(stdout || "{}");
+      const id = crypto.randomUUID();
+      const ext = path.extname(fp);
+      const newPath = path.join(videoPath, `${id}${ext}`);
 
-      const newId = crypto.randomUUID();
-      const extension = path.extname(filePath);
-      const newFileName = `${newId}${extension}`;
-      const newFilePath = path.join(videoPath, newFileName);
+      if (win) win.webContents.send("file-operation-progress", { type: "import", fileName: path.basename(fp), currentFile: i + 1, totalFiles: filePaths.length, progress: 50 });
 
-      await copyWithProgress(filePath, newFilePath, {
-        type: "import",
-        fileName: path.basename(filePath),
-        currentFile: i + 1,
-        totalFiles: filePaths.length,
-      });
+      await fse.copy(fp, newPath);
 
       let coverUri = null;
-      const finalCoverPath = path.join(coverPath, `${newId}.jpg`);
-
-      // Attempt to extract cover using ffmpeg
-      try {
-        if (resolvedFfmpegPath) {
-          const isAudio = meta.acodec && !meta.vcodec;
-          // Extract embedded art or snapshot
-          const ffmpegArgs = isAudio ?
-            ["-i", newFilePath, "-an", "-vcodec", "copy", finalCoverPath] :
-            ["-i", newFilePath, "-ss", "00:00:05", "-vframes", "1", finalCoverPath];
-
-          await new Promise((resolve) => {
-            const p = spawn(resolvedFfmpegPath, ffmpegArgs);
-            p.on("close", resolve);
-            p.on("error", () => resolve());
-          });
-
-          if (fs.existsSync(finalCoverPath)) {
-            coverUri = url.pathToFileURL(finalCoverPath).href;
-          }
-        }
-      } catch (e) {
-        console.warn("Thumbnail extraction failed:", e);
+      if (resolvedFfmpegPath) {
+        const thumbPath = path.join(coverPath, `${id}.jpg`);
+        await new Promise(r => {
+          const args = ["-i", newPath, "-ss", "00:00:05", "-vframes", "1", thumbPath];
+          const p = spawn(resolvedFfmpegPath, args);
+          p.on("close", r);
+          p.on("error", r);
+        });
+        if (fs.existsSync(thumbPath)) coverUri = url.pathToFileURL(thumbPath).href;
       }
 
-      const artistString = meta.artist || meta.creator || meta.uploader || "Unknown Artist";
-      const title = meta.title || path.parse(filePath).name;
-
-      const videoData = {
-        id: newId,
-        title: title,
-        creator: artistString,
-        description: meta.description || "",
-        duration: meta.duration,
-        filePath: url.pathToFileURL(newFilePath).href,
+      const vData = {
+        id,
+        title: meta.title || path.parse(fp).name,
+        creator: meta.artist || meta.uploader || "Unknown",
+        filePath: url.pathToFileURL(newPath).href,
         coverPath: coverUri,
-        type: (meta.vcodec && meta.vcodec !== "none") ? "video" : "audio",
+        duration: meta.duration,
         downloadedAt: new Date().toISOString(),
         source: "local",
+        type: (meta.vcodec && meta.vcodec !== "none") ? "video" : "audio"
       };
+      await db.addOrUpdateVideo(vData);
 
-      await db.addOrUpdateVideo(videoData);
-      const artist = await db.findOrCreateArtist(artistString, coverUri);
-      if (artist) await db.linkVideoToArtist(newId, artist.id);
+      const artist = await db.findOrCreateArtist(vData.creator, coverUri);
+      if (artist) await db.linkVideoToArtist(id, artist.id);
 
-      importedCount++;
-    } catch (error) {
-      console.error(`Failed to import ${filePath}:`, error);
-      win.webContents.send("import-error", {
-        fileName: path.basename(filePath),
-        error: error.message,
-      });
-    }
+      count++;
+    } catch (e) { console.error(e); }
   }
-  return { success: true, count: importedCount };
+  return { success: true, count };
 });
 
-ipcMain.handle("media:export-file", async (e, videoId) => {
-  const video = await db.getVideoById(videoId);
-  if (!video) return { success: false, error: "Video not found." };
-
-  const sourcePath = url.fileURLToPath(video.filePath);
-  const extension = path.extname(sourcePath);
-  const defaultFilename = `${sanitizeFilename(video.title)}${extension}`;
-
-  const { canceled, filePath: destPath } = await dialog.showSaveDialog(win, {
-    defaultPath: defaultFilename,
-    title: "Export Media File",
-  });
-
-  if (canceled || !destPath)
-    return { success: false, error: "Export cancelled." };
-
-  try {
-    await copyWithProgress(sourcePath, destPath, {
-      type: "export",
-      fileName: path.basename(destPath),
-      currentFile: 1,
-      totalFiles: 1,
-    });
-    return { success: true };
-  } catch (error) {
-    return { success: false, error: error.message };
-  }
+ipcMain.handle("media:export-file", async (e, id) => {
+  const v = await db.getVideoById(id);
+  if (!v) return { success: false };
+  const src = url.fileURLToPath(v.filePath);
+  const { canceled, filePath } = await dialog.showSaveDialog(win, { defaultPath: `${sanitizeFilename(v.title)}${path.extname(src)}` });
+  if (canceled) return { success: false };
+  await fse.copy(src, filePath);
+  return { success: true };
 });
 
 ipcMain.handle("media:export-all", async () => {
-  const { canceled, filePaths } = await dialog.showOpenDialog(win, {
-    properties: ["openDirectory", "createDirectory"],
-    title: "Select Export Folder",
-  });
-  if (canceled || filePaths.length === 0)
-    return { success: false, error: "Export cancelled." };
-  const destFolder = filePaths[0];
-  const library = await db.getLibrary();
-  let exportedCount = 0;
-  for (let i = 0; i < library.length; i++) {
-    const video = library[i];
+  const { canceled, filePaths } = await dialog.showOpenDialog(win, { properties: ["openDirectory"] });
+  if (canceled) return { success: false };
+  const dest = filePaths[0];
+  const lib = await db.getLibrary();
+  let c = 0;
+  for (const v of lib) {
     try {
-      const sourcePath = url.fileURLToPath(video.filePath);
-      const extension = path.extname(sourcePath);
-      const filename = `${sanitizeFilename(video.title)}${extension}`;
-      const destPath = path.join(destFolder, filename);
-
-      await copyWithProgress(sourcePath, destPath, {
-        type: "export",
-        fileName: filename,
-        currentFile: i + 1,
-        totalFiles: library.length,
-      });
-
-      exportedCount++;
-    } catch (error) {
-      console.error(`Failed to export ${video.title}:`, error);
-    }
+      const src = url.fileURLToPath(v.filePath);
+      const name = `${sanitizeFilename(v.title)}${path.extname(src)}`;
+      await fse.copy(src, path.join(dest, name));
+      c++;
+      if (win) win.webContents.send("file-operation-progress", { type: "export", fileName: name, currentFile: c, totalFiles: lib.length, progress: 100 });
+    } catch (e) { }
   }
-  return { success: true, count: exportedCount };
+  return { success: true, count: c };
 });
 
 ipcMain.handle("app:reinitialize", async () => {
-  try {
-    await win.webContents.session.clearCache();
-    const dbVideos = await db.getLibrary();
-    const diskFiles = new Set(fs.readdirSync(videoPath));
-    const deadDbEntries = dbVideos.filter(
-      (v) => !diskFiles.has(path.basename(url.fileURLToPath(v.filePath)))
-    );
-    for (const entry of deadDbEntries) {
-      await db.deleteVideo(entry.id);
-    }
-    const orphanResult = await db.cleanupOrphanArtists();
-    return {
-      success: true,
-      clearedCache: true,
-      deletedVideos: deadDbEntries.length,
-      deletedArtists: orphanResult.count,
-    };
-  } catch (error) {
-    console.error("Reinitialization failed:", error);
-    return { success: false, error: error.message };
+  await win.webContents.session.clearCache();
+  const lib = await db.getLibrary();
+  const files = new Set(fs.readdirSync(videoPath));
+  let del = 0;
+  for (const v of lib) {
+    const fname = path.basename(url.fileURLToPath(v.filePath));
+    if (!files.has(fname)) { await db.deleteVideo(v.id); del++; }
   }
+  const orphans = await db.cleanupOrphanArtists();
+  return { success: true, deletedVideos: del, deletedArtists: orphans.count };
 });
 
-ipcMain.handle("db:cleanup-orphans", () => db.cleanupOrphanArtists());
-
-ipcMain.handle("playlist:create", (e, name) => db.createPlaylist(name));
+ipcMain.handle("playlist:create", (e, n) => db.createPlaylist(n));
 ipcMain.handle("playlist:get-all", () => db.getAllPlaylistsWithStats());
 ipcMain.handle("playlist:get-details", (e, id) => db.getPlaylistDetails(id));
-ipcMain.handle("playlist:rename", (e, id, newName) =>
-  db.renamePlaylist(id, newName)
-);
+ipcMain.handle("playlist:rename", (e, id, n) => db.renamePlaylist(id, n));
 ipcMain.handle("playlist:delete", (e, id) => db.deletePlaylist(id));
-ipcMain.handle("playlist:add-video", (e, playlistId, videoId) =>
-  db.addVideoToPlaylist(playlistId, videoId)
-);
-ipcMain.handle("playlist:remove-video", (e, playlistId, videoId) =>
-  db.removeVideoFromPlaylist(playlistId, videoId)
-);
-ipcMain.handle("playlist:update-order", (e, playlistId, videoIds) =>
-  db.updateVideoOrderInPlaylist(playlistId, videoIds)
-);
-ipcMain.handle("playlist:get-for-video", (e, videoId) =>
-  db.getPlaylistsForVideo(videoId)
-);
-ipcMain.handle("playlist:update-cover", async (e, playlistId) => {
-  const { canceled, filePaths } = await dialog.showOpenDialog(win, {
-    properties: ["openFile"],
-    filters: [{ name: "Images", extensions: ["jpg", "png", "gif"] }],
-  });
-  if (canceled || filePaths.length === 0)
-    return { success: false, error: "File selection cancelled." };
-  try {
-    const sourcePath = filePaths[0];
-    const newFileName = `${playlistId}${path.extname(sourcePath)}`;
-    const destPath = path.join(playlistCoverPath, newFileName);
-    await fse.copy(sourcePath, destPath, { overwrite: true });
-    const fileUri = url.pathToFileURL(destPath).href;
-    return await db.updatePlaylistCover(playlistId, fileUri);
-  } catch (error) {
-    return { success: false, error: error.message };
-  }
+ipcMain.handle("playlist:add-video", (e, pid, vid) => db.addVideoToPlaylist(pid, vid));
+ipcMain.handle("playlist:remove-video", (e, pid, vid) => db.removeVideoFromPlaylist(pid, vid));
+ipcMain.handle("playlist:update-order", (e, pid, vids) => db.updateVideoOrderInPlaylist(pid, vids));
+ipcMain.handle("playlist:get-for-video", (e, vid) => db.getPlaylistsForVideo(vid));
+ipcMain.handle("playlist:update-cover", async (e, pid) => {
+  const { canceled, filePaths } = await dialog.showOpenDialog(win, { properties: ["openFile"], filters: [{ name: "Images", extensions: ["jpg", "png"] }] });
+  if (canceled) return { success: false };
+  const dest = path.join(playlistCoverPath, `${pid}${path.extname(filePaths[0])}`);
+  await fse.copy(filePaths[0], dest, { overwrite: true });
+  return await db.updatePlaylistCover(pid, url.pathToFileURL(dest).href);
 });
 
 ipcMain.handle("artist:get-all", () => db.getAllArtistsWithStats());
 ipcMain.handle("artist:get-details", (e, id) => db.getArtistDetails(id));
-ipcMain.handle("artist:update-thumbnail", async (e, artistId) => {
-  const { canceled, filePaths } = await dialog.showOpenDialog(win, {
-    properties: ["openFile"],
-    filters: [{ name: "Images", extensions: ["jpg", "png", "gif"] }],
-  });
-  if (canceled || filePaths.length === 0)
-    return { success: false, error: "File selection cancelled." };
-  try {
-    const sourcePath = filePaths[0];
-    const newFileName = `${artistId}${path.extname(sourcePath)}`;
-    const destPath = path.join(artistCoverPath, newFileName);
-    await fse.copy(sourcePath, destPath, { overwrite: true });
-    const fileUri = url.pathToFileURL(destPath).href;
-    return await db.updateArtistThumbnail(artistId, fileUri);
-  } catch (error) {
-    return { success: false, error: error.message };
-  }
-});
-
-ipcMain.handle("artist:rename", (e, id, name) => db.updateArtistName(id, name));
+ipcMain.handle("artist:rename", (e, id, n) => db.updateArtistName(id, n));
 ipcMain.handle("artist:delete", (e, id) => db.deleteArtist(id));
+ipcMain.handle("artist:update-thumbnail", async (e, aid) => {
+  const { canceled, filePaths } = await dialog.showOpenDialog(win, { properties: ["openFile"], filters: [{ name: "Images", extensions: ["jpg", "png"] }] });
+  if (canceled) return { success: false };
+  const dest = path.join(artistCoverPath, `${aid}${path.extname(filePaths[0])}`);
+  await fse.copy(filePaths[0], dest, { overwrite: true });
+  return await db.updateArtistThumbnail(aid, url.pathToFileURL(dest).href);
+});
 
 ipcMain.handle("history:get", () => db.getHistory());
 ipcMain.handle("history:clear", () => db.clearHistory());
