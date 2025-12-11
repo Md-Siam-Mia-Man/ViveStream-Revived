@@ -93,6 +93,41 @@
 
 /* --- End Icons --- */
 
+/* --- PERFORMANCE OPTIMIZATIONS --- */
+
+/* 
+   1. Content Visibility (Native Virtualization)
+   This significantly reduces rendering time for large lists 
+   by skipping rendering for off-screen elements.
+*/
+.video-grid-item,
+.playlist-grid-item,
+.artist-grid-item,
+.download-card,
+.up-next-item {
+     content-visibility: auto;
+     contain-intrinsic-size: 320px 280px;
+     /* Estimate size to prevent scrollbar jumping */
+     contain: layout paint style;
+}
+
+/* 2. Image Decoding */
+/* Image decosing is done in HTML */
+
+/* 3. GPU Layers for Animations */
+.video-grid-item:hover,
+.download-card:hover {
+     will-change: transform, box-shadow;
+     /* Hints browser to promote to GPU layer */
+}
+
+/* 4. Reduce Paint Areas */
+.page {
+     contain: content;
+     /* Isolates page layout calculations */
+}
+
+
 :root {
      --font-display: 'MajorMonoDisplay', sans-serif;
      --font-body: 'Poppins', sans-serif;
