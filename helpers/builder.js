@@ -125,8 +125,8 @@ async function executeCommand(command, args, cwd) {
                 console.log(`   ${colors.yellow}✎  Signing...${colors.reset}`);
                 hasLoggedSigning = true;
             } else if (lowerStr.includes("publishing") && !hasLoggedPublishing) {
-                 console.log(`   ${colors.green}☁  Publishing...${colors.reset}`);
-                 hasLoggedPublishing = true;
+                console.log(`   ${colors.green}☁  Publishing...${colors.reset}`);
+                hasLoggedPublishing = true;
             }
         });
 
@@ -137,11 +137,11 @@ async function executeCommand(command, args, cwd) {
             if (verbose) {
                 console.error(`${colors.red}${str.trimEnd()}${colors.reset}`);
             } else {
-                 // Minimal error logging or filtering
-                 // If it contains "Error", we probably want to see it
-                 if (str.toLowerCase().includes("error") || str.toLowerCase().includes("failed")) {
-                     console.error(`${colors.red}${str.trimEnd()}${colors.reset}`);
-                 }
+                // Minimal error logging or filtering
+                // If it contains "Error", we probably want to see it
+                if (str.toLowerCase().includes("error") || str.toLowerCase().includes("failed")) {
+                    console.error(`${colors.red}${str.trimEnd()}${colors.reset}`);
+                }
             }
         });
 
@@ -249,6 +249,7 @@ async function runBuild() {
             });
         } else {
             console.warn(`${colors.red}WARNING: Portable Python not found at ${platformConfig.pythonSource}${colors.reset}`);
+            console.warn(`${colors.green}Run: git clone https://github.com/Md-Siam-Mia-Main/python-portable.git ${platformConfig.pythonSource}${colors.reset}`);
         }
     }
 
