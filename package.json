@@ -8,6 +8,7 @@
   "scripts": {
     "start": "electron .",
     "build": "node helpers/builder.js",
+    "build:win": "node helpers/builder.js --win",
     "build:linux:all": "node helpers/builder.js --linux --target=all",
     "build:linux:rpm": "node helpers/builder.js --linux --target=rpm",
     "build:linux:deb": "node helpers/builder.js --linux --target=deb",
