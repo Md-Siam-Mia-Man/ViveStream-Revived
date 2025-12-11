@@ -60,8 +60,8 @@ function getPlatformConfig() {
                 name: "Windows",
                 pythonSource: "python-portable/python-win-x64",
                 cliFlag: "--win",
-                target: targets.length > 0 ? targets : "msi",
-                // Specific exclusions for Windows build
+                // CHANGED: Default to 'nsis' for better UI/UX
+                target: targets.length > 0 ? targets : "nsis",
                 excludePatterns: ["**/bin/linux/**", "**/bin/darwin/**", "**/bin/osx/**"]
             };
         case "darwin":
@@ -115,7 +115,7 @@ async function executeCommand(command, args, cwd) {
             } else if (lowerStr.includes("packaging") && !hasLoggedPackaging) {
                 console.log(`   ${colors.green}→  Packaging application...${colors.reset}`);
                 hasLoggedPackaging = true;
-            } else if ((lowerStr.includes("msi") || lowerStr.includes("nsis") || lowerStr.includes("dmg") || lowerStr.includes("snap") || lowerStr.includes("deb")) && !hasLoggedInstaller && lowerStr.includes("building")) {
+            } else if ((lowerStr.includes("nsis") || lowerStr.includes("msi") || lowerStr.includes("dmg") || lowerStr.includes("snap") || lowerStr.includes("deb")) && !hasLoggedInstaller && lowerStr.includes("building")) {
                 console.log(`   ${colors.green}→  Building Installer...${colors.reset}`);
                 hasLoggedInstaller = true;
             } else if (lowerStr.includes("rebuilding native dependencies")) {
@@ -174,7 +174,7 @@ async function runBuild() {
     console.log(colors.cyan + "==================================================" + colors.reset);
     console.log(`   Target Platform: ${colors.yellow}${platformConfig.name}${colors.reset}`);
     console.log(`   Bundling Python: ${colors.yellow}${platformConfig.pythonSource}${colors.reset}`);
-    console.log(`   Isolation:       ${colors.green}Enabled${colors.reset} (Excluding other platform binaries)`);
+    console.log(`   Isolation:       ${colors.green}Enabled${colors.reset}`);
 
     log("1/6", "Preparing Environment");
     console.log(`   ${colors.gray}→  Joining split files...${colors.reset}`);
@@ -208,9 +208,6 @@ async function runBuild() {
                 } catch (e) { }
             }
 
-            // Add exclusion patterns to the filter
-            // Basic inclusion is everything
-            // Then exclude platform specific junk
             const filterPatterns = ["**/*"];
             if (platformConfig.excludePatterns) {
                 platformConfig.excludePatterns.forEach(p => filterPatterns.push(`!${p}`));
@@ -243,7 +240,20 @@ async function runBuild() {
         extraResources: extraResources,
         compression: debug ? "store" : "maximum",
         asar: true,
-        win: { target: platformConfig.id === "win" ? platformConfig.target : "msi", icon: path.join(rootDir, "assets", "icon.ico") },
+        win: {
+            target: platformConfig.id === "win" ? platformConfig.target : "nsis", // Use NSIS by default
+            icon: path.join(rootDir, "assets", "icon.ico"),
+            legalTrademarks: "ViveStream"
+        },
+        // ADDED NSIS CONFIGURATION
+        nsis: {
+            oneClick: false, // Shows the installation wizard
+            allowToChangeInstallationDirectory: true, // Lets user pick folder
+            deleteAppDataOnUninstall: false, // We control this via custom script
+            include: "build/installer.nsh", // Our custom uninstaller script
+            runAfterFinish: true,
+            shortcutName: "ViveStream"
+        },
         linux: { target: platformConfig.id === "linux" ? platformConfig.target : "AppImage", icon: path.join(rootDir, "assets", "icon.png"), category: "Video" },
         mac: { target: platformConfig.id === "mac" ? platformConfig.target : "dmg", icon: path.join(rootDir, "assets", "icon.icns") }
     };
