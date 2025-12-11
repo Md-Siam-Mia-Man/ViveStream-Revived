@@ -216,13 +216,24 @@ function renderNextBatch() {
 
   renderContainer.appendChild(fragment);
 
+  // Initial Lazy Load for new items
   renderContainer.querySelectorAll("img.lazy:not(.observed)").forEach(img => {
     img.classList.add('observed');
     lazyLoadObserver.observe(img);
   });
 
+  // Check if we are done
   if (pendingItems.length === 0) {
     scrollObserver.unobserve(scrollSentinel);
+  } else {
+    // FIX: Check if sentinel is visible. If items didn't fill screen, load more immediately.
+    const sentinelRect = scrollSentinel.getBoundingClientRect();
+    const isVisible = sentinelRect.top < window.innerHeight + 400; // Match rootMargin
+
+    if (isVisible) {
+      // Use timeout to allow browser layout update
+      setTimeout(renderNextBatch, 50);
+    }
   }
 }
 
@@ -294,7 +305,6 @@ export function createHeaderActionsElement() {
 export function createFilterPanel() {
   const panel = document.createElement("div");
   panel.className = "filter-panel";
-  // Removed ID to allow multiple instances in DOM (one per page context)
   panel.innerHTML = `
         <div class="filter-group" data-filter="type">
             <div class="filter-selection-indicator"></div>
@@ -331,7 +341,6 @@ export function createFilterPanel() {
 }
 
 function updateFilterIndicators() {
-  // Find the visible filter panel (the one in the active page)
   const panel = document.querySelector(".page:not(.hidden) .filter-panel");
   if (!panel) return;
 
@@ -501,22 +510,16 @@ export function updateSearchPlaceholder(pageId) {
   homeSearchInput.disabled = !isSearchable;
   homeSearchInput.style.opacity = isSearchable ? "1" : "0.5";
 
-  // Dynamic Resizing Logic
   const canvas = document.createElement("canvas");
   const context = canvas.getContext("2d");
   const computedStyle = window.getComputedStyle(homeSearchInput);
   context.font = computedStyle.font;
 
-  // Calculate text width of the placeholder
   const metrics = context.measureText(placeholderText);
-  // Base width + padding (left 42px + right 16px) + extra buffer
   const neededWidth = Math.ceil(metrics.width) + 58 + 20;
 
-  // Set width, min 300px, max 600px
   const finalWidth = Math.min(Math.max(neededWidth, 300), 600);
   homeSearchInput.style.width = `${finalWidth}px`;
-
-  // Update focus width slightly larger
   homeSearchInput.style.setProperty('--focus-width', `${finalWidth + 100}px`);
 
   lastActivePageId = pageId;
