@@ -44,6 +44,11 @@ function parseTargets() {
     return targets;
 }
 
+// * --------------------------------------------------------------------------
+// * PLATFORM CONFIGURATION
+// * --------------------------------------------------------------------------
+// ! This function determines the build strategy based on the host OS or CLI flags.
+
 function getPlatformConfig() {
     const targets = parseTargets();
     const args = process.argv;
@@ -58,10 +63,10 @@ function getPlatformConfig() {
             return {
                 id: "win",
                 name: "Windows",
+                // ? Windows builds require a portable python distribution to be bundled
                 pythonSource: "python-portable/python-win-x64",
                 cliFlag: "--win",
-                // CHANGED: Default to 'nsis' for better UI/UX
-                target: targets.length > 0 ? targets : "nsis",
+                target: targets.length > 0 ? targets : "nsis", // * NSIS is the standard Windows installer
                 excludePatterns: ["**/bin/linux/**", "**/bin/darwin/**", "**/bin/osx/**"]
             };
         case "darwin":
@@ -70,10 +75,11 @@ function getPlatformConfig() {
                 name: "macOS",
                 pythonSource: "python-portable/python-mac-darwin",
                 cliFlag: "--mac",
-                target: targets.length > 0 ? targets : "dmg",
+                target: targets.length > 0 ? targets : "dmg", // * DMG is standard for macOS
                 excludePatterns: ["**/bin/linux/**", "**/bin/win32/**"]
             };
         case "linux":
+            // ? Detect glibc vs musl (though we mainly target glibc/ubuntu)
             const gnuPath = "python-portable/python-linux-gnu";
             const muslPath = "python-portable/python-linux-musl";
             const pythonSource = fs.existsSync(path.join(__dirname, "..", gnuPath)) ? gnuPath : muslPath;
@@ -82,7 +88,7 @@ function getPlatformConfig() {
                 name: "Linux",
                 pythonSource: pythonSource,
                 cliFlag: "--linux",
-                target: targets.length > 0 ? targets : ["AppImage"],
+                target: targets.length > 0 ? targets : ["AppImage"], // * AppImage is the default 'portable' Linux format
                 excludePatterns: ["**/bin/win32/**", "**/bin/darwin/**", "**/bin/osx/**"]
             };
         default:
@@ -90,9 +96,14 @@ function getPlatformConfig() {
     }
 }
 
+// * --------------------------------------------------------------------------
+// * COMMAND EXECUTION WRAPPER
+// * --------------------------------------------------------------------------
+
 async function executeCommand(command, args, cwd) {
     const verbose = parseVerbose();
     return new Promise((resolve, reject) => {
+        // ! Windows compatibility fix for npx
         const cmd = process.platform === "win32" && command === "npx" ? "npx.cmd" : command;
         const fullCommand = [cmd, ...args].map(a => a.includes(" ") ? `"${a}"` : a).join(" ");
 
@@ -109,6 +120,7 @@ async function executeCommand(command, args, cwd) {
             const str = data.toString();
             if (verbose) console.log(str.trimEnd());
 
+            // * Beautify electron-builder output
             const lowerStr = str.toLowerCase();
             if (lowerStr.includes("downloading") && !lowerStr.includes("part")) {
                 console.log(`   ${colors.gray}↓  Downloading resources...${colors.reset}`);
@@ -125,6 +137,7 @@ async function executeCommand(command, args, cwd) {
 
         child.stderr.on("data", (data) => {
             const str = data.toString();
+            // ? Always show errors, or if verbose is on
             if (verbose || str.toLowerCase().includes("error")) {
                 console.error(`${colors.red}${str.trimEnd()}${colors.reset}`);
             }
@@ -160,6 +173,10 @@ function moveArtifacts(sourceDir, destDir) {
     return movedFiles;
 }
 
+// * --------------------------------------------------------------------------
+// * MAIN BUILD PIPELINE
+// * --------------------------------------------------------------------------
+
 async function runBuild() {
     const platformConfig = getPlatformConfig();
     const rootDir = path.join(__dirname, "..");
@@ -177,6 +194,7 @@ async function runBuild() {
     console.log(`   Isolation:       ${colors.green}Enabled${colors.reset}`);
 
     log("1/6", "Preparing Environment");
+    // ! Split files are often used to bypass GitHub 100MB file limit
     console.log(`   ${colors.gray}→  Joining split files...${colors.reset}`);
     await executeCommand("node", ["helpers/large-file-manager.js", "join"], rootDir);
 
@@ -194,6 +212,7 @@ async function runBuild() {
     console.log(`   ${colors.green}✔ Cleaned.${colors.reset}`);
 
     log("\n3/6", "Rebuilding Native Dependencies");
+    // ! Essential for sqlite3 to match Electron's Node version
     await executeCommand("npx", ["electron-builder", "install-app-deps"], rootDir);
 
     log("\n4/6", "Packaging");
@@ -201,6 +220,7 @@ async function runBuild() {
     if (platformConfig.pythonSource) {
         const pPath = path.join(rootDir, platformConfig.pythonSource);
         if (fs.existsSync(pPath)) {
+            // * Make binaries executable on Unix-like systems
             if (process.platform !== "win32") {
                 try {
                     const binDir = path.join(pPath, "bin");
@@ -224,6 +244,7 @@ async function runBuild() {
         }
     }
 
+    // * Dynamic Electron-Builder Configuration
     const buildConfig = {
         appId: "com.vivestream.revived.app",
         productName: "ViveStream Revived",
@@ -241,16 +262,15 @@ async function runBuild() {
         compression: debug ? "store" : "maximum",
         asar: true,
         win: {
-            target: platformConfig.id === "win" ? platformConfig.target : "nsis", // Use NSIS by default
+            target: platformConfig.id === "win" ? platformConfig.target : "nsis",
             icon: path.join(rootDir, "assets", "icon.ico"),
             legalTrademarks: "ViveStream"
         },
-        // ADDED NSIS CONFIGURATION
         nsis: {
-            oneClick: false, // Shows the installation wizard
-            allowToChangeInstallationDirectory: true, // Lets user pick folder
-            deleteAppDataOnUninstall: false, // We control this via custom script
-            include: "build/installer.nsh", // Our custom uninstaller script
+            oneClick: false,
+            allowToChangeInstallationDirectory: true,
+            deleteAppDataOnUninstall: false, // ! We control this via custom script
+            include: "build/installer.nsh", // ! Custom uninstaller logic
             runAfterFinish: true,
             shortcutName: "ViveStream"
         },
@@ -260,6 +280,7 @@ async function runBuild() {
 
     fs.writeFileSync(tempConfigPath, JSON.stringify(buildConfig, null, 2));
     const builderArgs = ["electron-builder", "--config", "temp-build-config.json", platformConfig.cliFlag];
+    // ? Auto-publish to GitHub releases if token is present
     if (process.env.GH_TOKEN) builderArgs.push("--publish", "always");
 
     try {
@@ -274,6 +295,7 @@ async function runBuild() {
     const movedFiles = moveArtifacts(releaseDir, finalArtifactDir);
     if (movedFiles.length > 0) movedFiles.forEach(f => console.log(`   ✔ Moved: ${f}`));
 
+    // ! Clean up loose files
     if (!debug && fs.existsSync(releaseDir)) {
         const files = fs.readdirSync(releaseDir);
         for (const file of files) {

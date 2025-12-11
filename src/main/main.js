@@ -17,7 +17,10 @@ const url = require("url");
 const db = require("./database");
 const { parseArtistNames } = require("./utils");
 
-// Performance flags
+// * --------------------------------------------------------------------------
+// * PERFORMANCE TUNING
+// * --------------------------------------------------------------------------
+// ! These flags force Chrome to use GPU acceleration where possible to reduce UI lag.
 app.commandLine.appendSwitch("enable-begin-frame-scheduling");
 app.commandLine.appendSwitch("enable-native-gpu-memory-buffers");
 app.commandLine.appendSwitch("enable-gpu-rasterization");
@@ -27,11 +30,14 @@ app.commandLine.appendSwitch("ignore-gpu-blocklist");
 
 const isDev = !app.isPackaged;
 
+// ? Disable annoying autofill popups in dev mode
 if (isDev) {
   app.commandLine.appendSwitch("disable-features", "Autofill,ComponentUpdateServices");
 }
 
-// --- Path Configuration ---
+// * --------------------------------------------------------------------------
+// * FILE SYSTEM CONFIGURATION
+// * --------------------------------------------------------------------------
 const userHomePath = app.getPath("home");
 const viveStreamPath = path.join(userHomePath, "ViveStream");
 const videoPath = path.join(viveStreamPath, "videos");
@@ -46,23 +52,21 @@ let tray = null;
 let win = null;
 let externalFilePath = null;
 
-// --- FFmpeg & Python State ---
+// ? State tracking for external binaries
 let resolvedFfmpegPath = null;
 let pythonDetails = null;
 let ffmpegResolutionPromise = null;
 
-// Assets
 const getAssetPath = (fileName) => path.join(__dirname, "..", "..", "assets", fileName);
-// Windows uses .ico, Mac uses .icns (handled by builder), Linux/Web uses .png
+// * Use correct icon format per OS
 const iconFileName = process.platform === "win32" ? "icon.ico" : "icon.png";
 const iconPath = getAssetPath(iconFileName);
 
-// Ensure directories
+// * Ensure critical directories exist on startup
 mediaPaths.forEach((dir) => {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 });
 
-// Settings
 const defaultSettings = {
   concurrentDownloads: 3,
   cookieBrowser: "none",
@@ -73,7 +77,9 @@ const defaultSettings = {
   speedLimit: "",
 };
 
-// --- Helper Functions ---
+// * --------------------------------------------------------------------------
+// * HELPER FUNCTIONS
+// * --------------------------------------------------------------------------
 
 function getSettings() {
   if (fs.existsSync(settingsPath)) {
@@ -94,8 +100,13 @@ function saveSettings(settings) {
 }
 if (!fs.existsSync(settingsPath)) saveSettings(defaultSettings);
 
+/**
+ * * Locates the bundled Python environment.
+ * ! Critical: This app relies on a portable Python environment to run yt-dlp reliably across platforms.
+ * @returns {{ pythonPath: string, binDir: string }}
+ */
 function getPythonDetails() {
-  if (pythonDetails) return pythonDetails; // Cache it
+  if (pythonDetails) return pythonDetails; // Cache hit
 
   const root = isDev
     ? path.join(__dirname, "..", "..", "python-portable")
@@ -110,16 +121,15 @@ function getPythonDetails() {
       pythonPath = path.join(winDir, "python.exe");
       binDir = path.join(winDir, "Scripts");
     } else {
-      pythonPath = "python";
+      pythonPath = "python"; // Fallback to system PATH
     }
   } else if (process.platform === "darwin") {
     const macDir = path.join(root, "python-mac-darwin");
-    // Mac structure usually has python inside bin
     if (fs.existsSync(path.join(macDir, "bin", "python3"))) {
       pythonPath = path.join(macDir, "bin", "python3");
       binDir = path.join(macDir, "bin");
     } else {
-      pythonPath = "python3"; // Fallback to system
+      pythonPath = "python3";
     }
   } else {
     // Linux
@@ -149,16 +159,16 @@ function spawnPython(args, options = {}) {
     const pathKey = process.platform === 'win32' ? 'Path' : 'PATH';
     env[pathKey] = `${binDir}${path.delimiter}${env[pathKey] || ''}`;
   }
-  // Force unbuffered output for realtime logs
+  // ! Force unbuffered output so we get real-time progress updates from yt-dlp
   env['PYTHONUNBUFFERED'] = '1';
   return spawn(pythonPath, args, { ...options, env });
 }
 
 /**
- * Robust FFmpeg resolver.
- * 1. Tries static_ffmpeg python module.
- * 2. Scans python bin/Scripts folder.
- * 3. Scans site-packages/static_ffmpeg/bin.
+ * * Robust FFmpeg resolver.
+ * 1. Tries `static_ffmpeg` python module (preferred).
+ * 2. Scans python `bin` or `Scripts` folder.
+ * 3. Scans `site-packages` as a last resort.
  */
 function startFfmpegResolution() {
   return new Promise(async (resolve) => {
@@ -188,7 +198,7 @@ except Exception as e:
       if (p && !p.startsWith("ERR:") && fs.existsSync(p)) {
         console.log("FFmpeg found via static_ffmpeg:", p);
 
-        // Ensure execution permissions on Unix
+        // ! Ensure execution permissions on Unix
         if (process.platform !== 'win32') {
           try { fs.chmodSync(p, 0o755); } catch (e) { console.error("Could not chmod ffmpeg:", e); }
         }
@@ -215,10 +225,6 @@ except Exception as e:
     }
 
     // 3. Fallback: Deep scan in site-packages
-    // Windows: Lib/site-packages/static_ffmpeg/bin/win32/ffmpeg.exe
-    // Linux: lib/python3.14/site-packages/static_ffmpeg/bin/linux/ffmpeg
-    // This is messy to predict exactly due to python version in path, so we mostly rely on step 1.
-    // However, for Windows specifically, the path is stable:
     if (process.platform === "win32") {
       const baseDir = path.dirname(path.dirname(binDir)); // Up from Scripts to python root
       const possible = path.join(baseDir, "Lib", "site-packages", "static_ffmpeg", "bin", "win32", "ffmpeg.exe");
@@ -235,13 +241,16 @@ except Exception as e:
   });
 }
 
-// --- App Lifecycle ---
+// * --------------------------------------------------------------------------
+// * APP LIFECYCLE
+// * --------------------------------------------------------------------------
 
 const gotTheLock = app.requestSingleInstanceLock();
 
 if (!gotTheLock) {
   app.quit();
 } else {
+  // ! Handle second instance (someone clicks app icon while it's already running)
   app.on("second-instance", (event, commandLine) => {
     if (win) {
       if (win.isMinimized()) win.restore();
@@ -251,6 +260,7 @@ if (!gotTheLock) {
     }
   });
 
+  // ! Handle "Open With..." on macOS
   app.on("open-file", (event, path) => {
     event.preventDefault();
     if (win && win.webContents) {
@@ -262,13 +272,12 @@ if (!gotTheLock) {
 
   app.whenReady().then(async () => {
     try {
-      // Start FFmpeg resolution in background (NON-BLOCKING)
+      // ! Start FFmpeg resolution in background (NON-BLOCKING) to speed up launch
       ffmpegResolutionPromise = startFfmpegResolution();
 
       const { pythonPath } = getPythonDetails();
       console.log("App Ready. Python:", pythonPath);
 
-      // Initialize DB (usually fast)
       await db.initialize(app);
 
       if (!externalFilePath) {
@@ -313,7 +322,9 @@ function parseYtDlpError(stderr) {
   return match ? match[1].trim() : (stderr.split("\n").pop() || "Unknown error");
 }
 
-// --- Downloader ---
+// * --------------------------------------------------------------------------
+// * DOWNLOADER CLASS
+// * --------------------------------------------------------------------------
 
 class Downloader {
   constructor() {
@@ -349,7 +360,7 @@ class Downloader {
   }
 
   async startDownload(job) {
-    // Ensure FFmpeg is resolved before starting actual download
+    // ! Ensure FFmpeg is resolved before starting actual download
     if (!resolvedFfmpegPath) {
       console.log("Waiting for FFmpeg resolution...");
       await ffmpegResolutionPromise;
@@ -358,14 +369,13 @@ class Downloader {
     const { videoInfo } = job;
     const requestUrl = videoInfo.webpage_url || `https://www.youtube.com/watch?v=${videoInfo.id}`;
 
-    // On Linux/Mac, ensure we use -m yt_dlp to use the module within our portable env
-    // and rely on the shebang/env of spawnPython
+    // ! Arguments for yt-dlp
     let args = [
       "-m", "yt_dlp",
       requestUrl,
       "-o", path.join(videoPath, "%(id)s.%(ext)s"),
       "--progress",
-      "--newline",
+      "--newline", // Crucial for parsing stdout
       "--retries", "10",
       "--write-info-json",
       "--write-thumbnail",
@@ -384,6 +394,7 @@ class Downloader {
 
     if (job.downloadType === "video") {
       const qualityFilter = job.quality === "best" ? "" : `[height<=${job.quality}]`;
+      // ! Select best video and best audio, then merge
       const formatString = `bestvideo[ext=mp4]${qualityFilter}+bestaudio[ext=m4a]/bestvideo[vcodec^=avc]${qualityFilter}+bestaudio/best[ext=mp4]/best`;
       args.push("-f", formatString, "--merge-output-format", "mp4");
 
@@ -392,6 +403,7 @@ class Downloader {
         if (this.settings.downloadAutoSubs) args.push("--write-auto-subs");
       }
     } else {
+      // Audio only
       args.push("-x", "--audio-format", job.audioFormat, "--audio-quality", job.audioQuality.toString());
       if (job.embedThumbnail) args.push("--embed-thumbnail");
     }
@@ -412,6 +424,7 @@ class Downloader {
     let stderrOutput = "";
     let stallTimeout;
 
+    // ? Watchdog timer: kill download if it hangs for 90s
     const resetStallTimer = () => {
       clearTimeout(stallTimeout);
       stallTimeout = setTimeout(() => {
@@ -424,6 +437,7 @@ class Downloader {
     proc.stdout.on("data", (data) => {
       resetStallTimer();
       const str = data.toString();
+      // ! Regex to parse yt-dlp's standard progress output
       const m = str.match(/\[download\]\s+(\d+\.?\d*)%\s+of\s+~?\s*([\d.]+\w+)\s+at\s+([\d.]+\w+\/s)\s+ETA\s+([\d:]+)/);
       if (m && win) {
         win.webContents.send("download-progress", {
@@ -471,7 +485,7 @@ class Downloader {
 
   async postProcess(videoInfo, job, fullLog) {
     try {
-      // Find info json
+      // * 1. Find info json
       const files = fs.readdirSync(videoPath);
       const infoFile = files.find(f => f.startsWith(videoInfo.id) && f.endsWith('.info.json'));
 
@@ -479,15 +493,15 @@ class Downloader {
 
       const infoJsonPath = path.join(videoPath, infoFile);
       const info = JSON.parse(fs.readFileSync(infoJsonPath, "utf-8"));
-      fs.unlinkSync(infoJsonPath);
+      fs.unlinkSync(infoJsonPath); // Clean up JSON
 
-      // Find actual media file
+      // * 2. Find actual media file
       const mediaFile = files.find(f => f.startsWith(videoInfo.id) && !f.endsWith('.json') && !f.endsWith('.description') && !f.endsWith('.jpg') && !f.endsWith('.webp') && !f.endsWith('.vtt'));
 
       if (!mediaFile) throw new Error("Media file not found after download.");
       const mediaFilePath = path.join(videoPath, mediaFile);
 
-      // Handle Cover
+      // * 3. Handle Cover (Convert/Move)
       let finalCoverPath = null;
       const thumbFile = files.find(f => f.startsWith(videoInfo.id) && (f.endsWith('.jpg') || f.endsWith('.webp')));
       if (thumbFile) {
@@ -496,7 +510,7 @@ class Downloader {
       }
       const finalCoverUri = finalCoverPath ? url.pathToFileURL(finalCoverPath).href : null;
 
-      // Handle Subs
+      // * 4. Handle Subs
       let subFileUri = null;
       const subFile = files.find(f => f.startsWith(videoInfo.id) && f.endsWith('.vtt'));
       if (subFile) {
@@ -505,11 +519,11 @@ class Downloader {
         subFileUri = url.pathToFileURL(destSub).href;
       }
 
-      // Cleanup desc
+      // Cleanup description file if it exists
       const descFile = files.find(f => f.startsWith(videoInfo.id) && f.endsWith('.description'));
       if (descFile) fs.unlinkSync(path.join(videoPath, descFile));
 
-      // DB Logic
+      // * 5. Database Logic
       const artistString = info.artist || info.creator || info.uploader;
       const artistNames = parseArtistNames(artistString);
 
@@ -558,7 +572,9 @@ class Downloader {
 }
 const downloader = new Downloader();
 
-// --- Window ---
+// * --------------------------------------------------------------------------
+// * WINDOW MANAGEMENT
+// * --------------------------------------------------------------------------
 
 function createWindow() {
   win = new BrowserWindow({
@@ -569,11 +585,11 @@ function createWindow() {
     backgroundColor: "#0F0F0F",
     webPreferences: {
       preload: path.join(__dirname, "..", "preload", "preload.js"),
-      contextIsolation: true,
+      contextIsolation: true, // ! Security: Prevent Renderer from accessing Node directly
       nodeIntegration: false,
       hardwareAcceleration: true,
     },
-    frame: false,
+    frame: false, // Custom title bar
     icon: iconPath,
     title: "ViveStream",
     show: false
@@ -617,7 +633,9 @@ app.on("will-quit", () => globalShortcut.unregisterAll());
 app.on("window-all-closed", () => process.platform !== "darwin" && app.quit());
 app.on("activate", () => !win && createWindow());
 
-// --- IPC Handlers ---
+// * --------------------------------------------------------------------------
+// * IPC HANDLERS (Events from Renderer)
+// * --------------------------------------------------------------------------
 
 ipcMain.handle("get-assets-path", () => getAssetPath("").replace(/\\/g, "/"));
 ipcMain.on("minimize-window", () => win.minimize());
@@ -724,7 +742,10 @@ ipcMain.handle("updater:check-yt-dlp", () => {
   });
 });
 
-// File Import/Export logic
+// * --------------------------------------------------------------------------
+// * FILE IMPORT/EXPORT
+// * --------------------------------------------------------------------------
+
 ipcMain.handle("media:import-files", async () => {
   const { canceled, filePaths } = await dialog.showOpenDialog(win, { properties: ["openFile", "multiSelections"] });
   if (canceled || filePaths.length === 0) return { success: true, count: 0 };
