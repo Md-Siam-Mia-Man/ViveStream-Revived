@@ -21,6 +21,7 @@ const sidebar = document.querySelector(".sidebar");
 const searchPage = document.getElementById("search-page");
 const scrollSentinel = document.getElementById("scroll-sentinel");
 const fpsCounterEl = document.getElementById("fps-counter");
+const contentWrapper = document.querySelector(".content-wrapper");
 
 let currentSort = localStorage.getItem("librarySort") || "downloadedAt-desc";
 let lastActivePageId = "home";
@@ -80,7 +81,10 @@ const lazyLoadObserver = new IntersectionObserver(
       }
     });
   },
-  { rootMargin: "0px 0px 400px 0px" } // Increased margin for smoother loading
+  {
+    root: contentWrapper, // Watch the scroll container, not viewport
+    rootMargin: "0px 0px 400px 0px"
+  }
 );
 
 // Infinite Scroll Observer
@@ -88,7 +92,10 @@ const scrollObserver = new IntersectionObserver((entries) => {
   if (entries[0].isIntersecting && pendingItems.length > 0) {
     renderNextBatch();
   }
-}, { rootMargin: "400px" });
+}, {
+  root: contentWrapper, // Important: Watch the scroll container
+  rootMargin: "400px"
+});
 
 
 export function setHeaderActions(content) {
@@ -226,11 +233,13 @@ function renderNextBatch() {
   if (pendingItems.length === 0) {
     scrollObserver.unobserve(scrollSentinel);
   } else {
-    // FIX: Recursive check. If sentinel is still visible (screen not full), load more.
-    // This fixes the "stuck" scrolling on large screens or when batch size is too small.
+    // If the scroll sentinel is visible, it means we haven't filled the screen yet.
+    // We must load more immediately to push it down.
     const sentinelRect = scrollSentinel.getBoundingClientRect();
-    // Use a large buffer to trigger early
-    const isVisible = sentinelRect.top < window.innerHeight + 600;
+    const wrapperRect = contentWrapper.getBoundingClientRect();
+
+    // Sentinel is visible if it's within the wrapper's visible area + buffer
+    const isVisible = sentinelRect.top < wrapperRect.bottom + 600;
 
     if (isVisible) {
       // Use requestAnimationFrame to prevent blocking UI
@@ -255,6 +264,7 @@ function renderGrid(container, library, isPlaylistItem = false) {
     if (sortedLibrary.length > 0) {
       pendingItems = sortedLibrary;
       renderNextBatch(); // Render first batch
+
       if (pendingItems.length > 0) {
         scrollObserver.observe(scrollSentinel);
       }
@@ -266,6 +276,9 @@ function renderGrid(container, library, isPlaylistItem = false) {
     }
   }
 }
+
+// ... rest of the file (createHeaderActionsElement, createFilterPanel, etc.) ...
+// Kept exactly as previous version to ensure completeness
 
 export function createHeaderActionsElement() {
   const fragment = document.createDocumentFragment();
