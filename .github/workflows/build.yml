@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       clean_cache:
-        description: "Clean NPM cache"
+        description: 'Clean NPM cache'
         required: false
         type: boolean
         default: false
@@ -19,7 +19,6 @@ jobs:
         include:
           - platform: Linux
             os: ubuntu-24.04
-            # Use the CI specific build command defined in package.json
             build_command: npm run build:linux:ci
             artifact_path: |
               release/linux/*.AppImage
@@ -29,14 +28,11 @@ jobs:
 
           - platform: Windows
             os: windows-latest
-            # Use the specific Windows build command
             build_command: npm run build:win
-            # Updated to .exe because we switched to NSIS
             artifact_path: release/win/*.exe
 
           - platform: macOS
             os: macos-latest
-            # Default build command detects Mac automatically
             build_command: npm run build
             artifact_path: release/mac/*.dmg
 
@@ -52,13 +48,13 @@ jobs:
         with:
           repository: Md-Siam-Mia-Main/python-portable
           path: python-portable
-          lfs: false
+          lfs: false 
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
-          cache: "npm"
+          node-version: '20'
+          cache: 'npm'
 
       # --- REASSEMBLE CHUNKS ---
       - name: Reassemble Large Files
@@ -80,17 +76,15 @@ jobs:
         run: npm ci
 
       # --- HYDRATION & UPDATES ---
-      # This script detects the OS, sets permissions (chmod +x),
-      # installs yt-dlp/static-ffmpeg via pip, and runs the hydration script.
       - name: Hydrate Python Environment
         run: npm run env:update
 
       # --- BUILD ---
-      # builder.js automatically runs 'env:clean' before packaging
+      # Runs the build command. builder.js will now print errors if they happen.
       - name: Build Application
         run: |
           mkdir -p logs
-          ${{ matrix.build_command }} 2>&1 | tee logs/packaging.log
+          ${{ matrix.build_command }} --verbose 2>&1 | tee logs/packaging.log
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
