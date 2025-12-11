@@ -3,6 +3,8 @@ const path = require('path');
 
 const TARGET_DIR = path.join(__dirname, '..', 'python-portable');
 const CHUNK_EXT = '.chunk';
+// GitHub hard limit is 100MB. We use 90MB to be safe and avoid warnings.
+const CHUNK_SIZE = 1024 * 1024 * 90;
 
 function getAllFiles(dirPath, arrayOfFiles) {
     if (!fs.existsSync(dirPath)) return [];
@@ -21,14 +23,51 @@ function getAllFiles(dirPath, arrayOfFiles) {
     return arrayOfFiles;
 }
 
-async function joinFile(firstChunkPath) {
+function splitFile(filePath) {
+    const stats = fs.statSync(filePath);
+    const fileName = path.basename(filePath);
+
+    if (stats.size <= CHUNK_SIZE) return; // Skip small files
+
+    // Skip files that are already chunks
+    if (fileName.includes(CHUNK_EXT)) return;
+
+    console.log(`✂️  Splitting: ${fileName} (${(stats.size / (1024 * 1024)).toFixed(2)} MB)`);
+
+    const fd = fs.openSync(filePath, 'r');
+    const buffer = Buffer.alloc(CHUNK_SIZE);
+    let bytesRead = 0;
+    let part = 1;
+
+    try {
+        while ((bytesRead = fs.readSync(fd, buffer, 0, CHUNK_SIZE, null)) > 0) {
+            const chunkName = `${filePath}${CHUNK_EXT}${String(part).padStart(3, '0')}`;
+            const dataToWrite = (bytesRead < CHUNK_SIZE) ? buffer.slice(0, bytesRead) : buffer;
+            fs.writeFileSync(chunkName, dataToWrite);
+            console.log(`   📄 Created: ${path.basename(chunkName)}`);
+            part++;
+        }
+    } finally {
+        fs.closeSync(fd);
+    }
+
+    // Remove the original large file so it doesn't get committed to git
+    fs.unlinkSync(filePath);
+    console.log(`   🗑️  Removed original: ${fileName}`);
+}
+
+function joinFile(firstChunkPath) {
     // Reconstruct original filename from file.ext.chunk001
-    // Logic: Remove the last 9 characters (.chunk001)
     const originalPath = firstChunkPath.slice(0, -9);
     const baseName = path.basename(originalPath);
 
     if (fs.existsSync(originalPath)) {
         console.log(`   ⏭️  Skipping ${baseName} (already exists)`);
+        // We do not delete chunks here in case the user wants to keep them for git
+        // But usually, in a build process, you might want to. 
+        // For now, we assume this is "dev setup", so we keep chunks if logic dictates, 
+        // OR we delete them if we want a clean folder. 
+        // The previous logic deleted chunks after merge. Let's stick to that for 'join'.
         return;
     }
 
@@ -46,7 +85,9 @@ async function joinFile(firstChunkPath) {
         const chunkPath = path.join(dir, chunkFile);
         const data = fs.readFileSync(chunkPath);
         writeStream.write(data);
-        fs.unlinkSync(chunkPath); // Clean up chunk after merging
+        // We delete the chunks after joining so the app uses the real file
+        // Note: Run 'split' again before committing to git!
+        fs.unlinkSync(chunkPath);
     }
 
     writeStream.end();
@@ -69,12 +110,28 @@ async function joinFile(firstChunkPath) {
 
 const action = process.argv[2];
 
-if (action === 'join') {
-    if (!fs.existsSync(TARGET_DIR)) {
-        console.error(`Target directory not found: ${TARGET_DIR}`);
-        process.exit(1);
-    }
+if (!fs.existsSync(TARGET_DIR)) {
+    console.error(`Target directory not found: ${TARGET_DIR}`);
+    process.exit(1);
+}
 
+if (action === 'split') {
+    console.log(`🔍 Scanning ${TARGET_DIR} for large files (>90MB)...`);
+    const files = getAllFiles(TARGET_DIR);
+    let splitCount = 0;
+
+    files.forEach(f => {
+        const stats = fs.statSync(f);
+        if (stats.size > CHUNK_SIZE && !f.includes(CHUNK_EXT)) {
+            splitFile(f);
+            splitCount++;
+        }
+    });
+
+    if (splitCount === 0) console.log("No large files found needing split.");
+    else console.log("✨ Splitting complete.");
+
+} else if (action === 'join') {
     console.log(`🔍 Scanning ${TARGET_DIR} for chunked files...`);
     const files = getAllFiles(TARGET_DIR);
 
@@ -88,6 +145,7 @@ if (action === 'join') {
         startChunks.forEach(f => joinFile(f));
     }
     console.log("✨ Reassembly complete.");
+
 } else {
-    console.log("Usage: node large-file-manager.js join");
+    console.log("Usage: node large-file-manager.js [join|split]");
 }
