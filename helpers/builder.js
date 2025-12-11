@@ -270,7 +270,7 @@ async function runBuild() {
             oneClick: false,
             allowToChangeInstallationDirectory: true,
             deleteAppDataOnUninstall: false,
-            include: "assets/installer.nsh",
+            include: "build/installer.nsh",
             runAfterFinish: true,
             shortcutName: "ViveStream"
         },

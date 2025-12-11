@@ -3,17 +3,13 @@ name: Release Build
 on:
   workflow_dispatch:
     inputs:
-      tag_name:
-        description: "Tag name for release (e.g., v1.0.0)"
-        required: true
-        default: "v1.0.0"
       clean_cache:
-        description: "Clean NPM cache"
+        description: 'Clean NPM cache'
         required: false
         type: boolean
         default: false
 
-# 1. PERMISSIONS: Required to create releases and upload assets
+# CRITICAL FIX: Grant permission to create Releases
 permissions:
   contents: write
 
@@ -28,7 +24,6 @@ jobs:
           - platform: Linux
             os: ubuntu-24.04
             build_command: npm run build:linux:ci
-            # Note: We list files individually for the Release action to find them easily
             artifact_path: |
               release/linux/*.AppImage
               release/linux/*.deb
@@ -51,25 +46,22 @@ jobs:
         with:
           lfs: false
 
-      # --- CLONE PYTHON ENVIRONMENT ---
       - name: Checkout Portable Python
         uses: actions/checkout@v4
         with:
           repository: Md-Siam-Mia-Main/python-portable
           path: python-portable
-          lfs: false
+          lfs: false 
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
-          cache: "npm"
+          node-version: '20'
+          cache: 'npm'
 
-      # --- REASSEMBLE CHUNKS ---
       - name: Reassemble Large Files
         run: npm run files:join
 
-      # --- SYSTEM DEPENDENCIES (Linux Only) ---
       - name: Install System Dependencies (Linux)
         if: matrix.platform == 'Linux'
         run: |
@@ -84,17 +76,25 @@ jobs:
       - name: Install NPM Dependencies
         run: npm ci
 
-      # --- HYDRATION & UPDATES ---
       - name: Hydrate Python Environment
         run: npm run env:update
 
-      # --- BUILD ---
+      # Verify NSH file exists before building on Windows to prevent immediate failure
+      - name: Verify Windows Assets
+        if: matrix.platform == 'Windows'
+        shell: powershell
+        run: |
+          if (-not (Test-Path "build/installer.nsh")) {
+            Write-Error "build/installer.nsh NOT FOUND. Build will fail."
+            exit 1
+          }
+
       - name: Build Application
         run: |
           mkdir -p logs
-          ${{ matrix.build_command }} 2>&1 | tee logs/packaging.log
+          # Run with logs visible to debug issues immediately
+          ${{ matrix.build_command }}
         env:
-          # 2. TOKEN: Passed here for any build scripts that might need it (optional for the script, but good practice)
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload Packaging Logs
@@ -105,23 +105,9 @@ jobs:
           path: logs/packaging.log
           retention-days: 5
 
-      # This uploads artifacts to the "Actions" tab (good for debugging)
-      - name: Upload Artifacts (Actions Storage)
+      - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.platform }}-Builds
           path: ${{ matrix.artifact_path }}
           retention-days: 5
-
-      # --- PUBLISH RELEASE ---
-      # 3. RELEASE: This creates the release if it doesn't exist and uploads files
-      - name: Publish Release
-        uses: softprops/action-gh-release@v1
-        if: success()
-        with:
-          tag_name: ${{ inputs.tag_name }}
-          files: ${{ matrix.artifact_path }}
-          draft: false
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

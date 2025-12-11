@@ -7,7 +7,7 @@
 **Behavior:** Installation Wizard & Custom Uninstaller.
 
 - **Install:** We use NSIS (Nullsoft Scriptable Install System). This allows us to show a "Welcome" screen, ask the user for a destination folder, and create shortcuts.
-- **Uninstall:** Windows maintains a registry of installed apps. When "Uninstall" is clicked, Windows runs our custom `assets/installer.nsh` script.
+- **Uninstall:** Windows maintains a registry of installed apps. When "Uninstall" is clicked, Windows runs our custom `build/installer.nsh` script.
 - **Data Removal:** We explicitly programmed the uninstaller to ask a "Yes/No" question about deleting the database. This is possible because NSIS supports interactive GUIs during uninstallation.
 
 ## 🍎 macOS (DMG)
