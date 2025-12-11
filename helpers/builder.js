@@ -16,6 +16,11 @@ const colors = {
     reset: "\x1b[0m",
 };
 
+// Helper to normalize paths for electron-builder (it prefers / even on Windows)
+function toPosix(p) {
+    return p.split(path.sep).join(path.posix.sep);
+}
+
 function log(step, message) {
     console.log(`${colors.cyan}[${step}]${colors.reset} ${message}`);
 }
@@ -44,11 +49,6 @@ function parseTargets() {
     return targets;
 }
 
-// * --------------------------------------------------------------------------
-// * PLATFORM CONFIGURATION
-// * --------------------------------------------------------------------------
-// ! This function determines the build strategy based on the host OS or CLI flags.
-
 function getPlatformConfig() {
     const targets = parseTargets();
     const args = process.argv;
@@ -63,10 +63,9 @@ function getPlatformConfig() {
             return {
                 id: "win",
                 name: "Windows",
-                // ? Windows builds require a portable python distribution to be bundled
                 pythonSource: "python-portable/python-win-x64",
                 cliFlag: "--win",
-                target: targets.length > 0 ? targets : "nsis", // * NSIS is the standard Windows installer
+                target: targets.length > 0 ? targets : "nsis",
                 excludePatterns: ["**/bin/linux/**", "**/bin/darwin/**", "**/bin/osx/**"]
             };
         case "darwin":
@@ -75,11 +74,10 @@ function getPlatformConfig() {
                 name: "macOS",
                 pythonSource: "python-portable/python-mac-darwin",
                 cliFlag: "--mac",
-                target: targets.length > 0 ? targets : "dmg", // * DMG is standard for macOS
+                target: targets.length > 0 ? targets : "dmg",
                 excludePatterns: ["**/bin/linux/**", "**/bin/win32/**"]
             };
         case "linux":
-            // ? Detect glibc vs musl (though we mainly target glibc/ubuntu)
             const gnuPath = "python-portable/python-linux-gnu";
             const muslPath = "python-portable/python-linux-musl";
             const pythonSource = fs.existsSync(path.join(__dirname, "..", gnuPath)) ? gnuPath : muslPath;
@@ -88,7 +86,7 @@ function getPlatformConfig() {
                 name: "Linux",
                 pythonSource: pythonSource,
                 cliFlag: "--linux",
-                target: targets.length > 0 ? targets : ["AppImage"], // * AppImage is the default 'portable' Linux format
+                target: targets.length > 0 ? targets : ["AppImage"],
                 excludePatterns: ["**/bin/win32/**", "**/bin/darwin/**", "**/bin/osx/**"]
             };
         default:
@@ -96,14 +94,9 @@ function getPlatformConfig() {
     }
 }
 
-// * --------------------------------------------------------------------------
-// * COMMAND EXECUTION WRAPPER
-// * --------------------------------------------------------------------------
-
 async function executeCommand(command, args, cwd) {
     const verbose = parseVerbose();
     return new Promise((resolve, reject) => {
-        // ! Windows compatibility fix for npx
         const cmd = process.platform === "win32" && command === "npx" ? "npx.cmd" : command;
         const fullCommand = [cmd, ...args].map(a => a.includes(" ") ? `"${a}"` : a).join(" ");
 
@@ -113,21 +106,26 @@ async function executeCommand(command, args, cwd) {
             env: { ...process.env, NODE_NO_WARNINGS: 1 }
         });
 
+        // Buffers to store all output for error reporting
+        let stdoutLog = "";
+        let stderrLog = "";
+
         let hasLoggedPackaging = false;
         let hasLoggedInstaller = false;
 
         child.stdout.on("data", (data) => {
             const str = data.toString();
+            stdoutLog += str;
+
             if (verbose) console.log(str.trimEnd());
 
-            // * Beautify electron-builder output
             const lowerStr = str.toLowerCase();
             if (lowerStr.includes("downloading") && !lowerStr.includes("part")) {
                 console.log(`   ${colors.gray}↓  Downloading resources...${colors.reset}`);
             } else if (lowerStr.includes("packaging") && !hasLoggedPackaging) {
                 console.log(`   ${colors.green}→  Packaging application...${colors.reset}`);
                 hasLoggedPackaging = true;
-            } else if ((lowerStr.includes("nsis") || lowerStr.includes("msi") || lowerStr.includes("dmg") || lowerStr.includes("snap") || lowerStr.includes("deb")) && !hasLoggedInstaller && lowerStr.includes("building")) {
+            } else if ((lowerStr.includes("msi") || lowerStr.includes("nsis") || lowerStr.includes("dmg") || lowerStr.includes("snap") || lowerStr.includes("deb")) && !hasLoggedInstaller && lowerStr.includes("building")) {
                 console.log(`   ${colors.green}→  Building Installer...${colors.reset}`);
                 hasLoggedInstaller = true;
             } else if (lowerStr.includes("rebuilding native dependencies")) {
@@ -137,15 +135,24 @@ async function executeCommand(command, args, cwd) {
 
         child.stderr.on("data", (data) => {
             const str = data.toString();
-            // ? Always show errors, or if verbose is on
-            if (verbose || str.toLowerCase().includes("error")) {
+            stderrLog += str;
+            if (verbose || str.toLowerCase().includes("error") || str.toLowerCase().includes("fatal")) {
                 console.error(`${colors.red}${str.trimEnd()}${colors.reset}`);
             }
         });
 
         child.on("close", (code) => {
             if (code === 0) resolve();
-            else reject(new Error(`Command failed with code ${code}`));
+            else {
+                // On failure, print the last chunk of logs if not verbose, so user sees why
+                if (!verbose) {
+                    console.error(`\n${colors.red}--- BUILD FAILURE LOGS ---${colors.reset}`);
+                    console.error(stderrLog.slice(-2000)); // Print last 2000 chars of error
+                    console.error(stdoutLog.slice(-1000)); // Print last 1000 chars of stdout
+                    console.error(`${colors.red}--------------------------${colors.reset}\n`);
+                }
+                reject(new Error(`Command failed with code ${code}`));
+            }
         });
     });
 }
@@ -173,10 +180,6 @@ function moveArtifacts(sourceDir, destDir) {
     return movedFiles;
 }
 
-// * --------------------------------------------------------------------------
-// * MAIN BUILD PIPELINE
-// * --------------------------------------------------------------------------
-
 async function runBuild() {
     const platformConfig = getPlatformConfig();
     const rootDir = path.join(__dirname, "..");
@@ -194,7 +197,6 @@ async function runBuild() {
     console.log(`   Isolation:       ${colors.green}Enabled${colors.reset}`);
 
     log("1/6", "Preparing Environment");
-    // ! Split files are often used to bypass GitHub 100MB file limit
     console.log(`   ${colors.gray}→  Joining split files...${colors.reset}`);
     await executeCommand("node", ["helpers/large-file-manager.js", "join"], rootDir);
 
@@ -212,7 +214,6 @@ async function runBuild() {
     console.log(`   ${colors.green}✔ Cleaned.${colors.reset}`);
 
     log("\n3/6", "Rebuilding Native Dependencies");
-    // ! Essential for sqlite3 to match Electron's Node version
     await executeCommand("npx", ["electron-builder", "install-app-deps"], rootDir);
 
     log("\n4/6", "Packaging");
@@ -220,7 +221,7 @@ async function runBuild() {
     if (platformConfig.pythonSource) {
         const pPath = path.join(rootDir, platformConfig.pythonSource);
         if (fs.existsSync(pPath)) {
-            // * Make binaries executable on Unix-like systems
+            // Linux/Mac permissions fix
             if (process.platform !== "win32") {
                 try {
                     const binDir = path.join(pPath, "bin");
@@ -233,18 +234,17 @@ async function runBuild() {
                 platformConfig.excludePatterns.forEach(p => filterPatterns.push(`!${p}`));
             }
 
+            // USE POSIX PATHS HERE
             extraResources.push({
-                from: platformConfig.pythonSource,
-                to: platformConfig.pythonSource,
+                from: toPosix(platformConfig.pythonSource),
+                to: toPosix(platformConfig.pythonSource),
                 filter: filterPatterns
             });
         } else {
             console.warn(`${colors.red}WARNING: Portable Python not found at ${platformConfig.pythonSource}${colors.reset}`);
-            console.warn(`${colors.green}RUN: git clone https://github.com/Md-Siam-Mia-Main/python-portable.git ${platformConfig.pythonSource}${colors.reset}`);
         }
     }
 
-    // * Dynamic Electron-Builder Configuration
     const buildConfig = {
         appId: "com.vivestream.revived.app",
         productName: "ViveStream Revived",
@@ -263,24 +263,32 @@ async function runBuild() {
         asar: true,
         win: {
             target: platformConfig.id === "win" ? platformConfig.target : "nsis",
-            icon: path.join(rootDir, "assets", "icon.ico"),
+            icon: toPosix(path.join(rootDir, "assets", "icon.ico")),
             legalTrademarks: "ViveStream"
         },
         nsis: {
             oneClick: false,
             allowToChangeInstallationDirectory: true,
-            deleteAppDataOnUninstall: false, // ! We control this via custom script
-            include: "build/installer.nsh", // ! Custom uninstaller logic
+            deleteAppDataOnUninstall: false,
+            include: "assets/installer.nsh",
             runAfterFinish: true,
             shortcutName: "ViveStream"
         },
-        linux: { target: platformConfig.id === "linux" ? platformConfig.target : "AppImage", icon: path.join(rootDir, "assets", "icon.png"), category: "Video" },
-        mac: { target: platformConfig.id === "mac" ? platformConfig.target : "dmg", icon: path.join(rootDir, "assets", "icon.icns") }
+        linux: {
+            target: platformConfig.id === "linux" ? platformConfig.target : "AppImage",
+            icon: toPosix(path.join(rootDir, "assets", "icon.png")),
+            category: "Video"
+        },
+        mac: {
+            target: platformConfig.id === "mac" ? platformConfig.target : "dmg",
+            icon: toPosix(path.join(rootDir, "assets", "icon.icns"))
+        }
     };
 
     fs.writeFileSync(tempConfigPath, JSON.stringify(buildConfig, null, 2));
+    // Pass verbose flag to electron-builder if we are in debug mode
     const builderArgs = ["electron-builder", "--config", "temp-build-config.json", platformConfig.cliFlag];
-    // ? Auto-publish to GitHub releases if token is present
+    if (verbose) builderArgs.push("--verbose");
     if (process.env.GH_TOKEN) builderArgs.push("--publish", "always");
 
     try {
@@ -295,7 +303,6 @@ async function runBuild() {
     const movedFiles = moveArtifacts(releaseDir, finalArtifactDir);
     if (movedFiles.length > 0) movedFiles.forEach(f => console.log(`   ✔ Moved: ${f}`));
 
-    // ! Clean up loose files
     if (!debug && fs.existsSync(releaseDir)) {
         const files = fs.readdirSync(releaseDir);
         for (const file of files) {
