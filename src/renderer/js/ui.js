@@ -80,7 +80,7 @@ const lazyLoadObserver = new IntersectionObserver(
       }
     });
   },
-  { rootMargin: "0px 0px 200px 0px" }
+  { rootMargin: "0px 0px 400px 0px" } // Increased margin for smoother loading
 );
 
 // Infinite Scroll Observer
@@ -226,13 +226,15 @@ function renderNextBatch() {
   if (pendingItems.length === 0) {
     scrollObserver.unobserve(scrollSentinel);
   } else {
-    // FIX: Check if sentinel is visible. If items didn't fill screen, load more immediately.
+    // FIX: Recursive check. If sentinel is still visible (screen not full), load more.
+    // This fixes the "stuck" scrolling on large screens or when batch size is too small.
     const sentinelRect = scrollSentinel.getBoundingClientRect();
-    const isVisible = sentinelRect.top < window.innerHeight + 400; // Match rootMargin
+    // Use a large buffer to trigger early
+    const isVisible = sentinelRect.top < window.innerHeight + 600;
 
     if (isVisible) {
-      // Use timeout to allow browser layout update
-      setTimeout(renderNextBatch, 50);
+      // Use requestAnimationFrame to prevent blocking UI
+      requestAnimationFrame(renderNextBatch);
     }
   }
 }
@@ -252,7 +254,7 @@ function renderGrid(container, library, isPlaylistItem = false) {
 
     if (sortedLibrary.length > 0) {
       pendingItems = sortedLibrary;
-      renderNextBatch();
+      renderNextBatch(); // Render first batch
       if (pendingItems.length > 0) {
         scrollObserver.observe(scrollSentinel);
       }
