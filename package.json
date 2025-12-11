@@ -10,7 +10,9 @@
     "files:split": "node helpers/large-file-manager.js split",
     "files:join": "node helpers/large-file-manager.js join",
     "env:clean": "node helpers/cleanup.js",
+    "env:update": "node helpers/update-binaries.js",
     "build": "node helpers/builder.js",
+    "build:debug": "node helpers/builder.js --debug",
     "build:win": "node helpers/builder.js --win",
     "build:linux:all": "node helpers/builder.js --linux --target=all",
     "build:linux:rpm": "node helpers/builder.js --linux --target=rpm",
@@ -19,7 +21,6 @@
     "build:linux:flatpak": "node helpers/builder.js --linux --target=flatpak",
     "build:linux:snap": "node helpers/builder.js --linux --target=snap",
     "build:linux:ci": "node helpers/builder.js --linux --target=AppImage,deb,rpm,snap",
-    "build:verbose": "node helpers/builder.js --verbose",
     "postinstall": "electron-builder install-app-deps && npm run files:join"
   },
   "keywords": [],
