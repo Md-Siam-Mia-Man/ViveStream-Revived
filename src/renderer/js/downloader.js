@@ -76,7 +76,6 @@ function setupDropdowns() {
 
     dd.addEventListener("click", (e) => {
       e.stopPropagation();
-      // Close others
       [qualityDropdown, formatDropdown].forEach(other => {
         if (other !== dd) other.classList.remove("open");
       });
@@ -90,7 +89,6 @@ function setupDropdowns() {
         selected.dataset.value = opt.dataset.value;
         dd.classList.remove("open");
 
-        // Update selected visual state
         dd.querySelectorAll('.dropdown-option').forEach(o => o.classList.remove('selected'));
         opt.classList.add('selected');
       });
@@ -112,7 +110,6 @@ function setupTabs() {
       btn.classList.add("active");
       document.getElementById(`tab-${btn.dataset.tab}`).classList.add("active");
 
-      // Change clear button action based on tab
       if (btn.dataset.tab === 'history') {
         queueClearBtn.title = "Clear History";
       } else {
@@ -132,13 +129,12 @@ async function loadHistory() {
     const card = document.createElement("div");
     card.className = "download-card";
 
-    // Reuse Card UI Logic for consistency
     const thumb = item.thumbnail || `${AppState.assetsPath}/logo.png`;
     const icon = item.type === 'audio' ? 'music_note' : 'play_arrow';
 
     card.innerHTML = `
         <div class="dl-card-thumb-container">
-             <img src="${thumb}" class="dl-card-thumb" onerror="this.src='${AppState.assetsPath}/logo.png'">
+             <img src="${thumb}" class="dl-card-thumb" decoding="async" onerror="this.src='${AppState.assetsPath}/logo.png'">
              <div class="dl-card-thumb-overlay">
                   <span class="material-symbols-outlined dl-card-play-icon">${icon}</span>
              </div>
@@ -187,7 +183,6 @@ async function loadHistory() {
 eventBus.on("search:downloads", (searchTerm) => {
   const term = searchTerm.toLowerCase();
 
-  // Filter active queue
   const queueCards = downloadQueueArea.querySelectorAll(".download-card");
   queueCards.forEach(card => {
     const title = card.querySelector(".dl-card-title").textContent.toLowerCase();
@@ -196,7 +191,6 @@ eventBus.on("search:downloads", (searchTerm) => {
     card.classList.toggle("hidden", !matches);
   });
 
-  // Filter history
   const historyCards = historyListContainer.querySelectorAll(".download-card");
   historyCards.forEach(card => {
     const title = card.querySelector(".dl-card-title").textContent.toLowerCase();
@@ -253,7 +247,7 @@ function createFetchingPlaceholder(url, jobId) {
 
   card.innerHTML = `
         <div class="dl-card-thumb-container">
-             <img src="${AppState.assetsPath}/logo.png" class="dl-card-thumb">
+             <img src="${AppState.assetsPath}/logo.png" class="dl-card-thumb" decoding="async">
              <div class="dl-card-thumb-overlay" style="opacity:1; background:rgba(0,0,0,0.7)">
                   <div class="spinner"></div>
              </div>
@@ -299,7 +293,6 @@ function updateItemActions(item, status) {
     html = `<button class="dl-action-btn retry-btn" title="Retry"><span class="material-symbols-outlined">refresh</span></button>
             <button class="dl-action-btn remove-btn" title="Remove"><span class="material-symbols-outlined">delete</span></button>`;
   } else {
-    // Completed
     html = `<button class="dl-action-btn remove-btn" title="Remove"><span class="material-symbols-outlined">delete</span></button>`;
   }
 
@@ -401,7 +394,6 @@ function showErrorLog(errorData) {
   });
 }
 
-// IPC Listeners
 window.electronAPI.onDownloadQueueStart(({ infos, jobId }) => {
   const placeholder = downloadQueueArea.querySelector(`.download-card[data-job-id="${jobId}"]`);
   if (placeholder) placeholder.remove();
@@ -417,9 +409,10 @@ window.electronAPI.onDownloadQueueStart(({ infos, jobId }) => {
 
     const thumb = info.thumbnail || `${AppState.assetsPath}/logo.png`;
 
+    // ADDED decoding="async"
     card.innerHTML = `
         <div class="dl-card-thumb-container">
-             <img src="${thumb}" class="dl-card-thumb" onerror="this.src='${AppState.assetsPath}/logo.png'">
+             <img src="${thumb}" class="dl-card-thumb" decoding="async" onerror="this.src='${AppState.assetsPath}/logo.png'">
              <div class="dl-card-thumb-overlay">
                   <div class="spinner"></div>
              </div>
@@ -481,7 +474,6 @@ window.electronAPI.onDownloadComplete((data) => {
     card.querySelector(".dl-progress-bar").style.width = "100%";
     card.querySelector(".speed-text").textContent = "";
 
-    // Save success log
     errorLogs.set(data.id, { error: "Download successful", fullLog: data.fullLog });
 
     card.querySelector(".dl-card-thumb-overlay").innerHTML = `<span class="material-symbols-outlined dl-card-play-icon">play_arrow</span>`;
