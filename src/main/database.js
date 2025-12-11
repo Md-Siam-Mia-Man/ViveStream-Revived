@@ -5,6 +5,11 @@ const { parseArtistNames } = require("./utils");
 
 let db;
 
+/**
+ * * Initialize the Database
+ * Sets up SQLite connection, enables WAL mode, and runs migrations.
+ * @param {Electron.App} app - Electron App instance
+ */
 function initialize(app) {
   const dbPath = path.join(app.getPath("userData"), "ViveStream.db");
 
@@ -14,39 +19,41 @@ function initialize(app) {
       filename: dbPath,
     },
     useNullAsDefault: true,
-    pool: { min: 1, max: 1 } // SQLite doesn't benefit from large pools
+    pool: { min: 1, max: 1 } // ! SQLite handles concurrency via file locks, large pools are wasteful here.
   });
 
   return (async () => {
     try {
-      // --- TABLES ---
+      // * ----------------------------
+      // * TABLE CREATION & MIGRATIONS
+      // * ----------------------------
+
       if (!(await db.schema.hasTable("videos"))) {
         await db.schema.createTable("videos", (table) => {
-          table.string("id").primary();
+          table.string("id").primary(); // YouTube ID
           table.string("title").notNullable();
-          table.string("uploader");
-          table.string("creator");
+          table.string("uploader"); // Channel Name
+          table.string("creator"); // Parsed Artist Name
           table.text("description");
-          table.integer("duration");
+          table.integer("duration"); // Seconds
           table.string("upload_date");
           table.string("originalUrl");
           table.string("filePath").unique();
           table.string("coverPath");
           table.string("subtitlePath");
           table.boolean("hasEmbeddedSubs").defaultTo(false);
-          table.string("type").defaultTo("video");
+          table.string("type").defaultTo("video"); // 'video' | 'audio'
           table.timestamp("downloadedAt").defaultTo(db.fn.now());
           table.boolean("isFavorite").defaultTo(false);
           table.string("source").defaultTo("youtube");
 
-          // Performance Indices
+          // ! Indices for performance
           table.index('type');
           table.index('isFavorite');
           table.index('downloadedAt');
         });
       } else {
-        // Add indices if they don't exist (for existing users)
-        // Knex doesn't have "hasIndex", so we try/catch adding them
+        // ? Migration for existing users: Ensure indices exist
         try { await db.schema.alterTable('videos', t => t.index('type')); } catch (e) { }
         try { await db.schema.alterTable('videos', t => t.index('isFavorite')); } catch (e) { }
         try { await db.schema.alterTable('videos', t => t.index('downloadedAt')); } catch (e) { }
@@ -67,7 +74,7 @@ function initialize(app) {
           table.string("videoId").references("id").inTable("videos").onDelete("CASCADE");
           table.integer("sortOrder");
           table.primary(["playlistId", "videoId"]);
-          table.index("playlistId"); // Speed up playlist loading
+          table.index("playlistId");
         });
       } else {
         try { await db.schema.alterTable('playlist_videos', t => t.index('playlistId')); } catch (e) { }
@@ -79,7 +86,7 @@ function initialize(app) {
           table.string("name").notNullable().unique();
           table.string("thumbnailPath");
           table.timestamp("createdAt").defaultTo(db.fn.now());
-          table.index("name"); // Speed up search
+          table.index("name");
         });
       }
 
@@ -88,7 +95,7 @@ function initialize(app) {
           table.string("videoId").references("id").inTable("videos").onDelete("CASCADE");
           table.integer("artistId").unsigned().references("id").inTable("artists").onDelete("CASCADE");
           table.primary(["videoId", "artistId"]);
-          table.index("artistId"); // Speed up artist detail loading
+          table.index("artistId");
         });
       } else {
         try { await db.schema.alterTable('video_artists', t => t.index('artistId')); } catch (e) { }
@@ -106,7 +113,9 @@ function initialize(app) {
         });
       }
 
-      // Migrations
+      // * ----------------
+      // * COLUMN MIGRATIONS
+      // * ----------------
       if (!(await db.schema.hasColumn("playlists", "coverPath"))) {
         await db.schema.alterTable("playlists", (table) => { table.string("coverPath"); });
       }
@@ -123,10 +132,12 @@ function initialize(app) {
         await db.schema.alterTable("download_history", (table) => { table.string("status").defaultTo("success"); });
       }
 
-      // Optimize SQLite settings for Desktop usage
-      await db.raw('PRAGMA journal_mode = WAL;'); // Write-Ahead Logging (faster concurrency)
-      await db.raw('PRAGMA synchronous = NORMAL;'); // Less aggressive fsync (faster writes)
-      await db.raw('PRAGMA cache_size = -64000;'); // Use ~64MB memory for cache
+      // * ----------------
+      // * PRAGMA TUNING
+      // * ----------------
+      await db.raw('PRAGMA journal_mode = WAL;'); // ! Faster concurrency
+      await db.raw('PRAGMA synchronous = NORMAL;'); // ! Less aggressive fsync
+      await db.raw('PRAGMA cache_size = -64000;'); // ! 64MB Cache
 
     } catch (error) {
       console.error("Database initialization failed:", error);
@@ -137,23 +148,12 @@ function initialize(app) {
   })();
 }
 
-// ... rest of the functions (getLibrary, etc.) remain exactly the same as previous file ...
-// (I am omitting the rest of the 500 lines of logic here as they don't change, 
-//  but in your local file, KEEP the logic from the previous full main.js provided)
-
-// Just strictly outputting the module.exports to ensure file completeness if you copy-paste
-// BUT YOU MUST COPY THE FUNCTIONS FROM THE PREVIOUS main.js or database.js I SENT
-// AND MERGE THIS INITIALIZE FUNCTION.
-
-// To be safe, I will re-provide the EXPORT section so you don't lose it.
-// You need to combine this initialize function with the logic provided in the *Database.js* section of my previous responses.
-// Since you asked for "The Code", I will provide the FULL optimized database.js below.
+// * ----------------------
+// * VIDEO OPERATIONS
+// * ----------------------
 
 async function getLibrary() {
   try {
-    // Only select what we display on the grid to save IPC bandwidth.
-    // If you need full details for the player, fetch single video by ID then.
-    // However, for sorting/filtering we currently need most fields. 
     return await db("videos").select("*").orderBy("downloadedAt", "desc");
   } catch (error) {
     console.error("Error getting library from DB:", error);
@@ -164,6 +164,7 @@ async function getLibrary() {
 async function addOrUpdateVideo(videoData) {
   try {
     const { artist, ...videoInfo } = videoData;
+    // ! SQLite 'ON CONFLICT' equivalent
     await db("videos").insert(videoInfo).onConflict("id").merge();
   } catch (error) {
     console.error("Error saving video to DB:", error);
@@ -193,8 +194,10 @@ async function deleteVideo(id) {
     const artistLinks = await db("video_artists").where({ videoId: id }).select("artistId");
     const artistIds = artistLinks.map((link) => link.artistId);
 
+    // * Cascade delete will handle relationships, but we handle file cleanup manually if needed
     await db("videos").where({ id }).del();
 
+    // * Cleanup artists that no longer have any videos
     if (artistIds.length > 0) {
       for (const artistId of artistIds) {
         const remaining = await db("video_artists").where({ artistId }).first(db.raw("count(*) as count"));
@@ -232,6 +235,7 @@ async function toggleFavorite(id) {
 
 async function clearAllMedia() {
   try {
+    // ! DANGER: Nukes everything
     await db("video_artists").del();
     await db("artists").del();
     await db("playlist_videos").del();
@@ -243,6 +247,10 @@ async function clearAllMedia() {
     return { success: false, error: error.message };
   }
 }
+
+// * ----------------------
+// * PLAYLIST OPERATIONS
+// * ----------------------
 
 async function createPlaylist(name) {
   try {
@@ -260,6 +268,7 @@ async function findOrCreatePlaylistByName(name) {
     const [id] = await db("playlists").insert({ name });
     return { id, name };
   } catch (error) {
+    // ? Handle race condition
     if (error.message.includes("UNIQUE constraint failed")) return db("playlists").where({ name }).first();
     return null;
   }
@@ -267,7 +276,7 @@ async function findOrCreatePlaylistByName(name) {
 
 async function getAllPlaylistsWithStats() {
   try {
-    // Optimized query
+    // ! Complex query: Gets playlist + cover of first video + count of videos
     const playlists = await db.raw(`
       SELECT
         p.*,
@@ -374,6 +383,10 @@ async function getPlaylistsForVideo(videoId) {
     return [];
   }
 }
+
+// * ----------------------
+// * ARTIST OPERATIONS
+// * ----------------------
 
 async function findOrCreateArtist(name, thumbnailPath) {
   try {
@@ -483,6 +496,7 @@ async function cleanupOrphanArtists() {
 
 async function regenerateArtists() {
   try {
+    // ! Heavy operation: Iterates ALL videos
     const videos = await db("videos").select("id", "creator", "coverPath");
     let count = 0;
     for (const video of videos) {
@@ -503,6 +517,10 @@ async function regenerateArtists() {
     return { success: false, error: error.message };
   }
 }
+
+// * ----------------------
+// * HISTORY OPERATIONS
+// * ----------------------
 
 async function addToHistory(item) {
   try {
