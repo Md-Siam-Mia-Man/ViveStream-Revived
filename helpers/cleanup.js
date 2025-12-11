@@ -5,47 +5,54 @@ const path = require('path');
 // CONFIGURATION
 // ==========================================
 
-// Path to 'python-portable' relative to 'helpers/cleanup.js'
 const PORTABLE_ROOT = path.join(__dirname, '..', 'python-portable');
 
-// 1. Root folders to delete immediately inside any platform folder
-// (e.g., python-linux-gnu/share or python-win-x64/tcl)
+// Folders to remove immediately from the root of the python environment
 const TOP_LEVEL_DIRS_TO_REMOVE = [
     'include',
-    'share',     // Documentation and Man pages
-    'tcl',       // Tkinter GUI toolkit (not needed for yt-dlp)
+    'share',
+    'tcl',
     'doc',
     'man',
     'manuals',
-    'libs',      // Windows static C libs (usually not needed for runtime)
+    'libs', // Static libs often not needed for runtime execution of scripts
+    'Tools'
 ];
 
-// 2. Binaries/Executables to KEEP in 'bin' or 'Scripts'.
-// Everything else in those folders will be DELETED.
-// NOTE: Matches filenames with and without .exe extension.
+// Binaries/Executables to KEEP in 'bin' or 'Scripts'.
 const EXECUTABLES_ALLOWLIST = [
-    'python',
-    'python3',
-    'python3.14',
-    'pythonw',
-    'pip',
-    'pip3',
-    'pip3.14',
-    'yt-dlp',
-    'static_ffmpeg',
-    'static_ffmpeg_paths',
-    'static_ffprobe'
+    'python', 'python.exe',
+    'python3', 'python3.exe',
+    'pythonw', 'pythonw.exe',
+    'pip', 'pip.exe',
+    'yt-dlp', 'yt-dlp.exe',
+    'ffmpeg', 'ffmpeg.exe',
+    'ffprobe', 'ffprobe.exe',
+    'static_ffmpeg', 'static_ffmpeg.exe',
+    'static_ffprobe', 'static_ffprobe.exe'
 ];
 
-// 3. Bloat inside 'site-packages' to remove specific subdirectories from
+// Patterns or folder names to delete recursively anywhere
+const RECURSIVE_DELETE_PATTERNS = [
+    '__pycache__',
+    'tests',
+    'test',
+    'testing',
+    'examples',
+    'sample',
+    'samples',
+    'docs'
+];
+
+// Specific cleanup rules for site-packages to save space
 const SITE_PACKAGES_CLEANUP_RULES = [
-    { pkg: 'docutils', remove: ['languages', 'test', 'tests'] },
-    { pkg: 'urllib3', remove: ['tests', 'contrib/emscripten'] },
-    { pkg: 'keyring', remove: ['tests', 'testing'] },
-    { pkg: 'rich', remove: ['tests'] },
-    { pkg: 'pygments', remove: ['tests'] },
-    { pkg: 'pip', remove: ['_vendor/rich/tests'] },
-    { pkg: 'yt_dlp', remove: ['__pyinstaller'] } // Remove pyinstaller hooks
+    { pkg: 'docutils', remove: ['languages', 'parsers'] },
+    { pkg: 'urllib3', remove: ['contrib/emscripten'] },
+    { pkg: 'pip', remove: ['_vendor/rich', '_vendor/pygments'] }, // Optional: pip vendors can be heavy
+    { pkg: 'yt_dlp', remove: ['__pyinstaller'] },
+    { pkg: 'babel', remove: ['locale-data'] }, // If present
+    { pkg: 'numpy', remove: ['tests', 'doc'] }, // If present
+    { pkg: 'cryptography', remove: ['hazmat/backends/openssl/src'] } // If present
 ];
 
 // ==========================================
@@ -56,141 +63,158 @@ function deleteItem(itemPath) {
     if (fs.existsSync(itemPath)) {
         try {
             fs.rmSync(itemPath, { recursive: true, force: true });
-            // console.log(`🗑️  Deleted: ${path.basename(itemPath)}`); // Uncomment for verbose logging
         } catch (e) {
             console.error(`❌ Failed to delete ${itemPath}: ${e.message}`);
         }
     }
 }
 
-/**
- * Cleaning Logic for 'bin' (Linux/Mac) and 'Scripts' (Windows) folders.
- * Uses the Whitelist approach.
- */
-function cleanExecutablesFolder(folderPath) {
-    console.log(`   ⚙️  Cleaning Executables in: ${folderPath}`);
-    const files = fs.readdirSync(folderPath);
-
-    files.forEach(file => {
-        const fileNameNoExt = path.parse(file).name; // 'pip.exe' -> 'pip'
-
-        // If it is NOT in our allowlist, delete it
-        if (!EXECUTABLES_ALLOWLIST.includes(fileNameNoExt)) {
-            deleteItem(path.join(folderPath, file));
-        }
-    });
+function isAllowlisted(filename) {
+    // Check exact match or match without extension
+    const name = path.parse(filename).name;
+    const base = path.basename(filename);
+    return EXECUTABLES_ALLOWLIST.includes(base) || EXECUTABLES_ALLOWLIST.includes(name);
 }
 
-/**
- * Cleaning Logic for 'site-packages'.
- * Removes tests, languages, and dist-info records.
- */
+function cleanExecutablesFolder(folderPath) {
+    console.log(`   ⚙️  Cleaning Executables in: ${folderPath}`);
+    try {
+        const files = fs.readdirSync(folderPath);
+        files.forEach(file => {
+            // If it's a directory (like __pycache__), we'll handle it in the recursive walk, 
+            // but we can check if it's a known junk folder here too.
+            const fullPath = path.join(folderPath, file);
+            const stat = fs.statSync(fullPath);
+
+            if (stat.isFile()) {
+                if (!isAllowlisted(file)) {
+                    deleteItem(fullPath);
+                }
+            }
+        });
+    } catch (e) {
+        console.warn(`   ⚠️  Could not clean executables folder: ${e.message}`);
+    }
+}
+
 function cleanSitePackagesFolder(folderPath) {
     console.log(`   📦 Cleaning Libraries in: ${folderPath}`);
 
-    // 1. specific package rules
+    if (!fs.existsSync(folderPath)) return;
+
+    // 1. Specific Package Rules
     SITE_PACKAGES_CLEANUP_RULES.forEach(rule => {
-        rule.remove.forEach(target => {
-            deleteItem(path.join(folderPath, rule.pkg, target));
-        });
+        const pkgPath = path.join(folderPath, rule.pkg);
+        if (fs.existsSync(pkgPath)) {
+            rule.remove.forEach(target => {
+                deleteItem(path.join(pkgPath, target));
+            });
+        }
     });
 
-    // 2. Generic cleanup inside site-packages
+    // 2. Generic Cleanup
     const contents = fs.readdirSync(folderPath);
     contents.forEach(item => {
         const fullPath = path.join(folderPath, item);
 
-        // Remove .dist-info/RECORD files (large text files not needed for runtime)
+        // Remove .dist-info folders entirely? 
+        // WARNING: Removing .dist-info breaks 'pip' metadata, so pip list/freeze won't work.
+        // Runtime usually doesn't need it, BUT 'pkg_resources' might.
+        // We will compromise: keep .dist-info but remove the RECORD file and LICENSE text if large.
         if (item.endsWith('.dist-info') && fs.statSync(fullPath).isDirectory()) {
             deleteItem(path.join(fullPath, 'RECORD'));
+            deleteItem(path.join(fullPath, 'AUTHORS'));
+            deleteItem(path.join(fullPath, 'LICENSE'));
+            deleteItem(path.join(fullPath, 'licenses')); // often contains images or texts
         }
     });
 }
 
-/**
- * Recursive Walker
- * Finds 'Scripts', 'bin', 'site-packages' regardless of depth (handling %cd%).
- * Also cleans __pycache__ and .pyc files globally.
- */
 function walkAndClean(currentDir) {
     if (!fs.existsSync(currentDir)) return;
 
-    const items = fs.readdirSync(currentDir);
+    let items;
+    try {
+        items = fs.readdirSync(currentDir);
+    } catch (e) {
+        return;
+    }
 
     items.forEach(item => {
         const fullPath = path.join(currentDir, item);
-        let stat;
 
+        // Check recursive delete patterns
+        if (RECURSIVE_DELETE_PATTERNS.includes(item)) {
+            deleteItem(fullPath);
+            return;
+        }
+
+        let stat;
         try {
             stat = fs.statSync(fullPath);
         } catch (e) {
-            return; // Skip broken links/permissions
+            return;
         }
 
         if (stat.isDirectory()) {
-            // 1. Global delete for __pycache__
-            if (item === '__pycache__') {
-                deleteItem(fullPath);
-                return;
-            }
+            const lowerItem = item.toLowerCase();
 
-            // 2. Identify Target Folders
-            if (item.toLowerCase() === 'scripts' || item.toLowerCase() === 'bin') {
+            // Identify special folders
+            if (lowerItem === 'scripts' || lowerItem === 'bin') {
                 cleanExecutablesFolder(fullPath);
-                // We still recurse into bin/Scripts to clean __pycache__ if any
-            } else if (item === 'site-packages') {
+                // Continue recursing to catch __pycache__ inside bin if any
+                walkAndClean(fullPath);
+            } else if (lowerItem === 'site-packages') {
                 cleanSitePackagesFolder(fullPath);
+                walkAndClean(fullPath);
+            } else {
+                walkAndClean(fullPath);
             }
-
-            // Recurse
-            walkAndClean(fullPath);
         } else {
-            // 3. File cleanup
-            if (item.endsWith('.pyc') || item.endsWith('.pyo') || item.endsWith('.whl')) {
-                deleteItem(fullPath);
+            // File Cleanup
+            // Remove compiled python files to save space (they regenerate if needed, but slower startup)
+            // User complained about slow startup, so maybe KEEP .pyc?
+            // Actually, .pyc mismatch causes issues. Portable envs usually come with them.
+            // Let's delete .pyc to ensure clean state, or keep them? 
+            // "Initializing python env taking soo long" -> missing .pyc can cause this on first run.
+            // However, bulk deletion usually helps reduce size significantly. 
+            // Let's delete junk extensions only.
+            if (item.endsWith('.pdb') || item.endsWith('.whl') || item.endsWith('.txt') || item.endsWith('.md')) {
+                // Keep requirements.txt or LICENSE.txt in root? No, delete broadly except known configs.
+                if (item.toLowerCase() !== 'license.txt' && item.toLowerCase() !== 'python314._pth') {
+                    deleteItem(fullPath);
+                }
             }
         }
     });
 }
 
-// ==========================================
-// MAIN LOGIC
-// ==========================================
-
 function main() {
     console.log("=========================================");
-    console.log("   🐍 PYTHON PORTABLE CLEANUP SCRIPT");
+    console.log("   🧹 DEEP CLEANUP: Python Portable");
     console.log("=========================================");
 
     if (!fs.existsSync(PORTABLE_ROOT)) {
-        console.error(`❌ Could not find directory: ${PORTABLE_ROOT}`);
+        console.error(`❌ Could not find: ${PORTABLE_ROOT}`);
         return;
     }
 
-    // Get all platform folders (python-win-x64, python-linux-gnu, etc.)
     const platforms = fs.readdirSync(PORTABLE_ROOT).filter(f => {
         return fs.statSync(path.join(PORTABLE_ROOT, f)).isDirectory();
     });
 
-    if (platforms.length === 0) {
-        console.log("⚠️  No platform folders found in python-portable.");
-        return;
-    }
-
     platforms.forEach(platform => {
         const platformPath = path.join(PORTABLE_ROOT, platform);
-        console.log(`\n📂 Processing Platform: ${platform}`);
+        console.log(`\n📂 Platform: ${platform}`);
 
-        // 1. Remove Top Level Junk (docs, man pages, tcl)
+        // 1. Top Level Removal
         TOP_LEVEL_DIRS_TO_REMOVE.forEach(d => deleteItem(path.join(platformPath, d)));
 
-        // 2. Walk the tree to find 'Scripts', 'site-packages' and clean artifacts
-        // This handles the %cd% folder in Windows automatically because it just walks into it.
+        // 2. Recursive Walk
         walkAndClean(platformPath);
     });
 
-    console.log(`\n✨ Cleanup Complete!`);
-    console.log(`✅ Preserved: ${EXECUTABLES_ALLOWLIST.join(', ')}`);
+    console.log(`\n✨ Cleanup Finished.`);
 }
 
 main();

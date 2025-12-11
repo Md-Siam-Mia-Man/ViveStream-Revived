@@ -22,7 +22,11 @@ function log(step, message) {
 }
 
 function parseVerbose() {
-    return process.argv.includes("--verbose");
+    return process.argv.includes("--verbose") || process.argv.includes("--debug");
+}
+
+function parseDebug() {
+    return process.argv.includes("--debug");
 }
 
 function parseTargets() {
@@ -172,7 +176,10 @@ function moveArtifacts(sourceDir, destDir) {
         const isInteresting = interestingExtensions.some(ext => file.endsWith(ext));
         const isYml = file.endsWith(".yml");
 
-        if (isInteresting || isYml) {
+        // In debug mode, we might want to see yml files in the final folder too, 
+        // but typically we just keep them in releaseDir. 
+        // This function moves final installers.
+        if (isInteresting) {
             const dest = path.join(destDir, file);
             try {
                 if (path.relative(fullPath, dest) !== "") fs.renameSync(fullPath, dest);
@@ -195,6 +202,7 @@ async function runBuild() {
     const tempConfigPath = path.join(rootDir, "temp-build-config.json");
 
     const verbose = parseVerbose();
+    const debug = parseDebug();
 
     console.log(colors.cyan + "==================================================" + colors.reset);
     console.log(colors.cyan + "            ViveStream Custom Builder             " + colors.reset);
@@ -202,23 +210,38 @@ async function runBuild() {
     console.log(`   Target Platform: ${colors.yellow}${platformConfig.name}${colors.reset}`);
     console.log(`   Target Formats:  ${colors.yellow}${Array.isArray(platformConfig.target) ? platformConfig.target.join(", ") : platformConfig.target}${colors.reset}`);
     console.log(`   Bundling Python: ${colors.yellow}${platformConfig.pythonSource}${colors.reset}`);
+    console.log(`   Mode:            ${debug ? colors.red + "DEBUG" : colors.green + "RELEASE"}${colors.reset}`);
     console.log(`   Verbose Logging: ${verbose ? colors.green + "ON" : colors.gray + "OFF"}${colors.reset}`);
 
-    log("1/5", "Cleanup");
+    // --- PRE-BUILD HOOKS ---
+    log("1/6", "Preparing Environment");
+    console.log(`   ${colors.gray}→  Joining split files...${colors.reset}`);
+    await executeCommand("node", ["helpers/large-file-manager.js", "join"], rootDir);
+
+    console.log(`   ${colors.gray}→  Cleaning Python environment...${colors.reset}`);
+    await executeCommand("node", ["helpers/cleanup.js"], rootDir);
+    console.log(`   ${colors.green}✔ Environment Ready.${colors.reset}`);
+
+    log("\n2/6", "Cleanup Build Dirs");
+    // Only clean if NOT in debug mode, or if user explicitly wants a fresh start.
+    // Debug mode usually implies we want to inspect what happened, but for a build command,
+    // we generally want a clean output folder to avoid mixing old/new artifacts.
+    // However, if we are debugging the builder itself, maybe we keep it. 
+    // Requirement: "generate ... files and dont delete them". 
+    // Usually means don't delete *after*. Deleting *before* is safe/good practice.
     if (fs.existsSync(releaseDir)) {
         try {
             if (rimrafSync) rimrafSync(releaseDir);
             else await rimraf(releaseDir);
         } catch (e) { }
     }
-    console.log(`   ${colors.green}✔ Clean.${colors.reset}`);
+    console.log(`   ${colors.green}✔ Release directory cleaned.${colors.reset}`);
 
-    log("\n2/5", "Rebuilding Native Dependencies");
-    // install-app-deps doesn't usually need arguments, but maybe we should silence it too?
+    log("\n3/6", "Rebuilding Native Dependencies");
     await executeCommand("npx", ["electron-builder", "install-app-deps"], rootDir);
     console.log(`   ${colors.green}✔  Rebuild Complete.${colors.reset}`);
 
-    log("\n3/5", "Packaging (electron-builder)");
+    log("\n4/6", "Packaging (electron-builder)");
     console.log(`   ${colors.gray}→  Generating configuration...${colors.reset}`);
 
     const extraResources = [];
@@ -249,7 +272,6 @@ async function runBuild() {
             });
         } else {
             console.warn(`${colors.red}WARNING: Portable Python not found at ${platformConfig.pythonSource}${colors.reset}`);
-            console.warn(`${colors.green}Run: git clone https://github.com/Md-Siam-Mia-Main/python-portable.git ${platformConfig.pythonSource}${colors.reset}`);
         }
     }
 
@@ -280,8 +302,8 @@ async function runBuild() {
     });
 
     const buildConfig = {
-        appId: "com.vivestream.app",
-        productName: "ViveStream",
+        appId: "com.vivestream.revived.app",
+        productName: "ViveStream Revived",
         copyright: "Copyright © 2025 Md Siam Mia",
         directories: {
             output: "release",
@@ -296,14 +318,17 @@ async function runBuild() {
             "!**/node_modules/*.d.ts",
             "!**/node_modules/.bin",
             "!vendor/**/*",
-            "!python-portable/**/*", // Exclude root, we add specific platform via extraResources
+            "!python-portable/**/*",
             "!**/.git/**",
             "!**/.github/**",
             "!**/helpers/**"
         ],
         extraResources: extraResources,
         fileAssociations: fileAssociations,
-        compression: "maximum",
+        // In debug mode, use 'store' for speed. In release, 'maximum'.
+        compression: debug ? "store" : "maximum",
+        // Do not pack asar in debug if you want to inspect files easily, 
+        // but usually we want to test the ASAR.
         asar: true,
         win: {
             target: platformConfig.id === "win" ? platformConfig.target : "msi",
@@ -349,7 +374,6 @@ async function runBuild() {
 
     fs.writeFileSync(tempConfigPath, JSON.stringify(buildConfig, null, 2));
 
-    // Add publish flag if GH_TOKEN is present
     const builderArgs = ["electron-builder", "--config", "temp-build-config.json", platformConfig.cliFlag];
     if (process.env.GH_TOKEN) {
         console.log(`   ${colors.yellow}✔ GitHub Token detected, enabling publish...${colors.reset}`);
@@ -359,38 +383,47 @@ async function runBuild() {
     try {
         await executeCommand("npx", builderArgs, rootDir);
     } catch (e) {
-        if (fs.existsSync(tempConfigPath)) fs.unlinkSync(tempConfigPath);
+        // Keep config in debug mode for inspection
+        if (!debug && fs.existsSync(tempConfigPath)) fs.unlinkSync(tempConfigPath);
         throw e;
     }
 
-    if (fs.existsSync(tempConfigPath)) fs.unlinkSync(tempConfigPath);
+    if (!debug && fs.existsSync(tempConfigPath)) fs.unlinkSync(tempConfigPath);
 
-    log("\n4/5", "Organizing Artifacts");
+    log("\n5/6", "Organizing Artifacts");
 
     const movedFiles = moveArtifacts(releaseDir, finalArtifactDir);
     if (movedFiles && movedFiles.length > 0) {
         movedFiles.forEach(f => console.log(`   ✔ Moved: ${f}`));
     }
 
-    if (fs.existsSync(releaseDir)) {
-        const files = fs.readdirSync(releaseDir);
-        for (const file of files) {
-            const fullPath = path.join(releaseDir, file);
-            if (file === platformConfig.id) continue;
-            try {
-                if (fs.statSync(fullPath).isDirectory()) {
-                    if (rimrafSync) rimrafSync(fullPath);
-                    else await rimraf(fullPath);
-                }
-                else fs.unlinkSync(fullPath);
-            } catch (e) { }
+    // Cleanup Logic (Skipped in Debug)
+    if (!debug) {
+        if (fs.existsSync(releaseDir)) {
+            const files = fs.readdirSync(releaseDir);
+            for (const file of files) {
+                const fullPath = path.join(releaseDir, file);
+                // Keep the platform folder (e.g. release/win)
+                if (file === platformConfig.id) continue;
+                try {
+                    if (fs.statSync(fullPath).isDirectory()) {
+                        if (rimrafSync) rimrafSync(fullPath);
+                        else await rimraf(fullPath);
+                    }
+                    else fs.unlinkSync(fullPath);
+                } catch (e) { }
+            }
         }
+    } else {
+        console.log(`   ${colors.yellow}⚠ Debug Mode: Artifacts (blockmap, yml, unpacked) preserved in 'release/' folder.${colors.reset}`);
     }
 
-    log("\n5/5", "Complete");
+    log("\n6/6", "Complete");
     if (movedFiles && movedFiles.length > 0) {
         console.log(`${colors.green}   Build Successful!${colors.reset}`);
-        console.log(`   Artifacts are in: release/${platformConfig.id}/\n`);
+        console.log(`   Installers are in: release/${platformConfig.id}/`);
+        if (debug) console.log(`   Debug files are in: release/`);
+        console.log("");
     } else {
         console.log(`${colors.yellow}   Build finished, but no artifacts moved.${colors.reset}\n`);
     }
