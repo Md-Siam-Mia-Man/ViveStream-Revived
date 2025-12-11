@@ -105,7 +105,7 @@ export function renderPlaylistCard(playlist) {
 
   card.innerHTML = `
     <div class="playlist-thumbnail-container">
-        <img data-src="${thumbnailSrc}" src="${placeholderSrc}" class="playlist-thumbnail lazy" alt="playlist-thumbnail" onerror="this.onerror=null;this.src='${placeholderSrc}';">
+        <img data-src="${thumbnailSrc}" src="${placeholderSrc}" class="playlist-thumbnail lazy" alt="playlist-thumbnail" decoding="async" onerror="this.onerror=null;this.src='${placeholderSrc}';">
         <div class="playlist-overlay-info"><span class="material-symbols-outlined">playlist_play</span><span>Playlist</span></div>
         <span class="material-symbols-outlined playlist-play-icon">play_arrow</span>
     </div>
@@ -149,7 +149,6 @@ export async function renderPlaylistDetailPage(playlistId) {
       ? decodeURIComponent(playlist.videos[0].coverPath)
       : placeholderSrc;
 
-  // New Header Structure matching Artists
   const headerWrapper = document.createElement("div");
   headerWrapper.className = "playlist-detail-header-wrapper";
   headerWrapper.style.setProperty("--bg-image", `url('${coverSrc}')`);
@@ -157,7 +156,7 @@ export async function renderPlaylistDetailPage(playlistId) {
   headerWrapper.innerHTML = `
     <div class="playlist-detail-header">
         <div class="playlist-detail-image-container">
-            <img src="${coverSrc}" class="playlist-detail-image" alt="${playlist.name}" onerror="this.onerror=null;this.src='${placeholderSrc}';">
+            <img src="${coverSrc}" class="playlist-detail-image" alt="${playlist.name}" decoding="async" onerror="this.onerror=null;this.src='${placeholderSrc}';">
             <button class="edit-cover-btn" id="edit-playlist-cover-btn" title="Change cover"><span class="material-symbols-outlined">photo_camera</span></button>
         </div>
         <div class="playlist-detail-info">
@@ -247,7 +246,6 @@ export async function openAddToPlaylistModal(videoId) {
   inputField.focus();
 }
 
-// Global Event Listeners (delegated)
 playlistsPage.addEventListener("click", async (e) => {
   const menuBtn = e.target.closest(".playlist-grid-item .menu-btn");
   if (menuBtn) {
@@ -290,7 +288,6 @@ playlistsPage.addEventListener("click", async (e) => {
   }
 });
 
-// Listener for creating playlist from header or modal logic
 document.addEventListener("click", async (e) => {
   if (e.target.closest("#create-new-playlist-btn")) {
     const newName = await showPromptModal(
@@ -301,7 +298,6 @@ document.addEventListener("click", async (e) => {
       const result = await window.electronAPI.playlistCreate(newName.trim());
       if (result.success) {
         showNotification(`Playlist "${newName.trim()}" created.`, "success");
-        // Refresh only if on playlists page
         const activePage = document.querySelector(".nav-item.active");
         if (activePage && activePage.dataset.page === "playlists") {
           await renderPlaylistsPage();
@@ -380,7 +376,6 @@ document
   });
 
 playlistDetailPage.addEventListener("click", async (e) => {
-  // Edit Cover
   const editCoverBtn = e.target.closest("#edit-playlist-cover-btn");
   if (editCoverBtn) {
     const playlistId = document.getElementById("rename-playlist-btn").dataset
@@ -394,7 +389,6 @@ playlistDetailPage.addEventListener("click", async (e) => {
     }
   }
 
-  // Rename
   const renameBtn = e.target.closest("#rename-playlist-btn");
   if (renameBtn) {
     const playlistId = renameBtn.dataset.id;
@@ -418,7 +412,6 @@ playlistDetailPage.addEventListener("click", async (e) => {
     }
   }
 
-  // Delete
   const deleteBtn = e.target.closest("#delete-playlist-btn");
   if (deleteBtn) {
     const playlistId = deleteBtn.dataset.id;
