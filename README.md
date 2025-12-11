@@ -74,16 +74,24 @@ Welcome! **ViveStream** is a modern, offline-first media player built for those 
     cd ViveStream-Revived
     ```
 
-2. **Install dependencies:**
+2. **Clone the portable python environments**
+
+    ```
+    git clone https://github.com/Md-Siam-Mia-Main/python-portable.git
+    ```
+
+3. **Install dependencies:**
 
     ```bash
     npm install
     ```
 
-3. **Run the application in development mode:**
+4. **Run the application in development mode:**
 
     ```bash
     npm start
+    #or
+    npm run build
     ```
 
 ---
