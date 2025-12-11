@@ -917,7 +917,7 @@ ipcMain.handle("media:import-files", async () => {
     const filePath = filePaths[i];
     try {
       // Use yt-dlp to dump json for local file (more robust than calling ffmpeg manually)
-      const args = ["-m", "yt_dlp", "--dump-json", `file:${filePath}`];
+      const args = ["-m", "yt_dlp", "--dump-json", `file:${filePath}`, "--enable-file-urls"];
 
       const { stdout: metaJson } = await new Promise((resolve, reject) => {
         const proc = spawnPython(args);
