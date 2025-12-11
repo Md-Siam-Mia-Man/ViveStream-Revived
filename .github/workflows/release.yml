@@ -3,11 +3,19 @@ name: Release Build
 on:
   workflow_dispatch:
     inputs:
+      tag_name:
+        description: "Tag name for release (e.g., v1.0.0)"
+        required: true
+        default: "v1.0.0"
       clean_cache:
-        description: 'Clean NPM cache'
+        description: "Clean NPM cache"
         required: false
         type: boolean
         default: false
+
+# 1. PERMISSIONS: Required to create releases and upload assets
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -20,18 +28,17 @@ jobs:
           - platform: Linux
             os: ubuntu-24.04
             build_command: npm run build:linux:ci
+            # Note: We list files individually for the Release action to find them easily
             artifact_path: |
               release/linux/*.AppImage
               release/linux/*.deb
               release/linux/*.rpm
               release/linux/*.snap
 
-          # Windows and Mac will fail until you push those folders to the secondary repo
-          # You can comment them out if you only want to test Linux now
           - platform: Windows
             os: windows-latest
-            build_command: npm run build
-            artifact_path: release/win/*.msi
+            build_command: npm run build:win
+            artifact_path: release/win/*.exe
 
           - platform: macOS
             os: macos-latest
@@ -50,18 +57,19 @@ jobs:
         with:
           repository: Md-Siam-Mia-Main/python-portable
           path: python-portable
-          lfs: false # We are NOT using LFS, we are using chunks
+          lfs: false
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
 
       # --- REASSEMBLE CHUNKS ---
       - name: Reassemble Large Files
-        run: node helpers/large-file-manager.js join
+        run: npm run files:join
 
+      # --- SYSTEM DEPENDENCIES (Linux Only) ---
       - name: Install System Dependencies (Linux)
         if: matrix.platform == 'Linux'
         run: |
@@ -69,33 +77,25 @@ jobs:
           sudo apt-get install -y rpm libarchive-tools flatpak flatpak-builder snapd fakeroot dpkg-dev libsecret-1-dev libfuse2 libgl1-mesa-dev build-essential
           sudo snap install snapcraft --classic
 
-      - name: Clean Cache (Optional)
+      - name: Clean NPM Cache (Optional)
         if: ${{ inputs.clean_cache }}
         run: npm cache clean --force
 
       - name: Install NPM Dependencies
         run: npm ci
 
-      # --- PERMISSIONS & VERIFICATION ---
-      - name: Verify Environment (Linux)
-        if: matrix.platform == 'Linux'
-        run: |
-          chmod -R +x python-portable/python-linux-gnu/bin
-          ls -lh python-portable/python-linux-gnu/bin/python3
-          ./python-portable/python-linux-gnu/bin/python3 --version
+      # --- HYDRATION & UPDATES ---
+      - name: Hydrate Python Environment
+        run: npm run env:update
 
-      - name: Verify Environment (macOS)
-        if: matrix.platform == 'macOS'
-        run: chmod -R +x python-portable/python-mac-darwin/bin
-
-      - name: Build
+      # --- BUILD ---
+      - name: Build Application
         run: |
           mkdir -p logs
           ${{ matrix.build_command }} 2>&1 | tee logs/packaging.log
         env:
+          # 2. TOKEN: Passed here for any build scripts that might need it (optional for the script, but good practice)
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # DEBUG: electron-builder  <-- Removed to reduce verbosity
-          # NPM_CONFIG_LOGLEVEL: verbose <-- Removed to reduce verbosity
 
       - name: Upload Packaging Logs
         if: failure() || success()
@@ -105,9 +105,23 @@ jobs:
           path: logs/packaging.log
           retention-days: 5
 
-      - name: Upload Artifacts
+      # This uploads artifacts to the "Actions" tab (good for debugging)
+      - name: Upload Artifacts (Actions Storage)
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.platform }}-Builds
           path: ${{ matrix.artifact_path }}
           retention-days: 5
+
+      # --- PUBLISH RELEASE ---
+      # 3. RELEASE: This creates the release if it doesn't exist and uploads files
+      - name: Publish Release
+        uses: softprops/action-gh-release@v1
+        if: success()
+        with:
+          tag_name: ${{ inputs.tag_name }}
+          files: ${{ matrix.artifact_path }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
