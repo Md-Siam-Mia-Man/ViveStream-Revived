@@ -1,3 +1,5 @@
+> **⚠️ Note:** Docs are generate by AI
+
 # IPC API Reference
 
 Communication between the **Renderer** (React) and **Main** (Node.js) processes is handled via the `electron` IPC module.

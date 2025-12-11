@@ -1,3 +1,5 @@
+> **⚠️ Note:** Docs are generate by AI
+
 # Build System & Vendor Management
 
 The project uses a sophisticated custom build system to handle cross-platform complexities, particularly regarding external dependencies like Python, FFmpeg, and yt-dlp.

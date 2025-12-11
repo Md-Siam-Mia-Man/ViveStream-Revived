@@ -1,3 +1,5 @@
+> **⚠️ Note:** Docs are generate by AI
+
 # Database Schema & Management
 
 The application uses **SQLite** for data persistence, managed by **Knex.js** as the query builder.

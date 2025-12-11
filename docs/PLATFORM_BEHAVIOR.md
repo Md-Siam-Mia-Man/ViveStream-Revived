@@ -1,3 +1,5 @@
+> **⚠️ Note:** Docs are generate by AI
+
 # Platform Specific Installer/Uninstaller Behavior
 
 ## 🪟 Windows (NSIS)
