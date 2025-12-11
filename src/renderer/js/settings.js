@@ -258,30 +258,16 @@ export function initializeSettingsPage() {
       "Reset ViveStream?",
       "This will restore all settings to their defaults. Your downloaded media will not be deleted.",
       async () => {
-        // Reset Backend Settings
         const newSettings = await window.electronAPI.resetApp();
-
-        // Reset Local Storage (Theme, UI prefs)
         localStorage.clear();
-
-        // Apply Default Theme (Dark)
         document.body.classList.remove("light-theme");
         if (themeToggle) themeToggle.checked = false;
-
-        // Reset FPS
         toggleFPSCounter(false);
         if (fpsToggle) fpsToggle.checked = false;
-
-        // Reset Window Controls
         setWindowControlsAlignment("auto");
-        // Reset dropdown in UI
         const defaultWinControl = windowControlsSelect.querySelector('.option-item[data-value="auto"]');
         if (defaultWinControl) defaultWinControl.click();
-
-        // Update Backend UI elements
         updateSettingsUI(newSettings);
-
-        // Reload player settings if needed
         const playerModule = await import("./player.js");
         playerModule.loadSettings();
 
@@ -296,7 +282,7 @@ export function initializeSettingsPage() {
   deleteDbBtn.addEventListener("click", () => {
     showConfirmationModal(
       "Delete Database?",
-      "<strong>WARNING:</strong> This will delete your database and restart the application. All metadata (playlists, favorites, histories) will be lost, but your downloaded media files will remain on disk. You can re-import them afterwards.",
+      "<strong>WARNING:</strong> This will delete your database and restart the application. All metadata will be lost, but media files remain.<br><br><strong>Use this before uninstalling on Mac/Linux if you want to clear app data.</strong>",
       async () => {
         await window.electronAPI.deleteDatabase();
       }
@@ -318,16 +304,14 @@ export function initializeSettingsPage() {
   clearMediaBtn.addEventListener("click", () => {
     showConfirmationModal(
       "Delete All Media?",
-      "<strong>WARNING:</strong> This will permanently delete all your downloaded videos, audio, and metadata. This action cannot be undone.",
+      "<strong>WARNING:</strong> This will permanently delete all your downloaded videos, audio, and metadata. This action cannot be undone.<br><br><strong>Recommended before uninstalling on Mac/Linux.</strong>",
       async () => {
         const result = await window.electronAPI.clearAllMedia();
         if (result.success) {
           showNotification("All local media has been deleted.", "success");
           resetPlaybackState();
-          // Clear player source
           const vp = document.getElementById("video-player");
           if (vp) vp.src = "";
-
           closeMiniplayer();
           await loadLibrary();
           showPage("home");
