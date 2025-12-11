@@ -11,6 +11,88 @@
      font-weight: 400 900;
 }
 
+/* --- Material Symbols Icons --- */
+
+@font-face {
+     font-family: "Material Symbols Outlined";
+     font-style: normal;
+     font-weight: 100 700;
+     font-display: block;
+     src: url("../../../assets/icons/material-symbols-outlined.woff2") format("woff2");
+}
+
+.material-symbols-outlined {
+     font-family: "Material Symbols Outlined";
+     font-weight: normal;
+     font-style: normal;
+     font-size: 24px;
+     line-height: 1;
+     letter-spacing: normal;
+     text-transform: none;
+     display: inline-block;
+     white-space: nowrap;
+     word-wrap: normal;
+     direction: ltr;
+     -webkit-font-smoothing: antialiased;
+     -moz-osx-font-smoothing: grayscale;
+     text-rendering: optimizeLegibility;
+     font-feature-settings: "liga";
+}
+
+@font-face {
+     font-family: "Material Symbols Rounded";
+     font-style: normal;
+     font-weight: 100 700;
+     font-display: block;
+     src: url("../../../assets/icons/material-symbols-rounded.woff2") format("woff2");
+}
+
+.material-symbols-rounded {
+     font-family: "Material Symbols Rounded";
+     font-weight: normal;
+     font-style: normal;
+     font-size: 24px;
+     line-height: 1;
+     letter-spacing: normal;
+     text-transform: none;
+     display: inline-block;
+     white-space: nowrap;
+     word-wrap: normal;
+     direction: ltr;
+     -webkit-font-smoothing: antialiased;
+     -moz-osx-font-smoothing: grayscale;
+     text-rendering: optimizeLegibility;
+     font-feature-settings: "liga";
+}
+
+@font-face {
+     font-family: "Material Symbols Sharp";
+     font-style: normal;
+     font-weight: 100 700;
+     font-display: block;
+     src: url("../../../assets/icons/material-symbols-sharp.woff2") format("woff2");
+}
+
+.material-symbols-sharp {
+     font-family: "Material Symbols Sharp";
+     font-weight: normal;
+     font-style: normal;
+     font-size: 24px;
+     line-height: 1;
+     letter-spacing: normal;
+     text-transform: none;
+     display: inline-block;
+     white-space: nowrap;
+     word-wrap: normal;
+     direction: ltr;
+     -webkit-font-smoothing: antialiased;
+     -moz-osx-font-smoothing: grayscale;
+     text-rendering: optimizeLegibility;
+     font-feature-settings: "liga";
+}
+
+/* --- End Icons --- */
+
 :root {
      --font-display: 'MajorMonoDisplay', sans-serif;
      --font-body: 'Poppins', sans-serif;
@@ -423,7 +505,8 @@ button,
      flex-grow: 1;
      min-height: 0;
      position: relative;
-     overflow-x: hidden; /* Prevent horizontal scroll */
+     overflow-x: hidden;
+     /* Prevent horizontal scroll */
 }
 
 /* Sidebar */
@@ -520,7 +603,8 @@ button,
 .content-wrapper {
      flex-grow: 1;
      overflow-y: auto;
-     overflow-x: hidden; /* Prevent horizontal scroll */
+     overflow-x: hidden;
+     /* Prevent horizontal scroll */
      position: relative;
      scroll-behavior: smooth;
 }
