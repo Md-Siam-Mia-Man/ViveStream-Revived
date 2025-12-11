@@ -80,7 +80,7 @@ export function renderArtistCard(artist) {
 
   card.innerHTML = `
     <div class="artist-thumbnail-container">
-      <img data-src="${thumbnailSrc}" src="${placeholderSrc}" class="artist-thumbnail lazy" alt="${artist.name}" onerror="this.onerror=null;this.src='${placeholderSrc}';">
+      <img data-src="${thumbnailSrc}" src="${placeholderSrc}" class="artist-thumbnail lazy" alt="${artist.name}" decoding="async" onerror="this.onerror=null;this.src='${placeholderSrc}';">
     </div>
     <div class="artist-info">
       <p class="artist-name">${artist.name}</p>
@@ -114,11 +114,10 @@ export async function renderArtistDetailPage(artistId) {
   headerWrapper.className = "artist-detail-header-wrapper";
   headerWrapper.style.setProperty("--bg-image", `url('${thumbnailSrc}')`);
 
-  // Added Actions buttons
   headerWrapper.innerHTML = `
     <div class="artist-detail-header">
         <div class="artist-detail-image-container">
-            <img src="${thumbnailSrc}" class="artist-detail-image" alt="${artist.name}" onerror="this.onerror=null;this.src='${placeholderSrc}';">
+            <img src="${thumbnailSrc}" class="artist-detail-image" alt="${artist.name}" decoding="async" onerror="this.onerror=null;this.src='${placeholderSrc}';">
             <button class="edit-cover-btn" id="edit-artist-thumbnail-btn" title="Change thumbnail"><span class="material-symbols-outlined">photo_camera</span></button>
         </div>
         <div class="artist-detail-info">
@@ -164,7 +163,6 @@ export async function renderArtistDetailPage(artistId) {
   }
   artistDetailPage.appendChild(content);
 
-  // Edit Thumbnail
   document
     .getElementById("edit-artist-thumbnail-btn")
     .addEventListener("click", async () => {
@@ -177,7 +175,6 @@ export async function renderArtistDetailPage(artistId) {
       }
     });
 
-  // Rename Artist
   document.getElementById("rename-artist-btn").addEventListener("click", async () => {
     const newName = await showPromptModal("Rename Artist", "Enter new artist name:", artist.name);
     if (newName && newName.trim() && newName.trim() !== artist.name) {
@@ -185,14 +182,13 @@ export async function renderArtistDetailPage(artistId) {
       if (result.success) {
         showNotification("Artist renamed.", "success");
         await renderArtistDetailPage(artistId);
-        await loadLibrary(); // Refresh library to update video metadata potentially
+        await loadLibrary();
       } else {
         showNotification(`Error: ${result.error}`, "error");
       }
     }
   });
 
-  // Delete Artist
   document.getElementById("delete-artist-btn").addEventListener("click", () => {
     showConfirmationModal("Delete Artist?", `Are you sure you want to delete "${artist.name}"? Their videos will NOT be deleted.`, async () => {
       const result = await window.electronAPI.artistDelete(artistId);
