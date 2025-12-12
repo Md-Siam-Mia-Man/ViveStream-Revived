@@ -117,10 +117,8 @@ export function showPage(pageId, isSubPage = false) {
   if (targetPageId === "player-page") {
     deactivateMiniplayer();
     contentWrapper.scrollTo(0, 0);
-    // Explicitly set header actions for player page so filtering works
     setHeaderActions(createHeaderActionsElement());
 
-    // Ensure filter panel is present if not already appended
     if (!playerPage.querySelector(".filter-panel")) {
       const panel = createFilterPanel();
       playerPage.insertBefore(panel, playerPage.firstChild);
@@ -260,7 +258,6 @@ function initializeWindowControls() {
     window.electronAPI.maximizeWindow()
   );
   closeBtn.addEventListener("click", () => window.electronAPI.closeWindow());
-  // Removed logic that updated text content of spans, as they no longer exist.
 }
 
 function initializeContextMenu() {
@@ -440,8 +437,6 @@ function initializeExternalFileHandler() {
       duration: 0
     };
 
-    // Play request for this temporary item
-    // We pass it as a single-item queue
     eventBus.emit("player:play_request", {
       index: 0,
       queue: [tempVideoObject],
