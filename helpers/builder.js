@@ -44,7 +44,8 @@ function parseTargets() {
         if (arg.startsWith("--target=")) {
             const val = arg.split("=")[1];
             if (val === "all") {
-                targets = ["AppImage", "deb", "rpm", "snap", "flatpak"];
+                // ! SNAP REMOVED: It causes frequent failures in CI without Docker
+                targets = ["AppImage", "deb", "rpm"];
             } else {
                 targets = val.split(",").map(t => t.trim());
             }
@@ -110,10 +111,8 @@ async function executeCommand(command, args, cwd) {
             env: { ...process.env, NODE_NO_WARNINGS: 1 }
         });
 
-        // Buffers to store all output for error reporting
         let stdoutLog = "";
         let stderrLog = "";
-
         let hasLoggedPackaging = false;
         let hasLoggedInstaller = false;
 
@@ -129,7 +128,7 @@ async function executeCommand(command, args, cwd) {
             } else if (lowerStr.includes("packaging") && !hasLoggedPackaging) {
                 console.log(`   ${colors.green}→  Packaging application...${colors.reset}`);
                 hasLoggedPackaging = true;
-            } else if ((lowerStr.includes("msi") || lowerStr.includes("nsis") || lowerStr.includes("dmg") || lowerStr.includes("snap") || lowerStr.includes("deb")) && !hasLoggedInstaller && lowerStr.includes("building")) {
+            } else if ((lowerStr.includes("msi") || lowerStr.includes("nsis") || lowerStr.includes("dmg") || lowerStr.includes("snap") || lowerStr.includes("deb") || lowerStr.includes("rpm")) && !hasLoggedInstaller && lowerStr.includes("building")) {
                 console.log(`   ${colors.green}→  Building Installer...${colors.reset}`);
                 hasLoggedInstaller = true;
             } else if (lowerStr.includes("rebuilding native dependencies")) {
@@ -148,11 +147,10 @@ async function executeCommand(command, args, cwd) {
         child.on("close", (code) => {
             if (code === 0) resolve();
             else {
-                // On failure, print the last chunk of logs if not verbose, so user sees why
                 if (!verbose) {
                     console.error(`\n${colors.red}--- BUILD FAILURE LOGS ---${colors.reset}`);
-                    console.error(stderrLog.slice(-2000)); // Print last 2000 chars of error
-                    console.error(stdoutLog.slice(-1000)); // Print last 1000 chars of stdout
+                    console.error(stderrLog.slice(-2000));
+                    console.error(stdoutLog.slice(-1000));
                     console.error(`${colors.red}--------------------------${colors.reset}\n`);
                 }
                 reject(new Error(`Command failed with code ${code}`));
@@ -227,7 +225,6 @@ async function runBuild() {
     if (platformConfig.pythonSource) {
         const pPath = path.join(rootDir, platformConfig.pythonSource);
         if (fs.existsSync(pPath)) {
-            // Linux/Mac permissions fix
             if (process.platform !== "win32") {
                 try {
                     const binDir = path.join(pPath, "bin");
@@ -240,7 +237,6 @@ async function runBuild() {
                 platformConfig.excludePatterns.forEach(p => filterPatterns.push(`!${p}`));
             }
 
-            // USE POSIX PATHS HERE
             extraResources.push({
                 from: toPosix(platformConfig.pythonSource),
                 to: toPosix(platformConfig.pythonSource),
@@ -274,7 +270,7 @@ async function runBuild() {
         },
         nsis: {
             oneClick: false,
-            perMachine: true, // Forces Admin/UAC prompt on Windows
+            perMachine: true,
             allowToChangeInstallationDirectory: true,
             deleteAppDataOnUninstall: false,
             include: "build/installer.nsh",
@@ -285,7 +281,11 @@ async function runBuild() {
             target: platformConfig.id === "linux" ? platformConfig.target : "AppImage",
             icon: toPosix(path.join(rootDir, "assets", "icon.png")),
             category: "Video",
-            executableName: "vivestream-revived"
+            executableName: "vivestream-revived",
+            // ! CRITICAL: Strict metadata for Deb/RPM generation
+            maintainer: "Md Siam Mia <vivestream.revived@example.com>",
+            synopsis: "Offline media player and downloader",
+            description: "Your personal, offline, and stylish media sanctuary."
         },
         mac: {
             target: platformConfig.id === "mac" ? platformConfig.target : "dmg",
@@ -295,11 +295,9 @@ async function runBuild() {
 
     fs.writeFileSync(tempConfigPath, JSON.stringify(buildConfig, null, 2));
 
-    // Pass verbose flag to electron-builder if we are in debug mode
     const builderArgs = ["electron-builder", "--config", "temp-build-config.json", platformConfig.cliFlag];
     if (verbose) builderArgs.push("--verbose");
 
-    // ! Fix: Only add publish flag if explicitly requested via CLI args
     if (shouldPublish) {
         builderArgs.push("--publish", "always");
     } else {
