@@ -202,7 +202,6 @@ input[type=range] {
      appearance: none;
      -webkit-appearance: none;
      height: 4px;
-     background: var(--primary-background);
      border-radius: 2px;
      cursor: pointer;
 }
