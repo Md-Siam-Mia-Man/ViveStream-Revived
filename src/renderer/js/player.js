@@ -2,13 +2,10 @@ import { AppState, setCurrentlyPlaying } from "./state.js";
 import { showPage } from "./renderer.js";
 import { activateMiniplayer } from "./miniplayer.js";
 import { openAddToPlaylistModal } from "./playlists.js";
-import { toggleFavoriteStatus, applyFilters } from "./ui.js";
+import { toggleFavoriteStatus, applyFilters, updateSlider } from "./ui.js";
 import { showNotification } from "./notifications.js";
 import { eventBus } from "./event-bus.js";
 import { formatTime, fuzzySearch } from "./utils.js";
-
-// ... (Constants omitted for brevity, they remain same as original file) ...
-// Ensure you keep the DOM Element selections at the top when you merge
 
 const playerPage = document.getElementById("player-page");
 const playerSection = document.getElementById("player-section");
@@ -76,7 +73,6 @@ const playerState = {
   }
 };
 
-// ... (SleepTimerManager class remains same) ...
 class SleepTimerManager {
   constructor() {
     this.id = null;
@@ -371,7 +367,6 @@ function createUpNextItem(video, isPlaying) {
     ? decodeURIComponent(video.coverPath)
     : placeholderSrc;
 
-  // ADDED decoding="async"
   li.innerHTML = `
       <img data-src="${actualSrc}" src="${placeholderSrc}" class="thumbnail lazy" alt="thumbnail" decoding="async" onerror="this.onerror=null;this.src='${placeholderSrc}';">
       <div class="item-info">
@@ -452,9 +447,6 @@ export function renderUpNextList({ searchTerm = "", sortKey = "" } = {}) {
   allLazyImages.forEach((img) => lazyLoadObserver.observe(img));
 }
 
-// ... (Rest of logic: togglePlay, playNext, playPrevious, updateVolume, listeners) ...
-// Preserved exactly from before, no changes needed for this task.
-
 function togglePlay() {
   if (videoPlayer.src) {
     if (videoPlayer.paused) {
@@ -508,10 +500,7 @@ export function updateVolumeUI() {
   const vol = videoPlayer.volume;
   const muted = videoPlayer.muted;
   volumeSlider.value = muted ? 0 : vol;
-  volumeSlider.style.setProperty(
-    "--volume-progress",
-    `${(muted ? 0 : vol) * 100}%`
-  );
+  updateSlider(volumeSlider);
   const icon = muteBtn.querySelector("span");
   if (muted || vol === 0) icon.textContent = "volume_off";
   else if (vol < 0.5) icon.textContent = "volume_down";
@@ -1040,6 +1029,7 @@ subtitleStyleSubmenu.addEventListener("input", (e) => {
   if (e.target.id === "sub-pos-range") {
     playerState.subtitleStyles.pos = e.target.value + "%";
     applySubtitleStyles();
+    updateSlider(e.target);
   }
 });
 
