@@ -102,7 +102,6 @@
      display: none;
 }
 
-/* Subtitle Styling Variables */
 video::-webkit-media-text-track-display {
      transform: translateY(var(--subtitle-pos, 0%));
 }
@@ -114,7 +113,6 @@ video::cue {
      font-family: var(--subtitle-font, 'Poppins');
 }
 
-/* Player Feedback Overlay */
 #player-feedback {
      position: absolute;
      top: 50%;
@@ -542,48 +540,12 @@ video::cue {
 }
 
 .volume-slider {
-     -webkit-appearance: none;
-     appearance: none;
      width: 100%;
-     height: 3px;
-     background: rgba(255, 255, 255, 0.3);
-     cursor: pointer;
-     border-radius: 3px;
-     --volume-progress: 100%;
-     background-image: linear-gradient(var(--primary-accent), var(--primary-accent));
-     background-size: var(--volume-progress) 100%;
-     background-repeat: no-repeat;
-     transition: height 0.2s;
+     background-color: rgba(255, 255, 255, 0.3);
 }
 
 .volume-slider:hover {
-     height: 5px;
-}
-
-.volume-slider::-webkit-slider-thumb {
-     -webkit-appearance: none;
-     appearance: none;
-     width: 12px;
-     height: 12px;
-     background: #fff;
-     border-radius: 50%;
-     transform: scale(0);
-     transition: transform 0.2s var(--transition-bounce);
-}
-
-.volume-slider::-moz-range-thumb {
-     width: 12px;
-     height: 12px;
-     background: #fff;
-     border-radius: 50%;
-     border: none;
-     transform: scale(0);
-     transition: transform 0.2s var(--transition-bounce);
-}
-
-.volume-container:hover .volume-slider::-webkit-slider-thumb,
-.volume-container:hover .volume-slider::-moz-range-thumb {
-     transform: scale(1);
+     height: 6px;
 }
 
 .timeline-container {
@@ -723,7 +685,6 @@ body.light-theme .submenu-item:hover {
      visibility: visible;
 }
 
-/* Styled Inputs inside Submenu */
 .submenu-input-group {
      width: 100%;
      display: flex;
@@ -743,7 +704,6 @@ body.light-theme .submenu-item:hover {
      align-items: center;
 }
 
-/* Custom dropdown for player menu */
 .player-dropdown {
      background: var(--tertiary-background);
      border: 1px solid var(--border-color);
@@ -758,12 +718,10 @@ body.light-theme .submenu-item:hover {
      align-items: center;
      position: relative;
      flex-wrap: wrap;
-     /* Fixed: Allow list to wrap to next line */
 }
 
 .player-dropdown-list {
      position: static;
-     /* Fixed: Flow within container */
      width: 100%;
      min-width: 100%;
      background: var(--tertiary-background);
@@ -912,5 +870,4 @@ body.light-theme .submenu-item:hover {
 
      #player-page:not(.theater-mode) #up-next-container {
           min-height: 300px;
-     }
-}
+     }}
