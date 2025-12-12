@@ -33,6 +33,10 @@ function parseDebug() {
     return process.argv.includes("--debug");
 }
 
+function parsePublish() {
+    return process.argv.includes("--publish");
+}
+
 function parseTargets() {
     const args = process.argv.slice(2);
     let targets = [];
@@ -188,6 +192,7 @@ async function runBuild() {
     const tempConfigPath = path.join(rootDir, "temp-build-config.json");
     const verbose = parseVerbose();
     const debug = parseDebug();
+    const shouldPublish = parsePublish();
 
     console.log(colors.cyan + "==================================================" + colors.reset);
     console.log(colors.cyan + "            ViveStream Custom Builder             " + colors.reset);
@@ -195,6 +200,7 @@ async function runBuild() {
     console.log(`   Target Platform: ${colors.yellow}${platformConfig.name}${colors.reset}`);
     console.log(`   Bundling Python: ${colors.yellow}${platformConfig.pythonSource}${colors.reset}`);
     console.log(`   Isolation:       ${colors.green}Enabled${colors.reset}`);
+    console.log(`   Publishing:      ${shouldPublish ? colors.green + "Yes" : colors.gray + "No"}${colors.reset}`);
 
     log("1/6", "Preparing Environment");
     console.log(`   ${colors.gray}→  Joining split files...${colors.reset}`);
@@ -268,7 +274,7 @@ async function runBuild() {
         },
         nsis: {
             oneClick: false,
-            perMachine: true, // ! CRITICAL: Forces Admin/UAC prompt on Windows
+            perMachine: true, // Forces Admin/UAC prompt on Windows
             allowToChangeInstallationDirectory: true,
             deleteAppDataOnUninstall: false,
             include: "build/installer.nsh",
@@ -288,10 +294,17 @@ async function runBuild() {
     };
 
     fs.writeFileSync(tempConfigPath, JSON.stringify(buildConfig, null, 2));
+
     // Pass verbose flag to electron-builder if we are in debug mode
     const builderArgs = ["electron-builder", "--config", "temp-build-config.json", platformConfig.cliFlag];
     if (verbose) builderArgs.push("--verbose");
-    if (process.env.GH_TOKEN) builderArgs.push("--publish", "always");
+
+    // ! Fix: Only add publish flag if explicitly requested via CLI args
+    if (shouldPublish) {
+        builderArgs.push("--publish", "always");
+    } else {
+        builderArgs.push("--publish", "never");
+    }
 
     try {
         await executeCommand("npx", builderArgs, rootDir);
