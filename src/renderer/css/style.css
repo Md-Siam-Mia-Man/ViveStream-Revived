@@ -11,8 +11,6 @@
      font-weight: 400 900;
 }
 
-/* --- Material Symbols Icons --- */
-
 @font-face {
      font-family: "Material Symbols Outlined";
      font-style: normal;
@@ -38,60 +36,6 @@
      text-rendering: optimizeLegibility;
      font-feature-settings: "liga";
 }
-
-@font-face {
-     font-family: "Material Symbols Rounded";
-     font-style: normal;
-     font-weight: 100 700;
-     font-display: block;
-     src: url("../../../assets/icons/material-symbols-rounded.woff2") format("woff2");
-}
-
-.material-symbols-rounded {
-     font-family: "Material Symbols Rounded";
-     font-weight: normal;
-     font-style: normal;
-     font-size: 24px;
-     line-height: 1;
-     letter-spacing: normal;
-     text-transform: none;
-     display: inline-block;
-     white-space: nowrap;
-     word-wrap: normal;
-     direction: ltr;
-     -webkit-font-smoothing: antialiased;
-     -moz-osx-font-smoothing: grayscale;
-     text-rendering: optimizeLegibility;
-     font-feature-settings: "liga";
-}
-
-@font-face {
-     font-family: "Material Symbols Sharp";
-     font-style: normal;
-     font-weight: 100 700;
-     font-display: block;
-     src: url("../../../assets/icons/material-symbols-sharp.woff2") format("woff2");
-}
-
-.material-symbols-sharp {
-     font-family: "Material Symbols Sharp";
-     font-weight: normal;
-     font-style: normal;
-     font-size: 24px;
-     line-height: 1;
-     letter-spacing: normal;
-     text-transform: none;
-     display: inline-block;
-     white-space: nowrap;
-     word-wrap: normal;
-     direction: ltr;
-     -webkit-font-smoothing: antialiased;
-     -moz-osx-font-smoothing: grayscale;
-     text-rendering: optimizeLegibility;
-     font-feature-settings: "liga";
-}
-
-/* --- End Icons --- */
 
 :root {
      --font-display: 'MajorMonoDisplay', sans-serif;
@@ -124,7 +68,6 @@
      --sidebar-collapsed-width: 57px;
      --sidebar-expanded-width: 240px;
 
-     /* Animation Variables */
      --transition-bounce: cubic-bezier(0.175, 0.885, 0.32, 1.275);
      --transition-smooth: cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -180,15 +123,9 @@ body {
      z-index: 9999;
      border-top-left-radius: 8px;
      border-top-right-radius: 8px;
-}
-
-.title-bar-drag-region {
-     width: 100%;
-     height: 100%;
      -webkit-app-region: drag;
 }
 
-/* Window Controls Styles */
 .window-controls-container {
      position: absolute;
      top: 8px;
@@ -207,7 +144,6 @@ body {
      opacity: 1;
 }
 
-/* Platform specific alignment */
 body.platform-win .window-controls-container {
      right: 0;
      flex-direction: row;
@@ -218,7 +154,6 @@ body.platform-mac .window-controls-container {
      flex-direction: row-reverse;
 }
 
-/* Traffic Light Button Styles */
 .window-control-btn {
      background: none;
      border: none;
@@ -243,7 +178,6 @@ body.platform-mac .window-controls-container {
      transform: scale(0.95);
 }
 
-/* Colors */
 .window-control-btn.close-btn {
      background-color: #ff5f56;
      border: 1px solid #e0443e;
@@ -263,7 +197,6 @@ body.platform-mac .window-controls-container {
      background-color: #9a9a9a;
      border: 1px solid #808080;
 }
-
 
 ::-webkit-scrollbar {
      width: 8px;
@@ -296,6 +229,42 @@ button,
      font-family: var(--font-body);
 }
 
+input[type="range"] {
+     -webkit-appearance: none;
+     appearance: none;
+     width: 100%;
+     height: 4px;
+     border-radius: 4px;
+     cursor: pointer;
+     background-color: var(--tertiary-background);
+     background-image: linear-gradient(var(--primary-accent), var(--primary-accent));
+     background-size: var(--value-percent, 0%) 100%;
+     background-repeat: no-repeat;
+     transition: height 0.2s ease;
+}
+
+input[type="range"]:hover {
+     height: 6px;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+     -webkit-appearance: none;
+     appearance: none;
+     width: 12px;
+     height: 12px;
+     background: #fff;
+     border-radius: 50%;
+     cursor: pointer;
+     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+     transition: transform 0.2s var(--transition-bounce), width 0.2s, height 0.2s;
+     margin-top: -3px;
+}
+
+input[type="range"]:hover::-webkit-slider-thumb {
+     transform: scale(1.3);
+     margin-top: -3px;
+}
+
 .header-bar {
      display: flex;
      align-items: center;
@@ -320,6 +289,7 @@ button,
      align-items: center;
      flex-shrink: 0;
      width: var(--sidebar-expanded-width);
+     will-change: width;
      transition: width 0.4s var(--transition-bounce);
 }
 
@@ -369,12 +339,6 @@ button,
      transform: translateY(-2px);
 }
 
-#header-actions-container .action-button:active,
-#header-actions-container .sort-dropdown-btn:active {
-     transform: translateY(0) scale(0.95);
-}
-
-/* Active Filter Button Style */
 #header-actions-container .action-button.active {
      color: var(--primary-accent);
      background-color: color-mix(in srgb, var(--primary-accent) 15%, transparent);
@@ -389,7 +353,7 @@ button,
      cursor: pointer;
      padding: 2px;
      border-radius: 8px;
-     transition: transform 0.2s var(--transition-bounce), background-color 0.2s;
+     transition: transform 0.2s var(--transition-bounce);
      height: 48px;
      width: 300px;
 }
@@ -417,6 +381,13 @@ button,
      display: flex;
      align-items: center;
      justify-content: center;
+     transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.search-container.hidden {
+     opacity: 0;
+     pointer-events: none;
+     transform: translateY(-10px);
 }
 
 .search-container .search-icon {
@@ -428,23 +399,19 @@ button,
      opacity: 0.6;
 }
 
-/* Explicit Width Transition for Bouncy Effect */
 #home-search-input {
      width: 300px;
-     /* Use explicit width for transitions */
      padding: 10px 16px 10px 42px;
      background-color: var(--secondary-background);
      border: 1px solid var(--border-color);
      border-radius: 20px;
      color: var(--primary-text);
      font-size: 0.9rem;
-     /* The Bounce Magic */
-     transition: width 0.5s var(--transition-bounce), box-shadow 0.3s ease, border-color 0.3s ease, background-color 0.3s ease;
+     transition: width 0.5s var(--transition-bounce), box-shadow 0.3s ease, border-color 0.3s ease;
 }
 
 #home-search-input:focus {
      width: 480px;
-     /* Expanded width */
      outline: none;
      border-color: var(--primary-accent);
      background-color: color-mix(in srgb, var(--secondary-background) 80%, var(--primary-background));
@@ -476,10 +443,6 @@ button,
      transform: scale(1.05);
 }
 
-.sleep-timer-status:active {
-     transform: scale(0.95);
-}
-
 .sleep-timer-status.hidden {
      display: none;
 }
@@ -506,10 +469,8 @@ button,
      min-height: 0;
      position: relative;
      overflow-x: hidden;
-     /* Prevent horizontal scroll */
 }
 
-/* Sidebar */
 .sidebar {
      width: var(--sidebar-collapsed-width);
      padding: 0 4px;
@@ -518,6 +479,7 @@ button,
      display: flex;
      flex-direction: column;
      justify-content: space-between;
+     will-change: width;
      transition: width 0.4s var(--transition-bounce);
      z-index: 1000;
      overflow: hidden;
@@ -604,7 +566,6 @@ button,
      flex-grow: 1;
      overflow-y: auto;
      overflow-x: hidden;
-     /* Prevent horizontal scroll */
      position: relative;
      scroll-behavior: smooth;
 }
@@ -652,10 +613,7 @@ button,
      display: flex;
      flex-direction: column;
      min-height: 100%;
-     /* Changed from height: 100% to allow growth */
-     /* Smooth Page Transitions */
      animation: fadeSlideUp 0.5s var(--transition-bounce);
-     /* REMOVED contain: content; - this was causing clipping */
 }
 
 @keyframes fadeSlideUp {
@@ -822,10 +780,6 @@ body.light-theme .sort-option-item:hover {
      flex-direction: column;
 }
 
-.page:not(.placeholder-page).hidden {
-     display: none;
-}
-
 .placeholder-icon {
      font-size: 64px;
      margin-bottom: 24px;
@@ -952,7 +906,6 @@ body.light-theme .context-menu-item:hover {
      transform: scale(0.95);
 }
 
-/* Generic Switch Style used in various places */
 .switch {
      --switch-width: 44px;
      --switch-height: 24px;
@@ -1003,12 +956,6 @@ input:checked+.slider:before {
      transform: translateX(calc(var(--switch-width) - var(--switch-height)));
 }
 
-/* --- PERFORMANCE OPTIMIZATIONS --- */
-
-/* 
-   Content Visibility - Virtual Scroll emulation
-   The browser will skip rendering these elements if they are off-screen.
-*/
 .video-grid-item,
 .playlist-grid-item,
 .artist-grid-item,
@@ -1016,17 +963,14 @@ input:checked+.slider:before {
 .up-next-item {
      content-visibility: auto;
      contain-intrinsic-size: 320px 280px;
-     /* Estimate size to prevent scrollbar jumping */
-     /* REMOVED strict layout containment here to allow flex growth if needed, but kept content-visibility */
+     will-change: auto;
 }
 
-/* Image Decoding */
 img {
      decoding: async;
 }
 
-/* GPU Layers for Animations */
 .video-grid-item:hover,
 .download-card:hover {
-     will-change: transform, box-shadow;
+     will-change: transform;
 }
