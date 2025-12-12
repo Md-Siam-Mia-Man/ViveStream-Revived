@@ -60,42 +60,7 @@
 }
 
 .setting-control input[type="range"] {
-     -webkit-appearance: none;
-     appearance: none;
      width: 150px;
-     height: 4px;
-     background: var(--tertiary-background);
-     border-radius: 4px;
-     cursor: pointer;
-}
-
-.setting-control input[type="range"]::-webkit-slider-thumb {
-     -webkit-appearance: none;
-     appearance: none;
-     width: 16px;
-     height: 16px;
-     background: var(--primary-accent);
-     border-radius: 50%;
-     cursor: pointer;
-     transition: background-color 0.2s;
-}
-
-.setting-control input[type="range"]::-moz-range-thumb {
-     width: 16px;
-     height: 16px;
-     background: var(--primary-accent);
-     border-radius: 50%;
-     cursor: pointer;
-     border: none;
-     transition: background-color 0.2s;
-}
-
-.setting-control input[type="range"]:hover::-webkit-slider-thumb {
-     background: var(--primary-accent-dark);
-}
-
-.setting-control input[type="range"]:hover::-moz-range-thumb {
-     background: var(--primary-accent-dark);
 }
 
 .setting-control span {
@@ -110,7 +75,6 @@
      color: var(--primary-text);
 }
 
-/* Custom Dropdown Styling for Settings */
 .custom-select-container {
      position: relative;
      width: 200px;
@@ -281,13 +245,13 @@
 
 .danger-btn .material-symbols-outlined {
      font-size: 18px;
+     color: inherit;
 }
 
 .danger-btn:hover {
      background-color: var(--primary-accent-dark);
 }
 
-/* Enhanced About Section */
 .about-section {
      padding-top: 24px;
 }
@@ -301,7 +265,6 @@
      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
      position: relative;
      overflow: hidden;
-     /* Mesh Gradient Background Effect */
      background-image:
           radial-gradient(at 0% 0%, hsla(353, 100%, 46%, 0.15) 0px, transparent 50%),
           radial-gradient(at 100% 100%, hsla(353, 100%, 46%, 0.1) 0px, transparent 50%),
@@ -385,7 +348,6 @@ body.light-theme .about-app-name {
 
 .github-star-btn {
      background-color: #f0c32f;
-     /* GitHub Star Gold */
      color: #121212;
      border-color: #f0c32f;
 }
