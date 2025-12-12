@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       clean_cache:
-        description: 'Clean NPM cache'
+        description: "Clean NPM cache"
         required: false
         type: boolean
         default: false
@@ -48,13 +48,13 @@ jobs:
         with:
           repository: Md-Siam-Mia-Main/python-portable
           path: python-portable
-          lfs: false 
+          lfs: false
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
 
       # --- REASSEMBLE CHUNKS ---
       - name: Reassemble Large Files
@@ -80,8 +80,9 @@ jobs:
         run: npm run env:update
 
       # --- BUILD ---
-      # Runs the build command. builder.js will now print errors if they happen.
+      # CRITICAL FIX: Use bash shell to ensure logging pipes work on Windows
       - name: Build Application
+        shell: bash
         run: |
           mkdir -p logs
           ${{ matrix.build_command }} --verbose 2>&1 | tee logs/packaging.log

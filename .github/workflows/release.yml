@@ -9,7 +9,6 @@ on:
         type: boolean
         default: false
 
-# CRITICAL FIX: Grant permission to create Releases
 permissions:
   contents: write
 
@@ -79,7 +78,6 @@ jobs:
       - name: Hydrate Python Environment
         run: npm run env:update
 
-      # Verify NSH file exists before building on Windows to prevent immediate failure
       - name: Verify Windows Assets
         if: matrix.platform == 'Windows'
         shell: powershell
@@ -89,11 +87,12 @@ jobs:
             exit 1
           }
 
+      # CRITICAL FIX: Use bash shell to ensure logging pipes work on Windows
       - name: Build Application
+        shell: bash
         run: |
           mkdir -p logs
-          # Run with logs visible to debug issues immediately
-          ${{ matrix.build_command }}
+          ${{ matrix.build_command }} 2>&1 | tee logs/packaging.log
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

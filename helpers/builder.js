@@ -268,6 +268,7 @@ async function runBuild() {
         },
         nsis: {
             oneClick: false,
+            perMachine: true, // ! CRITICAL: Forces Admin/UAC prompt on Windows
             allowToChangeInstallationDirectory: true,
             deleteAppDataOnUninstall: false,
             include: "build/installer.nsh",
@@ -277,7 +278,8 @@ async function runBuild() {
         linux: {
             target: platformConfig.id === "linux" ? platformConfig.target : "AppImage",
             icon: toPosix(path.join(rootDir, "assets", "icon.png")),
-            category: "Video"
+            category: "Video",
+            executableName: "vivestream-revived"
         },
         mac: {
             target: platformConfig.id === "mac" ? platformConfig.target : "dmg",
