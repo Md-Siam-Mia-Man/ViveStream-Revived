@@ -22,7 +22,8 @@ jobs:
         include:
           - platform: Linux
             os: ubuntu-24.04
-            build_command: npm run build:linux:ci
+            # Added --publish
+            build_command: npm run build:linux:ci -- --publish
             artifact_path: |
               release/linux/*.AppImage
               release/linux/*.deb
@@ -31,12 +32,14 @@ jobs:
 
           - platform: Windows
             os: windows-latest
-            build_command: npm run build:win
+            # Added --publish
+            build_command: npm run build:win -- --publish
             artifact_path: release/win/*.exe
 
           - platform: macOS
             os: macos-latest
-            build_command: npm run build
+            # Added --publish
+            build_command: npm run build -- --publish
             artifact_path: release/mac/*.dmg
 
     steps:
@@ -87,11 +90,11 @@ jobs:
             exit 1
           }
 
-      # CRITICAL FIX: Use bash shell to ensure logging pipes work on Windows
       - name: Build Application
         shell: bash
         run: |
           mkdir -p logs
+          # Pass --publish flag via the matrix command defined above
           ${{ matrix.build_command }} 2>&1 | tee logs/packaging.log
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
