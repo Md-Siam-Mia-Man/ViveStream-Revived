@@ -1,16 +1,17 @@
 const database = require('../../src/main/database');
 const fs = require('fs');
 const path = require('path');
-const knex = require('knex');
+const os = require('os');
+// Removed unused knex require
 
 // Mock `electron` app
 const mockApp = {
-  getPath: jest.fn().mockReturnValue('/tmp'),
+  getPath: jest.fn().mockReturnValue(os.tmpdir()),
   quit: jest.fn()
 };
 
 describe('Database Integration', () => {
-  const dbPath = path.join('/tmp', 'ViveStream.db');
+  const dbPath = path.join(os.tmpdir(), 'ViveStream.db');
 
   beforeAll(async () => {
     // Clean up previous run
@@ -49,7 +50,7 @@ describe('Database Integration', () => {
       duration: 120,
       upload_date: '2023-01-01',
       originalUrl: 'http://youtube.com/watch?v=vid123',
-      filePath: '/tmp/vid123.mp4',
+      filePath: path.join(os.tmpdir(), 'vid123.mp4'),
       type: 'video'
     };
 
@@ -69,7 +70,7 @@ describe('Database Integration', () => {
     const videoData = {
       id: 'vidLink',
       title: 'Link Video',
-      filePath: '/tmp/vidLink.mp4'
+      filePath: path.join(os.tmpdir(), 'vidLink.mp4')
     };
     await database.addOrUpdateVideo(videoData);
 
@@ -84,7 +85,7 @@ describe('Database Integration', () => {
   });
 
   test('should handle artists', async () => {
-    const artist = await database.findOrCreateArtist('New Artist', '/tmp/artist.jpg');
+    const artist = await database.findOrCreateArtist('New Artist', path.join(os.tmpdir(), 'artist.jpg'));
     expect(artist.id).toBeDefined();
     expect(artist.name).toBe('New Artist');
 

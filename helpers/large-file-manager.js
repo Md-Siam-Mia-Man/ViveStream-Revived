@@ -108,44 +108,54 @@ function joinFile(firstChunkPath) {
     console.log(`   ✅ Restored.`);
 }
 
-const action = process.argv[2];
+// Only run execution logic if run directly
+if (require.main === module) {
+    const action = process.argv[2];
 
-if (!fs.existsSync(TARGET_DIR)) {
-    console.error(`Target directory not found: ${TARGET_DIR}`);
-    process.exit(1);
-}
-
-if (action === 'split') {
-    console.log(`🔍 Scanning ${TARGET_DIR} for large files (>90MB)...`);
-    const files = getAllFiles(TARGET_DIR);
-    let splitCount = 0;
-
-    files.forEach(f => {
-        const stats = fs.statSync(f);
-        if (stats.size > CHUNK_SIZE && !f.includes(CHUNK_EXT)) {
-            splitFile(f);
-            splitCount++;
-        }
-    });
-
-    if (splitCount === 0) console.log("No large files found needing split.");
-    else console.log("✨ Splitting complete.");
-
-} else if (action === 'join') {
-    console.log(`🔍 Scanning ${TARGET_DIR} for chunked files...`);
-    const files = getAllFiles(TARGET_DIR);
-
-    // Find only the first chunks (.chunk001)
-    const startChunks = files.filter(f => f.endsWith(`${CHUNK_EXT}001`));
-
-    if (startChunks.length === 0) {
-        console.log("No chunked files found.");
-    } else {
-        console.log(`Found ${startChunks.length} file(s) to join.`);
-        startChunks.forEach(f => joinFile(f));
+    if (!fs.existsSync(TARGET_DIR)) {
+        console.error(`Target directory not found: ${TARGET_DIR}`);
+        process.exit(1);
     }
-    console.log("✨ Reassembly complete.");
 
-} else {
-    console.log("Usage: node large-file-manager.js [join|split]");
+    if (action === 'split') {
+        console.log(`🔍 Scanning ${TARGET_DIR} for large files (>90MB)...`);
+        const files = getAllFiles(TARGET_DIR);
+        let splitCount = 0;
+
+        files.forEach(f => {
+            const stats = fs.statSync(f);
+            if (stats.size > CHUNK_SIZE && !f.includes(CHUNK_EXT)) {
+                splitFile(f);
+                splitCount++;
+            }
+        });
+
+        if (splitCount === 0) console.log("No large files found needing split.");
+        else console.log("✨ Splitting complete.");
+
+    } else if (action === 'join') {
+        console.log(`🔍 Scanning ${TARGET_DIR} for chunked files...`);
+        const files = getAllFiles(TARGET_DIR);
+
+        // Find only the first chunks (.chunk001)
+        const startChunks = files.filter(f => f.endsWith(`${CHUNK_EXT}001`));
+
+        if (startChunks.length === 0) {
+            console.log("No chunked files found.");
+        } else {
+            console.log(`Found ${startChunks.length} file(s) to join.`);
+            startChunks.forEach(f => joinFile(f));
+        }
+        console.log("✨ Reassembly complete.");
+
+    } else {
+        console.log("Usage: node large-file-manager.js [join|split]");
+    }
 }
+
+module.exports = {
+    getAllFiles,
+    splitFile,
+    joinFile,
+    TARGET_DIR
+};
