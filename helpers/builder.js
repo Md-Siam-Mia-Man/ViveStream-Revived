@@ -44,7 +44,7 @@ function parseTargets() {
         if (arg.startsWith("--target=")) {
             const val = arg.split("=")[1];
             if (val === "all") {
-                // ! SNAP REMOVED: It causes frequent failures in CI without Docker
+                // ! SNAP REMOVED due to CI instability without virtualization
                 targets = ["AppImage", "deb", "rpm"];
             } else {
                 targets = val.split(",").map(t => t.trim());
@@ -105,10 +105,16 @@ async function executeCommand(command, args, cwd) {
         const cmd = process.platform === "win32" && command === "npx" ? "npx.cmd" : command;
         const fullCommand = [cmd, ...args].map(a => a.includes(" ") ? `"${a}"` : a).join(" ");
 
+        // Set DEBUG env var for electron-builder if verbose is on
+        const env = { ...process.env, NODE_NO_WARNINGS: 1 };
+        if (verbose && command === "npx" && args.includes("electron-builder")) {
+            env.DEBUG = "electron-builder";
+        }
+
         const child = spawn(fullCommand, {
             cwd: cwd,
             shell: true,
-            env: { ...process.env, NODE_NO_WARNINGS: 1 }
+            env: env
         });
 
         let stdoutLog = "";
@@ -282,7 +288,6 @@ async function runBuild() {
             icon: toPosix(path.join(rootDir, "assets", "icon.png")),
             category: "Video",
             executableName: "vivestream-revived",
-            // ! CRITICAL: Strict metadata for Deb/RPM generation
             maintainer: "Md Siam Mia <vivestream.revived@example.com>",
             synopsis: "Offline media player and downloader",
             description: "Your personal, offline, and stylish media sanctuary."
@@ -295,8 +300,8 @@ async function runBuild() {
 
     fs.writeFileSync(tempConfigPath, JSON.stringify(buildConfig, null, 2));
 
+    // ! Fix: Don't pass --verbose to electron-builder CLI
     const builderArgs = ["electron-builder", "--config", "temp-build-config.json", platformConfig.cliFlag];
-    if (verbose) builderArgs.push("--verbose");
 
     if (shouldPublish) {
         builderArgs.push("--publish", "always");
