@@ -19,12 +19,12 @@ jobs:
         include:
           - platform: Linux
             os: ubuntu-24.04
-            build_command: npm run build:linux:ci
+            # REMOVED snap from targets
+            build_command: npm run build:linux:ci -- --target=AppImage,deb,rpm
             artifact_path: |
               release/linux/*.AppImage
               release/linux/*.deb
               release/linux/*.rpm
-              release/linux/*.snap
 
           - platform: Windows
             os: windows-latest
@@ -58,12 +58,13 @@ jobs:
       - name: Reassemble Large Files
         run: npm run files:join
 
+      # --- SYSTEM DEPENDENCIES (Linux Only) ---
       - name: Install System Dependencies (Linux)
         if: matrix.platform == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y rpm libarchive-tools flatpak flatpak-builder snapd fakeroot dpkg-dev libsecret-1-dev libfuse2 libgl1-mesa-dev build-essential
-          sudo snap install snapcraft --classic
+          # ADDED graphicsmagick
+          sudo apt-get install -y rpm libarchive-tools flatpak flatpak-builder fakeroot dpkg-dev libsecret-1-dev libfuse2 libgl1-mesa-dev build-essential graphicsmagick
 
       - name: Clean NPM Cache (Optional)
         if: ${{ inputs.clean_cache }}
@@ -75,7 +76,6 @@ jobs:
       - name: Hydrate Python Environment
         run: npm run env:update
 
-      # NO --publish flag here. Only locally building for artifact upload.
       - name: Build Application
         shell: bash
         run: |
