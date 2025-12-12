@@ -21,13 +21,18 @@
     "build:linux:flatpak": "node helpers/builder.js --linux --target=flatpak",
     "build:linux:snap": "node helpers/builder.js --linux --target=snap",
     "build:linux:ci": "node helpers/builder.js --linux --target=AppImage,deb,rpm,snap",
-    "postinstall": "electron-builder install-app-deps && npm run files:join"
+    "postinstall": "electron-builder install-app-deps && npm run files:join",
+    "test": "jest"
   },
   "keywords": [],
   "devDependencies": {
+    "@babel/core": "^7.28.5",
+    "@babel/preset-env": "^7.28.5",
     "@electron/rebuild": "^4.0.2",
+    "babel-jest": "^30.2.0",
     "electron": "^39.2.6",
     "electron-builder": "^26.0.12",
+    "jest": "^30.2.0",
     "rimraf": "^6.1.2"
   },
   "dependencies": {
