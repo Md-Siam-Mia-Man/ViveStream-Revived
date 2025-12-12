@@ -2,8 +2,7 @@ import { showConfirmationModal } from "./modals.js";
 import { showNotification } from "./notifications.js";
 import { loadLibrary, showPage } from "./renderer.js";
 import { resetPlaybackState } from "./state.js";
-import { closeMiniplayer } from "./miniplayer.js";
-import { toggleFPSCounter, setWindowControlsAlignment } from "./ui.js";
+import { toggleFPSCounter, setWindowControlsAlignment, updateSlider } from "./ui.js";
 
 let currentSettings = {};
 
@@ -59,11 +58,16 @@ const fileOpProgressValue = document.getElementById("file-op-progress-value");
 function updateSettingsUI(settings) {
   currentSettings = settings;
   concurrentDownloadsSlider.value = settings.concurrentDownloads;
+  updateSlider(concurrentDownloadsSlider);
   concurrentDownloadsValue.textContent = settings.concurrentDownloads;
+
   autoSubsToggle.checked = !!settings.downloadAutoSubs;
   sponsorblockToggle.checked = !!settings.removeSponsors;
+
   concurrentFragmentsSlider.value = settings.concurrentFragments;
+  updateSlider(concurrentFragmentsSlider);
   concurrentFragmentsValue.textContent = settings.concurrentFragments;
+
   speedLimitInput.value = settings.speedLimit || "";
 
   const selectedBrowser = settings.cookieBrowser || "none";
@@ -312,7 +316,8 @@ export function initializeSettingsPage() {
           resetPlaybackState();
           const vp = document.getElementById("video-player");
           if (vp) vp.src = "";
-          closeMiniplayer();
+          const miniplayerModule = await import("./miniplayer.js");
+          miniplayerModule.closeMiniplayer();
           await loadLibrary();
           showPage("home");
         } else {
