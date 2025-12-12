@@ -7,19 +7,20 @@ const path = require("path");
 
 /**
  * * Parses a string of artist names using various delimiters.
- * ! Handles comma, semicolon, ampersand, and 'feat' separators.
- * @param {string} artistString - The raw artist string from metadata (e.g. "Artist A, Artist B feat. C")
+ * ! Handles semicolon and 'feat' separators.
+ * ! Comma (,) and Ampersand (&) are ignored to preserve names like "Tyler, The Creator" or "Simon & Garfunkel".
+ * @param {string} artistString - The raw artist string from metadata (e.g. "Artist A; Artist B feat. C")
  * @returns {string[]} An array of cleaned artist names.
  */
 function parseArtistNames(artistString) {
   if (!artistString) return ["Unknown"];
 
-  // ! Split by common delimiters: comma, semicolon, &, 'feat.', 'ft.'
+  // ! Split by delimiters: semicolon, 'feat.', 'ft.'
   // ? Regex explanation:
-  // ? [,;&] -> Standard separators
+  // ? [;] -> Semicolon only
   // ? \s+feat\.?\s+ -> ' feat. ' or ' feat '
   // ? \s+ft\.?\s+ -> ' ft. ' or ' ft '
-  const splitRegex = /[,;&]|\s+feat\.?\s+|\s+ft\.?\s+/i;
+  const splitRegex = /;|\s+feat\.?\s+|\s+ft\.?\s+/i;
 
   return artistString
     .split(splitRegex)
