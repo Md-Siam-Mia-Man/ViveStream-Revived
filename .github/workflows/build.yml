@@ -19,7 +19,7 @@ jobs:
         include:
           - platform: Linux
             os: ubuntu-24.04
-            # REMOVED snap from targets
+            # NOTE: Removed snap from here
             build_command: npm run build:linux:ci -- --target=AppImage,deb,rpm
             artifact_path: |
               release/linux/*.AppImage
@@ -58,12 +58,10 @@ jobs:
       - name: Reassemble Large Files
         run: npm run files:join
 
-      # --- SYSTEM DEPENDENCIES (Linux Only) ---
       - name: Install System Dependencies (Linux)
         if: matrix.platform == 'Linux'
         run: |
           sudo apt-get update
-          # ADDED graphicsmagick
           sudo apt-get install -y rpm libarchive-tools flatpak flatpak-builder fakeroot dpkg-dev libsecret-1-dev libfuse2 libgl1-mesa-dev build-essential graphicsmagick
 
       - name: Clean NPM Cache (Optional)
@@ -78,6 +76,8 @@ jobs:
 
       - name: Build Application
         shell: bash
+        # FIX: Removed explicit arguments, relying on matrix command.
+        # Added --verbose here to trigger internal logging in builder.js
         run: |
           mkdir -p logs
           ${{ matrix.build_command }} --verbose 2>&1 | tee logs/packaging.log
