@@ -12,6 +12,7 @@ import { openAddToPlaylistModal } from "./playlists.js";
 import { renderUpNextList } from "./player.js";
 
 const homeSearchInput = document.getElementById("home-search-input");
+const searchContainer = document.querySelector(".search-container");
 const videoContextMenu = document.getElementById("video-item-context-menu");
 const contextRemoveFromPlaylistBtn = document.getElementById(
   "context-remove-from-playlist-btn"
@@ -26,7 +27,6 @@ const contentWrapper = document.querySelector(".content-wrapper");
 let currentSort = localStorage.getItem("librarySort") || "downloadedAt-desc";
 let lastActivePageId = "home";
 
-// FPS Logic
 let fpsAnimationFrameId = null;
 let fpsLastTime = performance.now();
 let fpsFrameCount = 0;
@@ -61,7 +61,6 @@ function updateFPS() {
   fpsAnimationFrameId = requestAnimationFrame(updateFPS);
 }
 
-// Infinite Scroll State
 let pendingItems = [];
 let renderContainer = null;
 let isPlaylistItemState = false;
@@ -82,18 +81,17 @@ const lazyLoadObserver = new IntersectionObserver(
     });
   },
   {
-    root: contentWrapper, // Watch the scroll container, not viewport
+    root: contentWrapper,
     rootMargin: "0px 0px 400px 0px"
   }
 );
 
-// Infinite Scroll Observer
 const scrollObserver = new IntersectionObserver((entries) => {
   if (entries[0].isIntersecting && pendingItems.length > 0) {
     renderNextBatch();
   }
 }, {
-  root: contentWrapper, // Important: Watch the scroll container
+  root: contentWrapper,
   rootMargin: "400px"
 });
 
@@ -223,26 +221,19 @@ function renderNextBatch() {
 
   renderContainer.appendChild(fragment);
 
-  // Initial Lazy Load for new items
   renderContainer.querySelectorAll("img.lazy:not(.observed)").forEach(img => {
     img.classList.add('observed');
     lazyLoadObserver.observe(img);
   });
 
-  // Check if we are done
   if (pendingItems.length === 0) {
     scrollObserver.unobserve(scrollSentinel);
   } else {
-    // If the scroll sentinel is visible, it means we haven't filled the screen yet.
-    // We must load more immediately to push it down.
     const sentinelRect = scrollSentinel.getBoundingClientRect();
     const wrapperRect = contentWrapper.getBoundingClientRect();
-
-    // Sentinel is visible if it's within the wrapper's visible area + buffer
     const isVisible = sentinelRect.top < wrapperRect.bottom + 600;
 
     if (isVisible) {
-      // Use requestAnimationFrame to prevent blocking UI
       requestAnimationFrame(renderNextBatch);
     }
   }
@@ -263,7 +254,7 @@ function renderGrid(container, library, isPlaylistItem = false) {
 
     if (sortedLibrary.length > 0) {
       pendingItems = sortedLibrary;
-      renderNextBatch(); // Render first batch
+      renderNextBatch();
 
       if (pendingItems.length > 0) {
         scrollObserver.observe(scrollSentinel);
@@ -276,9 +267,6 @@ function renderGrid(container, library, isPlaylistItem = false) {
     }
   }
 }
-
-// ... rest of the file (createHeaderActionsElement, createFilterPanel, etc.) ...
-// Kept exactly as previous version to ensure completeness
 
 export function createHeaderActionsElement() {
   const fragment = document.createDocumentFragment();
@@ -513,29 +501,18 @@ eventBus.on("ui:favorite_toggled", updateFavoriteUI);
 
 export function updateSearchPlaceholder(pageId) {
   let isSearchable = true;
-  if (pageId === "settings") {
+  if (pageId === "settings" || pageId === "downloads") {
     isSearchable = false;
   }
 
-  const placeholderText = isSearchable
-    ? "Search videos, artists, playlists..."
-    : "Search unavailable";
-
-  homeSearchInput.placeholder = placeholderText;
-  homeSearchInput.disabled = !isSearchable;
-  homeSearchInput.style.opacity = isSearchable ? "1" : "0.5";
-
-  const canvas = document.createElement("canvas");
-  const context = canvas.getContext("2d");
-  const computedStyle = window.getComputedStyle(homeSearchInput);
-  context.font = computedStyle.font;
-
-  const metrics = context.measureText(placeholderText);
-  const neededWidth = Math.ceil(metrics.width) + 58 + 20;
-
-  const finalWidth = Math.min(Math.max(neededWidth, 300), 600);
-  homeSearchInput.style.width = `${finalWidth}px`;
-  homeSearchInput.style.setProperty('--focus-width', `${finalWidth + 100}px`);
+  if (isSearchable) {
+    searchContainer.classList.remove('hidden');
+    homeSearchInput.placeholder = "Search videos, artists, playlists...";
+    homeSearchInput.disabled = false;
+  } else {
+    searchContainer.classList.add('hidden');
+    homeSearchInput.disabled = true;
+  }
 
   lastActivePageId = pageId;
 }
@@ -570,6 +547,31 @@ export function setWindowControlsAlignment(alignment) {
 function initializePlatformStyles() {
   const saved = localStorage.getItem("windowControlsAlignment") || "auto";
   setWindowControlsAlignment(saved);
+}
+
+export function updateSlider(slider) {
+  const min = parseFloat(slider.min) || 0;
+  const max = parseFloat(slider.max) || 100;
+  const val = parseFloat(slider.value) || 0;
+  let percentage = 0;
+
+  if (max > min) {
+    percentage = ((val - min) / (max - min)) * 100;
+  }
+
+  slider.style.setProperty('--value-percent', `${percentage}%`);
+}
+
+function initializeGlobalSliderLogic() {
+  document.addEventListener('input', (e) => {
+    if (e.target.type === 'range') {
+      updateSlider(e.target);
+    }
+  });
+
+  setTimeout(() => {
+    document.querySelectorAll('input[type="range"]').forEach(updateSlider);
+  }, 100);
 }
 
 function initializeMainEventListeners() {
@@ -721,6 +723,7 @@ function initializeMainEventListeners() {
 
 export function initializeUI() {
   initializePlatformStyles();
+  initializeGlobalSliderLogic();
   if (localStorage.getItem("sidebarPinned") === "true") {
     sidebar.classList.add("pinned");
   }
