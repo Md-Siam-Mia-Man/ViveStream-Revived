@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       clean_cache:
-        description: "Clean NPM cache"
+        description: 'Clean NPM cache'
         required: false
         type: boolean
         default: false
@@ -42,25 +42,22 @@ jobs:
         with:
           lfs: false
 
-      # --- CLONE PYTHON ENVIRONMENT ---
       - name: Checkout Portable Python
         uses: actions/checkout@v4
         with:
           repository: Md-Siam-Mia-Main/python-portable
           path: python-portable
-          lfs: false
+          lfs: false 
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
-          cache: "npm"
+          node-version: '20'
+          cache: 'npm'
 
-      # --- REASSEMBLE CHUNKS ---
       - name: Reassemble Large Files
         run: npm run files:join
 
-      # --- SYSTEM DEPENDENCIES (Linux Only) ---
       - name: Install System Dependencies (Linux)
         if: matrix.platform == 'Linux'
         run: |
@@ -75,12 +72,10 @@ jobs:
       - name: Install NPM Dependencies
         run: npm ci
 
-      # --- HYDRATION & UPDATES ---
       - name: Hydrate Python Environment
         run: npm run env:update
 
-      # --- BUILD ---
-      # CRITICAL FIX: Use bash shell to ensure logging pipes work on Windows
+      # NO --publish flag here. Only locally building for artifact upload.
       - name: Build Application
         shell: bash
         run: |
