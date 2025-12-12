@@ -22,23 +22,20 @@ jobs:
         include:
           - platform: Linux
             os: ubuntu-24.04
-            # Added --publish
-            build_command: npm run build:linux:ci -- --publish
+            # REMOVED snap
+            build_command: npm run build:linux:ci -- --target=AppImage,deb,rpm --publish
             artifact_path: |
               release/linux/*.AppImage
               release/linux/*.deb
               release/linux/*.rpm
-              release/linux/*.snap
 
           - platform: Windows
             os: windows-latest
-            # Added --publish
             build_command: npm run build:win -- --publish
             artifact_path: release/win/*.exe
 
           - platform: macOS
             os: macos-latest
-            # Added --publish
             build_command: npm run build -- --publish
             artifact_path: release/mac/*.dmg
 
@@ -68,8 +65,8 @@ jobs:
         if: matrix.platform == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y rpm libarchive-tools flatpak flatpak-builder snapd fakeroot dpkg-dev libsecret-1-dev libfuse2 libgl1-mesa-dev build-essential
-          sudo snap install snapcraft --classic
+          # ADDED graphicsmagick
+          sudo apt-get install -y rpm libarchive-tools flatpak flatpak-builder fakeroot dpkg-dev libsecret-1-dev libfuse2 libgl1-mesa-dev build-essential graphicsmagick
 
       - name: Clean NPM Cache (Optional)
         if: ${{ inputs.clean_cache }}
@@ -94,7 +91,6 @@ jobs:
         shell: bash
         run: |
           mkdir -p logs
-          # Pass --publish flag via the matrix command defined above
           ${{ matrix.build_command }} 2>&1 | tee logs/packaging.log
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
