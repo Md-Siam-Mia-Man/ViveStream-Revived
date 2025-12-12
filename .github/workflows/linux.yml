@@ -1,0 +1,78 @@
+name: Build Linux
+
+on:
+  workflow_dispatch:
+    inputs:
+      clean_cache:
+        description: 'Clean NPM cache'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  build-linux:
+    name: Build Linux
+    runs-on: ubuntu-24.04
+    
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+        with:
+          lfs: false
+
+      - name: Checkout Portable Python
+        uses: actions/checkout@v4
+        with:
+          repository: Md-Siam-Mia-Main/python-portable
+          path: python-portable
+          lfs: false 
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Reassemble Large Files
+        run: npm run files:join
+
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y rpm libarchive-tools flatpak flatpak-builder fakeroot dpkg-dev libsecret-1-dev libfuse2 libgl1-mesa-dev build-essential graphicsmagick
+
+      - name: Clean NPM Cache (Optional)
+        if: ${{ inputs.clean_cache }}
+        run: npm cache clean --force
+
+      - name: Install NPM Dependencies
+        run: npm ci
+
+      - name: Hydrate Python Environment
+        run: npm run env:update
+
+      - name: Build Application
+        shell: bash
+        run: |
+          mkdir -p logs
+          npm run build:linux:ci -- --target=AppImage,deb,rpm --verbose 2>&1 | tee logs/packaging.log
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Packaging Logs
+        if: failure() || success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-logs
+          path: logs/packaging.log
+          retention-days: 5
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Linux-Builds
+          path: |
+            release/linux/*.AppImage
+            release/linux/*.deb
+            release/linux/*.rpm
+          retention-days: 5

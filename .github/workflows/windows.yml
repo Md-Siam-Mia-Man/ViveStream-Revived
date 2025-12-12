@@ -1,0 +1,78 @@
+name: Build Windows
+
+on:
+  workflow_dispatch:
+    inputs:
+      clean_cache:
+        description: 'Clean NPM cache'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  build-windows:
+    name: Build Windows
+    runs-on: windows-latest
+    
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+        with:
+          lfs: false
+
+      - name: Checkout Portable Python
+        uses: actions/checkout@v4
+        with:
+          repository: Md-Siam-Mia-Main/python-portable
+          path: python-portable
+          lfs: false 
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Reassemble Large Files
+        run: npm run files:join
+
+      - name: Clean NPM Cache (Optional)
+        if: ${{ inputs.clean_cache }}
+        run: npm cache clean --force
+
+      - name: Install NPM Dependencies
+        run: npm ci
+
+      - name: Hydrate Python Environment
+        run: npm run env:update
+
+      - name: Verify Windows Assets
+        shell: powershell
+        run: |
+          if (-not (Test-Path "build/installer.nsh")) {
+            Write-Error "build/installer.nsh NOT FOUND. Build will fail."
+            exit 1
+          }
+
+      - name: Build Application
+        shell: bash
+        run: |
+          mkdir -p logs
+          npm run build:win -- --verbose 2>&1 | tee logs/packaging.log
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Packaging Logs
+        if: failure() || success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-logs
+          path: logs/packaging.log
+          retention-days: 5
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Windows-Builds
+          path: release/win/*.exe
+          retention-days: 5
