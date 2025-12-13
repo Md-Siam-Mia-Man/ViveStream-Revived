@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       clean_cache:
-        description: 'Clean NPM cache'
+        description: "Clean NPM cache"
         required: false
         type: boolean
         default: false
@@ -22,7 +22,6 @@ jobs:
         include:
           - platform: Linux
             os: ubuntu-24.04
-            # Removed snap, added publish
             build_command: npm run build:linux:ci -- --target=AppImage,deb,rpm --publish
             artifact_path: |
               release/linux/*.AppImage
@@ -31,13 +30,11 @@ jobs:
 
           - platform: Windows
             os: windows-latest
-            # Added publish
             build_command: npm run build:win -- --publish
             artifact_path: release/win/*.exe
 
           - platform: macOS
             os: macos-latest
-            # Added publish
             build_command: npm run build -- --publish
             artifact_path: release/mac/*.dmg
 
@@ -52,13 +49,13 @@ jobs:
         with:
           repository: Md-Siam-Mia-Main/python-portable
           path: python-portable
-          lfs: false 
+          lfs: false
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "25"
+          cache: "npm"
 
       - name: Reassemble Large Files
         run: npm run files:join
@@ -72,6 +69,12 @@ jobs:
       - name: Clean NPM Cache (Optional)
         if: ${{ inputs.clean_cache }}
         run: npm cache clean --force
+
+      - name: Configure NPM Retries
+        run: |
+          npm config set fetch-retries 5
+          npm config set fetch-retry-mintimeout 20000
+          npm config set fetch-retry-maxtimeout 120000
 
       - name: Install NPM Dependencies
         run: npm ci
