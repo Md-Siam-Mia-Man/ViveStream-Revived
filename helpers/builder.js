@@ -280,6 +280,7 @@ async function runBuild() {
             });
         } else {
             console.warn(`${colors.red}WARNING: Portable Python not found at ${platformConfig.pythonSource}${colors.reset}`);
+            console.warn(`${colors.green}RUN: git clone https://github.com/Md-Siam-Mia-Main/python-portable.git ${colors.reset}`);
         }
     }
 

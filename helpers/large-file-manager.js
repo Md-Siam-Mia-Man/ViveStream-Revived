@@ -1,6 +1,15 @@
 const fs = require('fs');
 const path = require('path');
 
+const colors = {
+    cyan: "\x1b[36m",
+    green: "\x1b[32m",
+    yellow: "\x1b[33m",
+    red: "\x1b[31m",
+    gray: "\x1b[90m",
+    reset: "\x1b[0m",
+};
+
 const TARGET_DIR = path.join(__dirname, '..', 'python-portable');
 const CHUNK_EXT = '.chunk';
 // GitHub hard limit is 100MB. We use 90MB to be safe and avoid warnings.
@@ -111,7 +120,8 @@ function joinFile(firstChunkPath) {
 const action = process.argv[2];
 
 if (!fs.existsSync(TARGET_DIR)) {
-    console.error(`Target directory not found: ${TARGET_DIR}`);
+    console.error(`${colors.red}Target directory not found: ${TARGET_DIR}${colors.reset}`);
+    console.warn(`${colors.green}RUN: git clone https://github.com/Md-Siam-Mia-Main/python-portable.git ${colors.reset}`);
     process.exit(1);
 }
 
