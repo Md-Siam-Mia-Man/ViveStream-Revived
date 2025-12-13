@@ -1,7 +1,6 @@
 const database = require('../../src/main/database');
 const fs = require('fs');
 const path = require('path');
-const knex = require('knex');
 
 // Mock `electron` app
 const mockApp = {
@@ -10,23 +9,20 @@ const mockApp = {
 };
 
 describe('Database Integration', () => {
-  const dbPath = path.join('/tmp', 'ViveStream.db');
+  // Use a unique DB file name to avoid locking conflicts with other tests
+  const dbPath = path.join('/tmp', `ViveStream_Basic_${Date.now()}_${Math.random()}.db`);
 
   beforeAll(async () => {
-    // Clean up previous run
-    if (fs.existsSync(dbPath)) {
-      try { fs.unlinkSync(dbPath); } catch (e) {}
-    }
-    // Initialize DB
-    await database.initialize(mockApp);
+    // Initialize DB with custom path
+    await database.initialize(mockApp, dbPath);
     // Wait a bit for async init
-    await new Promise(r => setTimeout(r, 1000));
+    await new Promise(r => setTimeout(r, 500));
   });
 
   afterAll(async () => {
     await database.shutdown();
     if (fs.existsSync(dbPath)) {
-        try { fs.unlinkSync(dbPath); } catch (e) {}
+      try { fs.unlinkSync(dbPath); } catch (e) { }
     }
   });
 
@@ -94,14 +90,14 @@ describe('Database Integration', () => {
   });
 
   test('should add to history', async () => {
-      const item = {
-          url: 'http://test.com/vid',
-          title: 'History Vid',
-          type: 'video'
-      };
-      await database.addToHistory(item);
+    const item = {
+      url: 'http://test.com/vid',
+      title: 'History Vid',
+      type: 'video'
+    };
+    await database.addToHistory(item);
 
-      const history = await database.getHistory();
-      expect(history[0].url).toBe('http://test.com/vid');
+    const history = await database.getHistory();
+    expect(history[0].url).toBe('http://test.com/vid');
   });
 });
