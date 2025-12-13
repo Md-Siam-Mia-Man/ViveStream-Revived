@@ -19,7 +19,7 @@ jobs:
         include:
           - platform: Linux
             os: ubuntu-24.04
-            # NOTE: Removed snap from here
+            # Override targets to exclude snap
             build_command: npm run build:linux:ci -- --target=AppImage,deb,rpm
             artifact_path: |
               release/linux/*.AppImage
@@ -58,6 +58,7 @@ jobs:
       - name: Reassemble Large Files
         run: npm run files:join
 
+      # --- SYSTEM DEPENDENCIES (Linux Only) ---
       - name: Install System Dependencies (Linux)
         if: matrix.platform == 'Linux'
         run: |
@@ -74,12 +75,20 @@ jobs:
       - name: Hydrate Python Environment
         run: npm run env:update
 
+      - name: Verify Windows Assets
+        if: matrix.platform == 'Windows'
+        shell: powershell
+        run: |
+          if (-not (Test-Path "build/installer.nsh")) {
+            Write-Error "build/installer.nsh NOT FOUND. Build will fail."
+            exit 1
+          }
+
       - name: Build Application
         shell: bash
-        # FIX: Removed explicit arguments, relying on matrix command.
-        # Added --verbose here to trigger internal logging in builder.js
         run: |
           mkdir -p logs
+          # Pass --verbose to trigger internal logging in builder.js
           ${{ matrix.build_command }} --verbose 2>&1 | tee logs/packaging.log
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
