@@ -44,7 +44,6 @@ function parseTargets() {
         if (arg.startsWith("--target=")) {
             const val = arg.split("=")[1];
             if (val === "all") {
-                // ! SNAP REMOVED due to CI instability without virtualization
                 targets = ["AppImage", "deb", "rpm"];
             } else {
                 targets = val.split(",").map(t => t.trim());
@@ -105,7 +104,6 @@ async function executeCommand(command, args, cwd) {
         const cmd = process.platform === "win32" && command === "npx" ? "npx.cmd" : command;
         const fullCommand = [cmd, ...args].map(a => a.includes(" ") ? `"${a}"` : a).join(" ");
 
-        // Set DEBUG env var for electron-builder if verbose is on
         const env = { ...process.env, NODE_NO_WARNINGS: 1 };
         if (verbose && command === "npx" && args.includes("electron-builder")) {
             env.DEBUG = "electron-builder";
@@ -177,7 +175,9 @@ function moveArtifacts(sourceDir, destDir) {
         const fullPath = path.join(sourceDir, file);
         if (fs.statSync(fullPath).isDirectory()) continue;
 
-        if (interestingExtensions.some(ext => file.endsWith(ext)) || file.endsWith(".yml")) {
+        // REMOVED: || file.endsWith(".yml")
+        // We do not want to move .yml files to the final folder, we want them left behind to be deleted.
+        if (interestingExtensions.some(ext => file.endsWith(ext))) {
             const dest = path.join(destDir, file);
             try {
                 if (path.relative(fullPath, dest) !== "") fs.renameSync(fullPath, dest);
@@ -186,6 +186,36 @@ function moveArtifacts(sourceDir, destDir) {
         }
     }
     return movedFiles;
+}
+
+// New helper to recursively delete unpacked folders and yml files
+function cleanUnwantedFiles(dirPath) {
+    if (!fs.existsSync(dirPath)) return;
+
+    const files = fs.readdirSync(dirPath);
+    for (const file of files) {
+        const fullPath = path.join(dirPath, file);
+        let stat;
+        try { stat = fs.statSync(fullPath); } catch (e) { continue; }
+
+        if (stat.isDirectory()) {
+            // If it is an unpacked folder, delete it
+            if (file.includes("unpacked")) {
+                try {
+                    fs.rmSync(fullPath, { recursive: true, force: true });
+                    console.log(`   ${colors.yellow}× Deleted Unpacked Dir: ${file}${colors.reset}`);
+                } catch (e) { }
+            }
+        } else {
+            // If it is a yml file, delete it
+            if (file.endsWith(".yml")) {
+                try {
+                    fs.unlinkSync(fullPath);
+                    console.log(`   ${colors.yellow}× Deleted Config: ${file}${colors.reset}`);
+                } catch (e) { }
+            }
+        }
+    }
 }
 
 async function runBuild() {
@@ -300,7 +330,6 @@ async function runBuild() {
 
     fs.writeFileSync(tempConfigPath, JSON.stringify(buildConfig, null, 2));
 
-    // ! Fix: Don't pass --verbose to electron-builder CLI
     const builderArgs = ["electron-builder", "--config", "temp-build-config.json", platformConfig.cliFlag];
 
     if (shouldPublish) {
@@ -317,16 +346,29 @@ async function runBuild() {
     }
     if (!debug && fs.existsSync(tempConfigPath)) fs.unlinkSync(tempConfigPath);
 
-    log("\n5/6", "Organizing");
+    log("\n5/6", "Organizing & Cleaning");
+
+    // 1. Move desired artifacts (exe/deb/dmg) to platform folder
     const movedFiles = moveArtifacts(releaseDir, finalArtifactDir);
     if (movedFiles.length > 0) movedFiles.forEach(f => console.log(`   ✔ Moved: ${f}`));
 
-    if (!debug && fs.existsSync(releaseDir)) {
-        const files = fs.readdirSync(releaseDir);
-        for (const file of files) {
-            const fPath = path.join(releaseDir, file);
-            if (file !== platformConfig.id) {
-                try { fs.rmSync(fPath, { recursive: true, force: true }); } catch (e) { }
+    if (!debug) {
+        // 2. Explicitly remove YML and Unpacked folders from the Final Artifact Dir (if any slipped in)
+        cleanUnwantedFiles(finalArtifactDir);
+
+        // 3. Clean up the Root Release Dir
+        if (fs.existsSync(releaseDir)) {
+            const files = fs.readdirSync(releaseDir);
+            for (const file of files) {
+                const fPath = path.join(releaseDir, file);
+
+                // If this is the final platform folder (e.g. 'win'), leave it alone
+                if (file === platformConfig.id) continue;
+
+                // Delete everything else (this includes 'win-unpacked', stray .yml, blocks, etc.)
+                try {
+                    fs.rmSync(fPath, { recursive: true, force: true });
+                } catch (e) { }
             }
         }
     }
