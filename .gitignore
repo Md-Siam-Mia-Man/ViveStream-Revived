@@ -1,7 +1,30 @@
+# Node dependencies
 /node_modules
+
+# Build & Release artifacts
 /release
+/dist
+/logs
+
+# Temporary build files
+temp-build-config.json
+
+# Generated frontend libraries (populated by npm install)
+src/renderer/js/lib/
+
+# Portable Python Environment (downloaded/cloned separately)
+python-portable
+
+# Logs and debug info
+*.log
+npm-debug.log*
+
+# OS generated files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+
+# Specific project ignores
 *.txt
 Release_Notes.md
 *.exe
-!vendor/**
-python-portable
