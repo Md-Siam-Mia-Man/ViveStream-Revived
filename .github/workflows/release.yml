@@ -31,11 +31,13 @@ jobs:
 
           - platform: Windows
             os: windows-latest
+            # Added publish
             build_command: npm run build:win -- --publish
             artifact_path: release/win/*.exe
 
           - platform: macOS
             os: macos-latest
+            # Added publish
             build_command: npm run build -- --publish
             artifact_path: release/mac/*.dmg
 
@@ -88,7 +90,6 @@ jobs:
 
       - name: Build Application
         shell: bash
-        # FIX: Just run the matrix command
         run: |
           mkdir -p logs
           ${{ matrix.build_command }} 2>&1 | tee logs/packaging.log
