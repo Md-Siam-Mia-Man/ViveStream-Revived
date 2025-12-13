@@ -9,9 +9,16 @@ let db;
  * * Initialize the Database
  * Sets up SQLite connection, enables WAL mode, and runs migrations.
  * @param {Electron.App} app - Electron App instance
+ * @param {string} [customPath] - Optional custom path for testing
  */
-function initialize(app) {
-  const dbPath = path.join(app.getPath("userData"), "ViveStream.db");
+function initialize(app, customPath = null) {
+  const dbPath = customPath || path.join(app.getPath("userData"), "ViveStream.db");
+
+  // Ensure directory exists
+  const dir = path.dirname(dbPath);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
 
   db = knex({
     client: "sqlite3",
@@ -141,11 +148,19 @@ function initialize(app) {
 
     } catch (error) {
       console.error("Database initialization failed:", error);
-      const { dialog } = require("electron");
-      dialog.showErrorBox("Database Error", "Critical DB error: " + error.message);
-      app.quit();
+      if (app && typeof app.quit === 'function') {
+        const { dialog } = require("electron");
+        if (dialog) dialog.showErrorBox("Database Error", "Critical DB error: " + error.message);
+        app.quit();
+      } else {
+        throw error; // Re-throw for tests
+      }
     }
   })();
+}
+
+function getDB() {
+  return db;
 }
 
 // * ----------------------
@@ -168,6 +183,7 @@ async function addOrUpdateVideo(videoData) {
     await db("videos").insert(videoInfo).onConflict("id").merge();
   } catch (error) {
     console.error("Error saving video to DB:", error);
+    throw error; // Rethrow for tests
   }
 }
 
@@ -562,7 +578,7 @@ async function shutdown() {
 module.exports = {
   initialize,
   shutdown,
-  db,
+  getDB,
   getLibrary,
   addOrUpdateVideo,
   getVideoById,
