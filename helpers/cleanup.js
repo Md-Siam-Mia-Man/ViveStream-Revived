@@ -48,7 +48,6 @@ const RECURSIVE_DELETE_PATTERNS = [
 const SITE_PACKAGES_CLEANUP_RULES = [
     { pkg: 'docutils', remove: ['languages', 'parsers'] },
     { pkg: 'urllib3', remove: ['contrib/emscripten'] },
-    // REMOVED: pip vendor cleanup (this was breaking pip updates)
     { pkg: 'yt_dlp', remove: ['__pyinstaller'] },
     { pkg: 'babel', remove: ['locale-data'] }, // If present
     { pkg: 'numpy', remove: ['tests', 'doc'] }, // If present
@@ -77,12 +76,13 @@ function isAllowlisted(filename) {
 }
 
 function cleanExecutablesFolder(folderPath) {
+    // ! FIX: Do not clean static_ffmpeg/bin folder, as it contains essential binaries
+    if (folderPath.includes('static_ffmpeg')) return;
+
     console.log(`   ⚙️  Cleaning Executables in: ${folderPath}`);
     try {
         const files = fs.readdirSync(folderPath);
         files.forEach(file => {
-            // If it's a directory (like __pycache__), we'll handle it in the recursive walk, 
-            // but we can check if it's a known junk folder here too.
             const fullPath = path.join(folderPath, file);
             const stat = fs.statSync(fullPath);
 
@@ -118,14 +118,12 @@ function cleanSitePackagesFolder(folderPath) {
         const fullPath = path.join(folderPath, item);
 
         // Remove .dist-info folders entirely? 
-        // WARNING: Removing .dist-info breaks 'pip' metadata, so pip list/freeze won't work.
-        // Runtime usually doesn't need it, BUT 'pkg_resources' might.
-        // We will compromise: keep .dist-info but remove the RECORD file and LICENSE text if large.
+        // WARNING: Removing .dist-info breaks 'pip' metadata.
         if (item.endsWith('.dist-info') && fs.statSync(fullPath).isDirectory()) {
             deleteItem(path.join(fullPath, 'RECORD'));
             deleteItem(path.join(fullPath, 'AUTHORS'));
             deleteItem(path.join(fullPath, 'LICENSE'));
-            deleteItem(path.join(fullPath, 'licenses')); // often contains images or texts
+            deleteItem(path.join(fullPath, 'licenses'));
         }
     });
 }
@@ -162,7 +160,7 @@ function walkAndClean(currentDir) {
             // Identify special folders
             if (lowerItem === 'scripts' || lowerItem === 'bin') {
                 cleanExecutablesFolder(fullPath);
-                // Continue recursing to catch __pycache__ inside bin if any
+                // Continue recursing
                 walkAndClean(fullPath);
             } else if (lowerItem === 'site-packages') {
                 cleanSitePackagesFolder(fullPath);
@@ -173,7 +171,6 @@ function walkAndClean(currentDir) {
         } else {
             // File Cleanup
             if (item.endsWith('.pdb') || item.endsWith('.whl') || item.endsWith('.txt') || item.endsWith('.md')) {
-                // Keep requirements.txt or LICENSE.txt in root? No, delete broadly except known configs.
                 if (item.toLowerCase() !== 'license.txt' && item.toLowerCase() !== 'python314._pth') {
                     deleteItem(fullPath);
                 }
