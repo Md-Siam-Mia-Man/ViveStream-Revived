@@ -735,11 +735,13 @@ input[type="range"]:hover::-webkit-slider-thumb {
      opacity: 1;
      transform: translateY(0) scale(1);
      pointer-events: auto;
+     width: 220px;
 }
 
 .sort-option-item {
      display: flex;
      align-items: center;
+     text-wrap-mode: nowrap;
      gap: 10px;
      padding: 10px;
      font-size: 0.9rem;
