@@ -411,7 +411,7 @@ class Downloader {
     ];
 
     if (resolvedFfmpegPath) {
-      // ! FIX: Pass dirname, not the executable path, to --ffmpeg-location
+      // Pass the directory so yt-dlp can find both ffmpeg and ffprobe
       args.push("--ffmpeg-location", path.dirname(resolvedFfmpegPath));
     } else {
       console.warn("Starting download WITHOUT FFmpeg. Merging will fail.");
