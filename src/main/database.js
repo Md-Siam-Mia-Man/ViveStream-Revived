@@ -26,7 +26,14 @@ function initialize(app, customPath = null) {
       filename: dbPath,
     },
     useNullAsDefault: true,
-    pool: { min: 1, max: 1 } // ! SQLite handles concurrency via file locks, large pools are wasteful here.
+    pool: {
+      min: 1,
+      max: 1,
+      // ! SQLite handles concurrency via file locks, large pools are wasteful here.
+      afterCreate: (conn, cb) => {
+        conn.run("PRAGMA foreign_keys = ON;", cb);
+      },
+    },
   });
 
   return (async () => {
