@@ -76,8 +76,8 @@ function isAllowlisted(filename) {
 }
 
 function cleanExecutablesFolder(folderPath) {
-    // ! FIX: Do not clean static_ffmpeg/bin folder, as it contains essential binaries
-    if (folderPath.includes('static_ffmpeg')) return;
+    // Preserve static_ffmpeg/bin folder as it contains essential binaries
+    if (folderPath.split(path.sep).includes('static_ffmpeg')) return;
 
     console.log(`   ⚙️  Cleaning Executables in: ${folderPath}`);
     try {
@@ -207,4 +207,14 @@ function main() {
     console.log(`\n✨ Cleanup Finished.`);
 }
 
-main();
+if (require.main === module) {
+    main();
+}
+
+module.exports = {
+    cleanExecutablesFolder,
+    isAllowlisted,
+    deleteItem,
+    walkAndClean,
+    cleanSitePackagesFolder
+};
