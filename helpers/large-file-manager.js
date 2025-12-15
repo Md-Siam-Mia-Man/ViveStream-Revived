@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { execSync } = require('child_process');
 
 const colors = {
     cyan: "\x1b[36m",
@@ -119,10 +120,22 @@ function joinFile(firstChunkPath) {
 
 const action = process.argv[2];
 
+// Check if python-portable exists. If not, try to clone it.
 if (!fs.existsSync(TARGET_DIR)) {
-    console.error(`${colors.red}Target directory not found: ${TARGET_DIR}${colors.reset}`);
-    console.warn(`${colors.green}RUN: git clone https://github.com/Md-Siam-Mia-Main/python-portable.git ${colors.reset}`);
-    process.exit(1);
+    console.log(`${colors.yellow}Target directory not found: ${TARGET_DIR}${colors.reset}`);
+    console.log(`${colors.green}Auto-cloning python-portable...${colors.reset}`);
+
+    try {
+        execSync('git clone https://github.com/Md-Siam-Mia-Main/python-portable.git', {
+            cwd: path.dirname(TARGET_DIR),
+            stdio: 'inherit' // Show git output
+        });
+        console.log(`${colors.green}Clone successful.${colors.reset}`);
+    } catch (e) {
+        console.error(`${colors.red}Failed to clone python-portable: ${e.message}${colors.reset}`);
+        console.warn(`${colors.yellow}Please manually run: git clone https://github.com/Md-Siam-Mia-Main/python-portable.git ${colors.reset}`);
+        process.exit(1);
+    }
 }
 
 if (action === 'split') {
