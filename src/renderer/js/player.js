@@ -265,6 +265,26 @@ function playLibraryItem({ index, queue, context = null, options = {} }) {
 
   videoPlayer.src = decodeURIComponent(item.filePath);
 
+  // ! Lazy load description if missing (async, non-blocking)
+  if (!item.description && item.id && !item.id.startsWith("external-")) {
+    window.electronAPI.getVideoDetails(item.id).then((fullDetails) => {
+      if (fullDetails && fullDetails.description) {
+        item.description = fullDetails.description;
+        // Also update the item in the main library if it exists there
+        const libItem = AppState.library.find((v) => v.id === item.id);
+        if (libItem) {
+          libItem.description = fullDetails.description;
+        }
+        // Update UI if this item is still playing
+        if (AppState.playbackQueue[AppState.currentlyPlayingIndex]?.id === item.id) {
+          updateVideoDetails(item);
+        }
+      }
+    }).catch((e) => {
+      console.error("Failed to load video details:", e);
+    });
+  }
+
   playerState.subtitleOffset = 0;
   if (item.subtitlePath) {
     const savedMode = localStorage.getItem("subtitleMode") || "off";

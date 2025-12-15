@@ -19,6 +19,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.on("download-info-error", (e, v) => cb(v)),
 
   getLibrary: () => ipcRenderer.invoke("get-library"),
+  getVideoDetails: (id) => ipcRenderer.invoke("video:get-details", id),
   deleteVideo: (id) => ipcRenderer.invoke("delete-video", id),
   toggleFavorite: (id) => ipcRenderer.invoke("toggle-favorite", id),
   videoUpdateMetadata: (videoId, metadata) =>

@@ -176,7 +176,14 @@ function getDB() {
 
 async function getLibrary() {
   try {
-    return await db("videos").select("*").orderBy("downloadedAt", "desc");
+    // ! Optimize: Exclude heavy 'description' field for initial load
+    return await db("videos")
+      .select(
+        "id", "title", "uploader", "creator", "duration", "upload_date",
+        "originalUrl", "filePath", "coverPath", "subtitlePath", "hasEmbeddedSubs",
+        "type", "downloadedAt", "isFavorite", "source"
+      )
+      .orderBy("downloadedAt", "desc");
   } catch (error) {
     console.error("Error getting library from DB:", error);
     return [];

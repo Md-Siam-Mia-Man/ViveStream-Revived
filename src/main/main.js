@@ -664,6 +664,7 @@ ipcMain.handle("reset-app", () => {
 });
 
 ipcMain.handle("get-library", () => db.getLibrary());
+ipcMain.handle("video:get-details", (e, id) => db.getVideoById(id));
 ipcMain.handle("toggle-favorite", (e, id) => db.toggleFavorite(id));
 ipcMain.handle("clear-all-media", async () => {
   for (const dir of mediaPaths) await fse.emptyDir(dir);
