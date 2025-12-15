@@ -385,11 +385,8 @@
             <div id="favorites-page" class="page hidden"></div>
             <div id="search-page" class="page hidden"></div>
             <div id="settings-page" class="page hidden">
-                <!-- Settings Content Loaded Dynamically or Static -->
                 <div class="settings-container">
                     <h1 class="settings-header">Settings</h1>
-                    <!-- Sections will be populated by settings.js if strictly dynamic, or static here. 
-                         Assuming static based on previous files. -->
                     <div class="settings-section">
                         <h2 class="settings-section-title">Appearance</h2>
                         <div class="setting-item">
@@ -404,7 +401,6 @@
                                 </label>
                             </div>
                         </div>
-                        <!-- ... rest of settings structure matching previous files ... -->
                         <div class="setting-item">
                             <div class="setting-text">
                                 <label>Window Controls</label>
@@ -486,6 +482,7 @@
                                     </div>
                                     <div class="options-list">
                                         <div class="option-item selected" data-value="none">None</div>
+                                        <div class="option-item" data-value="auto">Auto (Detect)</div>
                                         <div class="option-item" data-value="brave">Brave</div>
                                         <div class="option-item" data-value="chrome">Chrome</div>
                                         <div class="option-item" data-value="chromium">Chromium</div>
@@ -656,7 +653,8 @@
                                     </a>
                                 </div>
                             </div>
-                        </div>              </div>
+                        </div>
+                    </div>
                 </div>
             </div>
             <!-- Context Menus -->

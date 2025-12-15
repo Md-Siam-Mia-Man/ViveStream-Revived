@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const cleanup = require('../helpers/cleanup.js');
+const cleanup = require('./helpers/cleanup.js');
 
 const TEMP_DIR = path.join(__dirname, 'temp_cleanup_test');
 
