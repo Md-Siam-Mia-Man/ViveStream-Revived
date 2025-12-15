@@ -175,8 +175,6 @@ function moveArtifacts(sourceDir, destDir) {
         const fullPath = path.join(sourceDir, file);
         if (fs.statSync(fullPath).isDirectory()) continue;
 
-        // REMOVED: || file.endsWith(".yml")
-        // We do not want to move .yml files to the final folder, we want them left behind to be deleted.
         if (interestingExtensions.some(ext => file.endsWith(ext))) {
             const dest = path.join(destDir, file);
             try {
@@ -188,7 +186,6 @@ function moveArtifacts(sourceDir, destDir) {
     return movedFiles;
 }
 
-// New helper to recursively delete unpacked folders and yml files
 function cleanUnwantedFiles(dirPath) {
     if (!fs.existsSync(dirPath)) return;
 
@@ -199,7 +196,6 @@ function cleanUnwantedFiles(dirPath) {
         try { stat = fs.statSync(fullPath); } catch (e) { continue; }
 
         if (stat.isDirectory()) {
-            // If it is an unpacked folder, delete it
             if (file.includes("unpacked")) {
                 try {
                     fs.rmSync(fullPath, { recursive: true, force: true });
@@ -207,7 +203,6 @@ function cleanUnwantedFiles(dirPath) {
                 } catch (e) { }
             }
         } else {
-            // If it is a yml file, delete it
             if (file.endsWith(".yml")) {
                 try {
                     fs.unlinkSync(fullPath);
@@ -316,7 +311,8 @@ async function runBuild() {
         },
         linux: {
             target: platformConfig.id === "linux" ? platformConfig.target : "AppImage",
-            icon: toPosix(path.join(rootDir, "assets", "icon.png")),
+            // FIXED: Point to the directory for Linux, not the file
+            icon: toPosix(path.join(rootDir, "assets")),
             category: "Video",
             executableName: "vivestream-revived",
             maintainer: "Md Siam Mia <vivestream.revived@example.com>",
@@ -349,24 +345,16 @@ async function runBuild() {
 
     log("\n5/6", "Organizing & Cleaning");
 
-    // 1. Move desired artifacts (exe/deb/dmg) to platform folder
     const movedFiles = moveArtifacts(releaseDir, finalArtifactDir);
     if (movedFiles.length > 0) movedFiles.forEach(f => console.log(`   ✔ Moved: ${f}`));
 
     if (!debug) {
-        // 2. Explicitly remove YML and Unpacked folders from the Final Artifact Dir (if any slipped in)
         cleanUnwantedFiles(finalArtifactDir);
-
-        // 3. Clean up the Root Release Dir
         if (fs.existsSync(releaseDir)) {
             const files = fs.readdirSync(releaseDir);
             for (const file of files) {
                 const fPath = path.join(releaseDir, file);
-
-                // If this is the final platform folder (e.g. 'win'), leave it alone
                 if (file === platformConfig.id) continue;
-
-                // Delete everything else (this includes 'win-unpacked', stray .yml, blocks, etc.)
                 try {
                     fs.rmSync(fPath, { recursive: true, force: true });
                 } catch (e) { }

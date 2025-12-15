@@ -7,6 +7,7 @@ const {
   Menu,
   dialog,
   globalShortcut,
+  nativeImage,
 } = require("electron");
 const path = require("path");
 const fs = require("fs");
@@ -16,7 +17,7 @@ const crypto = require("crypto");
 const url = require("url");
 const db = require("./database");
 const { parseArtistNames } = require("./utils");
-const BrowserDiscovery = require("./browser-discovery"); // IMPORT NEW MODULE
+const BrowserDiscovery = require("./browser-discovery");
 
 // * --------------------------------------------------------------------------
 // * PERFORMANCE TUNING
@@ -27,6 +28,9 @@ app.commandLine.appendSwitch("enable-gpu-rasterization");
 app.commandLine.appendSwitch("enable-oop-rasterization");
 app.commandLine.appendSwitch("enable-zero-copy");
 app.commandLine.appendSwitch("ignore-gpu-blocklist");
+
+// Set App Name explicitly for Linux WM grouping
+app.setName("ViveStream");
 
 const isDev = !app.isPackaged;
 
@@ -55,9 +59,26 @@ let resolvedFfmpegPath = null;
 let pythonDetails = null;
 let ffmpegResolutionPromise = null;
 
+// * --------------------------------------------------------------------------
+// * ICON CONFIGURATION
+// * --------------------------------------------------------------------------
 const getAssetPath = (fileName) => path.join(__dirname, "..", "..", "assets", fileName);
+
 const iconFileName = process.platform === "win32" ? "icon.ico" : "icon.png";
-const iconPath = getAssetPath(iconFileName);
+const iconPathStr = getAssetPath(iconFileName);
+
+if (isDev) {
+  console.log(`[Icon Debug] Loading icon from: ${iconPathStr}`);
+}
+
+// Load NativeImage
+const appIconImage = nativeImage.createFromPath(iconPathStr);
+
+if (isDev && appIconImage.isEmpty()) {
+  console.error(`[Icon Debug] ❌ FAILED to load icon image. Check file integrity or format.`);
+} else if (isDev) {
+  console.log(`[Icon Debug] ✅ Icon loaded successfully. Size: ${JSON.stringify(appIconImage.getSize())}`);
+}
 
 mediaPaths.forEach((dir) => {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
@@ -156,9 +177,6 @@ function spawnPython(args, options = {}) {
 
 /**
  * * Robust FFmpeg resolver.
- * 1. Tries `static_ffmpeg` python module (preferred).
- * 2. Scans python `bin` or `Scripts` folder.
- * 3. Scans `site-packages` deeply.
  */
 function startFfmpegResolution() {
   return new Promise(async (resolve) => {
@@ -215,12 +233,9 @@ except Exception as e:
     try {
       let sitePackages = "";
       if (process.platform === "win32") {
-        // Windows: root/Lib/site-packages
         const baseDir = path.dirname(path.dirname(binDir));
         sitePackages = path.join(baseDir, "Lib", "site-packages");
       } else {
-        // Linux/Mac: root/lib/python3.x/site-packages
-        // binDir is .../bin. Root is parent of bin.
         const root = path.dirname(binDir);
         const libDir = path.join(root, "lib");
         if (fs.existsSync(libDir)) {
@@ -234,7 +249,6 @@ except Exception as e:
       if (sitePackages && fs.existsSync(sitePackages)) {
         const staticFfmpegBin = path.join(sitePackages, "static_ffmpeg", "bin");
         if (fs.existsSync(staticFfmpegBin)) {
-          // Recursive search for ffmpeg binary
           const findFfmpeg = (dir) => {
             const files = fs.readdirSync(dir);
             for (const file of files) {
@@ -605,7 +619,7 @@ function createWindow() {
       hardwareAcceleration: true,
     },
     frame: false,
-    icon: iconPath,
+    icon: appIconImage,
     title: "ViveStream",
     show: false
   });
@@ -613,6 +627,10 @@ function createWindow() {
   win.loadFile(path.join(__dirname, "..", "renderer", "index.html"));
 
   win.once('ready-to-show', () => {
+    // Explicitly set icon for Linux after creation (fixes missing icon in Dev)
+    if (process.platform === 'linux' && !appIconImage.isEmpty()) {
+      win.setIcon(appIconImage);
+    }
     win.show();
     if (isDev) win.webContents.openDevTools({ mode: "detach" });
   });
@@ -630,7 +648,7 @@ function createWindow() {
 }
 
 function createTray() {
-  tray = new Tray(iconPath);
+  tray = new Tray(appIconImage);
   tray.setToolTip("ViveStream");
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: "Show App", click: () => win.show() },
