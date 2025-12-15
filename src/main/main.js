@@ -16,6 +16,7 @@ const crypto = require("crypto");
 const url = require("url");
 const db = require("./database");
 const { parseArtistNames } = require("./utils");
+const BrowserDiscovery = require("./browser-discovery"); // IMPORT NEW MODULE
 
 // * --------------------------------------------------------------------------
 // * PERFORMANCE TUNING
@@ -435,7 +436,13 @@ class Downloader {
     if (job.liveFromStart) args.push("--live-from-start");
     if (this.settings.removeSponsors) args.push("--sponsorblock-remove", "all");
     if (this.settings.concurrentFragments > 1) args.push("--concurrent-fragments", this.settings.concurrentFragments.toString());
-    if (this.settings.cookieBrowser && this.settings.cookieBrowser !== "none") args.push("--cookies-from-browser", this.settings.cookieBrowser);
+
+    // INTELLIGENT BROWSER DISCOVERY
+    const browserArg = BrowserDiscovery.resolveBrowser(this.settings.cookieBrowser);
+    if (browserArg) {
+      args.push("--cookies-from-browser", browserArg);
+    }
+
     if (this.settings.speedLimit) args.push("-r", this.settings.speedLimit);
 
     const proc = spawnPython(args);
@@ -696,7 +703,12 @@ ipcMain.handle("videos:touch", (e, ids) => db.db("videos").whereIn("id", ids).up
 ipcMain.on("download-video", (e, { downloadOptions, jobId }) => {
   const args = ["-m", "yt_dlp", downloadOptions.url, "--dump-json", "--flat-playlist", "--no-warnings"];
   const s = getSettings();
-  if (s.cookieBrowser && s.cookieBrowser !== "none") args.push("--cookies-from-browser", s.cookieBrowser);
+
+  // INTELLIGENT BROWSER DISCOVERY
+  const browserArg = BrowserDiscovery.resolveBrowser(s.cookieBrowser);
+  if (browserArg) {
+    args.push("--cookies-from-browser", browserArg);
+  }
 
   const proc = spawnPython(args);
   let json = "";
