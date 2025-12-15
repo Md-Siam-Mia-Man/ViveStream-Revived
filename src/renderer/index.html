@@ -486,13 +486,13 @@
                                     </div>
                                     <div class="options-list">
                                         <div class="option-item selected" data-value="none">None</div>
-                                        <div class="option-item" data-value="auto">Auto (Detect)</div>
                                         <div class="option-item" data-value="brave">Brave</div>
                                         <div class="option-item" data-value="chrome">Chrome</div>
                                         <div class="option-item" data-value="chromium">Chromium</div>
                                         <div class="option-item" data-value="edge">Edge</div>
                                         <div class="option-item" data-value="firefox">Firefox</div>
                                         <div class="option-item" data-value="opera">Opera</div>
+                                        <div class="option-item" data-value="safari">Safari</div>
                                         <div class="option-item" data-value="vivaldi">Vivaldi</div>
                                     </div>
                                 </div>
@@ -629,3 +629,164 @@
                                 </button>
                             </div>
                         </div>
+                    </div>
+
+                    <!-- About Section -->
+                    <div class="settings-section about-section">
+                        <h2 class="settings-section-title">About</h2>
+                        <div class="about-card">
+                            <div class="about-content">
+                                <svg class="about-logo" viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg">
+                                    <path fill="var(--primary-accent)"
+                                        d="M83.333 0H416.667A83.333 83.333 0 0 1 500 83.333V416.667A83.333 83.333 0 0 1 416.667 500H83.333A83.333 83.333 0 0 1 0 416.667V83.333A83.333 83.333 0 0 1 83.333 0z" />
+                                    <path d="m125 125 125 250 125 -250" stroke="#f1f1f1" stroke-width="25" fill="none"
+                                        stroke-linecap="round" />
+                                    <path
+                                        d="M375 125c-241.667 62.5 -270.833 -41.667 -225 0 8.333 41.667 16.667 -20.833 25 0s16.667 -62.5 25 0 16.667 -33.333 25 0 16.667 -8.333 25 0c8.333 50 16.667 -58.333 25 0 8.333 20.833 16.667 -41.667 25 0 8.333 62.5 16.667 -20.833 25 0 8.333 41.667 16.667 -50 25 0 8.333 25 16.667 -33.333 25 0"
+                                        stroke="#fff" stroke-width="5.2" fill="none" stroke-linecap="round"
+                                        style="stroke-dasharray: 1000; stroke-dashoffset: 1000; animation: pulse-glow 5s ease-in-out infinite;" />
+                                </svg>
+                                <h3 class="about-app-name">ViveStream</h3>
+                                <div class="about-links">
+                                    <a id="github-view-link" class="about-btn github-view-btn">
+                                        <span class="material-symbols-outlined">code</span> View On GitHub
+                                    </a>
+                                    <a id="github-star-link" class="about-btn github-star-btn">
+                                        <span class="material-symbols-outlined">star</span> Star On Github
+                                    </a>
+                                </div>
+                            </div>
+                        </div>              </div>
+                </div>
+            </div>
+            <!-- Context Menus -->
+            <div class="context-menu" id="video-item-context-menu">
+                <div class="context-menu-item" id="context-edit-btn"><span class="material-symbols-outlined">edit</span>
+                    Edit Metadata</div>
+                <div class="context-menu-item" id="context-export-btn"><span
+                        class="material-symbols-outlined">download</span> Export File</div>
+                <div class="context-menu-divider"></div>
+                <div class="context-menu-item" id="context-remove-from-playlist-btn"><span
+                        class="material-symbols-outlined">playlist_remove</span> Remove from Playlist</div>
+                <div class="context-menu-item" id="context-delete-btn"><span
+                        class="material-symbols-outlined">delete</span> Delete from Library</div>
+            </div>
+            <div class="context-menu" id="playlist-item-context-menu">
+                <div class="context-menu-item" id="context-playlist-rename-btn"><span
+                        class="material-symbols-outlined">edit</span> Rename</div>
+                <div class="context-menu-item" id="context-playlist-delete-btn"><span
+                        class="material-symbols-outlined">delete</span> Delete</div>
+            </div>
+            <div id="scroll-sentinel" style="height: 10px; width: 100%;"></div>
+        </div>
+    </div>
+    <!-- Miniplayer & Modals -->
+    <div id="miniplayer" class="hidden">
+        <div id="miniplayer-video-container"></div>
+        <img id="miniplayer-artwork-img" class="miniplayer-artwork hidden" src="" alt="Artwork" decoding="async" />
+        <div class="miniplayer-info">
+            <p class="miniplayer-title">Title</p>
+            <p class="miniplayer-uploader">Uploader</p>
+        </div>
+        <div class="miniplayer-controls">
+            <button class="mini-control-button" id="miniplayer-prev-btn"><span
+                    class="material-symbols-outlined">skip_previous</span></button>
+            <button class="mini-control-button" id="miniplayer-play-pause-btn"><span
+                    class="material-symbols-outlined">play_arrow</span></button>
+            <button class="mini-control-button" id="miniplayer-next-btn"><span
+                    class="material-symbols-outlined">skip_next</span></button>
+        </div>
+        <div class="miniplayer-actions">
+            <button class="mini-action-button" id="miniplayer-expand-btn"><span
+                    class="material-symbols-outlined">expand_less</span></button>
+            <button class="mini-action-button" id="miniplayer-close-btn"><span
+                    class="material-symbols-outlined">close</span></button>
+        </div>
+        <div class="miniplayer-progress-container">
+            <div class="miniplayer-progress-bar"></div>
+        </div>
+    </div>
+    <div id="notification-container"></div>
+    <div id="add-to-playlist-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Add to Playlist</h3>
+                <div class="modal-header-input-container">
+                    <span class="material-symbols-outlined">search</span>
+                    <input type="text" id="add-to-playlist-input" placeholder="Find or create playlist..." />
+                </div>
+            </div>
+            <div class="add-playlist-list"></div>
+            <div class="modal-actions">
+                <button id="add-to-playlist-close-btn" class="modal-btn">Close</button>
+            </div>
+        </div>
+    </div>
+    <div id="confirmation-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h3 id="modal-title">Are you sure?</h3>
+            <p id="modal-text">Action cannot be undone.</p>
+            <div class="modal-actions">
+                <button id="modal-cancel-btn" class="modal-btn">Cancel</button>
+                <button id="modal-confirm-btn" class="modal-btn danger-btn">Confirm</button>
+            </div>
+        </div>
+    </div>
+    <div id="prompt-modal" class="modal-overlay hidden">
+        <div class="modal-content prompt-modal-content">
+            <h3 id="prompt-title">Prompt</h3>
+            <p id="prompt-text">Enter value:</p>
+            <input type="text" id="prompt-input" />
+            <div class="modal-actions">
+                <button id="prompt-cancel-btn" class="modal-btn">Cancel</button>
+                <button id="prompt-confirm-btn" class="modal-btn">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <template id="video-grid-item-template">
+        <div class="video-grid-item">
+            <div class="grid-thumbnail-container">
+                <img class="grid-thumbnail lazy" alt="thumbnail" decoding="async" />
+                <div class="thumbnail-overlay-icon"></div>
+                <span class="thumbnail-duration"></span>
+            </div>
+            <div class="grid-item-details">
+                <div class="grid-item-info">
+                    <p class="grid-item-title"></p>
+                    <p class="grid-item-meta"></p>
+                </div>
+                <div class="grid-item-actions">
+                    <button class="grid-item-action-btn favorite-btn"><span
+                            class="material-symbols-outlined">favorite</span></button>
+                    <button class="grid-item-action-btn add-to-playlist-grid-btn" title="Add to Playlist"><span
+                            class="material-symbols-outlined">playlist_add</span></button>
+                    <button class="grid-item-action-btn menu-btn" title="More"><span
+                            class="material-symbols-outlined">more_vert</span></button>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <template id="search-results-section-template">
+        <div class="search-results-section">
+            <h2 class="search-section-title"></h2>
+            <div class="search-section-grid"></div>
+        </div>
+    </template>
+
+    <script src="./js/lib/Sortable.min.js"></script>
+    <script src="./js/state.js" type="module"></script>
+    <script src="./js/modals.js" type="module"></script>
+    <script src="./js/renderer.js" type="module"></script>
+    <script src="./js/notifications.js" type="module"></script>
+    <script src="./js/ui.js" type="module"></script>
+    <script src="./js/downloader.js" type="module"></script>
+    <script src="./js/player.js" type="module"></script>
+    <script src="./js/miniplayer.js" type="module"></script>
+    <script src="./js/settings.js" type="module"></script>
+    <script src="./js/playlists.js" type="module"></script>
+    <script src="./js/artists.js" type="module"></script>
+</body>
+
+</html>
