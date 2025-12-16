@@ -77,7 +77,9 @@ function isAllowlisted(filename) {
 
 function cleanExecutablesFolder(folderPath) {
     // Preserve static_ffmpeg/bin folder as it contains essential binaries
-    if (folderPath.split(path.sep).includes('static_ffmpeg')) return;
+    // Use strict path segment check to avoid matching "not_static_ffmpeg"
+    const segments = folderPath.split(path.sep);
+    if (segments.includes('static_ffmpeg')) return;
 
     console.log(`   ⚙️  Cleaning Executables in: ${folderPath}`);
     try {
