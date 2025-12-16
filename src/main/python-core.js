@@ -13,6 +13,8 @@ function getPythonDetails() {
     ? path.join(__dirname, "..", "..", "python-portable")
     : path.join(process.resourcesPath, "python-portable");
 
+  console.log(`[Python Core] Detecting environment. Dev: ${isDev}, Root: ${root}`);
+
   let pythonPath = null;
   let binDir = null;
 
@@ -22,6 +24,7 @@ function getPythonDetails() {
       pythonPath = path.join(winDir, "python.exe");
       binDir = path.join(winDir, "Scripts");
     } else {
+      console.warn("[Python Core] Portable Python not found at expected path:", winDir);
       pythonPath = "python";
     }
   } else if (process.platform === "darwin") {
@@ -30,6 +33,7 @@ function getPythonDetails() {
       pythonPath = path.join(macDir, "bin", "python3");
       binDir = path.join(macDir, "bin");
     } else {
+      console.warn("[Python Core] Portable Python not found at expected path:", macDir);
       pythonPath = "python3";
     }
   } else {
@@ -45,11 +49,13 @@ function getPythonDetails() {
       pythonPath = path.join(targetDir, "bin", "python3");
       binDir = path.join(targetDir, "bin");
     } else {
+      console.warn("[Python Core] Portable Python not found at expected paths:", linuxGnu);
       pythonPath = "python3";
     }
   }
 
   pythonDetails = { pythonPath, binDir };
+  console.log(`[Python Core] Resolved: ${pythonPath}`);
   return pythonDetails;
 }
 
@@ -60,6 +66,7 @@ function spawnPython(args, options = {}) {
     const pathKey = process.platform === 'win32' ? 'Path' : 'PATH';
     env[pathKey] = `${binDir}${path.delimiter}${env[pathKey] || ''}`;
   }
+  // Force unbuffered output so logs stream immediately
   env['PYTHONUNBUFFERED'] = '1';
   return spawn(pythonPath, args, { ...options, env });
 }
