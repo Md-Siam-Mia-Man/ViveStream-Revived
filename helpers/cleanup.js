@@ -7,51 +7,27 @@ const path = require('path');
 
 const PORTABLE_ROOT = path.join(__dirname, '..', 'python-portable');
 
-// Folders to remove immediately from the root of the python environment
 const TOP_LEVEL_DIRS_TO_REMOVE = [
-    'include',
-    'share',
-    'tcl',
-    'doc',
-    'man',
-    'manuals',
-    'libs', // Static libs often not needed for runtime execution of scripts
-    'Tools'
+    'include', 'share', 'tcl', 'doc', 'man', 'manuals', 'libs', 'Tools'
 ];
 
-// Binaries/Executables to KEEP in 'bin' or 'Scripts'.
 const EXECUTABLES_ALLOWLIST = [
-    'python', 'python.exe',
-    'python3', 'python3.exe',
-    'pythonw', 'pythonw.exe',
+    'python', 'python.exe', 'python3', 'python3.exe', 'pythonw', 'pythonw.exe',
     'pip', 'pip.exe',
     'yt-dlp', 'yt-dlp.exe',
+    // These are crucial:
     'ffmpeg', 'ffmpeg.exe',
-    'ffprobe', 'ffprobe.exe',
-    'static_ffmpeg', 'static_ffmpeg.exe',
-    'static_ffprobe', 'static_ffprobe.exe'
+    'ffprobe', 'ffprobe.exe'
 ];
 
-// Patterns or folder names to delete recursively anywhere
 const RECURSIVE_DELETE_PATTERNS = [
-    '__pycache__',
-    'tests',
-    'test',
-    'testing',
-    'examples',
-    'sample',
-    'samples',
-    'docs'
+    '__pycache__', 'tests', 'test', 'testing', 'examples', 'sample', 'samples', 'docs'
 ];
 
-// Specific cleanup rules for site-packages to save space
 const SITE_PACKAGES_CLEANUP_RULES = [
     { pkg: 'docutils', remove: ['languages', 'parsers'] },
     { pkg: 'urllib3', remove: ['contrib/emscripten'] },
-    { pkg: 'yt_dlp', remove: ['__pyinstaller'] },
-    { pkg: 'babel', remove: ['locale-data'] }, // If present
-    { pkg: 'numpy', remove: ['tests', 'doc'] }, // If present
-    { pkg: 'cryptography', remove: ['hazmat/backends/openssl/src'] } // If present
+    { pkg: 'yt_dlp', remove: ['__pyinstaller'] }
 ];
 
 // ==========================================
@@ -69,18 +45,14 @@ function deleteItem(itemPath) {
 }
 
 function isAllowlisted(filename) {
-    // Check exact match or match without extension
     const name = path.parse(filename).name;
     const base = path.basename(filename);
-    return EXECUTABLES_ALLOWLIST.includes(base) || EXECUTABLES_ALLOWLIST.includes(name);
+    // Case insensitive check for Windows safety
+    const allow = EXECUTABLES_ALLOWLIST.some(a => a.toLowerCase() === base.toLowerCase() || a.toLowerCase() === name.toLowerCase());
+    return allow;
 }
 
 function cleanExecutablesFolder(folderPath) {
-    // Preserve static_ffmpeg/bin folder as it contains essential binaries
-    // Use strict path segment check to avoid matching "not_static_ffmpeg"
-    const segments = folderPath.split(path.sep);
-    if (segments.includes('static_ffmpeg')) return;
-
     console.log(`   ⚙️  Cleaning Executables in: ${folderPath}`);
     try {
         const files = fs.readdirSync(folderPath);
@@ -90,6 +62,7 @@ function cleanExecutablesFolder(folderPath) {
 
             if (stat.isFile()) {
                 if (!isAllowlisted(file)) {
+                    // console.log(`      - Removing ${file}`); // Uncomment for debug
                     deleteItem(fullPath);
                 }
             }
@@ -100,8 +73,6 @@ function cleanExecutablesFolder(folderPath) {
 }
 
 function cleanSitePackagesFolder(folderPath) {
-    console.log(`   📦 Cleaning Libraries in: ${folderPath}`);
-
     if (!fs.existsSync(folderPath)) return;
 
     // 1. Specific Package Rules
@@ -118,9 +89,6 @@ function cleanSitePackagesFolder(folderPath) {
     const contents = fs.readdirSync(folderPath);
     contents.forEach(item => {
         const fullPath = path.join(folderPath, item);
-
-        // Remove .dist-info folders entirely? 
-        // WARNING: Removing .dist-info breaks 'pip' metadata.
         if (item.endsWith('.dist-info') && fs.statSync(fullPath).isDirectory()) {
             deleteItem(path.join(fullPath, 'RECORD'));
             deleteItem(path.join(fullPath, 'AUTHORS'));
@@ -134,35 +102,23 @@ function walkAndClean(currentDir) {
     if (!fs.existsSync(currentDir)) return;
 
     let items;
-    try {
-        items = fs.readdirSync(currentDir);
-    } catch (e) {
-        return;
-    }
+    try { items = fs.readdirSync(currentDir); } catch (e) { return; }
 
     items.forEach(item => {
         const fullPath = path.join(currentDir, item);
 
-        // Check recursive delete patterns
         if (RECURSIVE_DELETE_PATTERNS.includes(item)) {
             deleteItem(fullPath);
             return;
         }
 
         let stat;
-        try {
-            stat = fs.statSync(fullPath);
-        } catch (e) {
-            return;
-        }
+        try { stat = fs.statSync(fullPath); } catch (e) { return; }
 
         if (stat.isDirectory()) {
             const lowerItem = item.toLowerCase();
-
-            // Identify special folders
             if (lowerItem === 'scripts' || lowerItem === 'bin') {
                 cleanExecutablesFolder(fullPath);
-                // Continue recursing
                 walkAndClean(fullPath);
             } else if (lowerItem === 'site-packages') {
                 cleanSitePackagesFolder(fullPath);
@@ -173,7 +129,8 @@ function walkAndClean(currentDir) {
         } else {
             // File Cleanup
             if (item.endsWith('.pdb') || item.endsWith('.whl') || item.endsWith('.txt') || item.endsWith('.md')) {
-                if (item.toLowerCase() !== 'license.txt' && item.toLowerCase() !== 'python314._pth') {
+                const lower = item.toLowerCase();
+                if (lower !== 'license.txt' && lower !== 'python314._pth' && !isAllowlisted(item)) {
                     deleteItem(fullPath);
                 }
             }
@@ -198,11 +155,7 @@ function main() {
     platforms.forEach(platform => {
         const platformPath = path.join(PORTABLE_ROOT, platform);
         console.log(`\n📂 Platform: ${platform}`);
-
-        // 1. Top Level Removal
         TOP_LEVEL_DIRS_TO_REMOVE.forEach(d => deleteItem(path.join(platformPath, d)));
-
-        // 2. Recursive Walk
         walkAndClean(platformPath);
     });
 
