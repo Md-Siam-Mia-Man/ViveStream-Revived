@@ -1,6 +1,37 @@
-const { parseArtistNames } = require('../../src/main/utils');
+const { parseArtistNames, parseYtDlpError } = require('../../src/main/utils');
 
 describe('Utility Functions', () => {
+  describe('parseYtDlpError', () => {
+    test('should identify missing FFmpeg binary', () => {
+      const stderr = "some logs\nffmpeg not found\nmore logs";
+      expect(parseYtDlpError(stderr)).toBe("FFmpeg binary missing. Please re-run the app or check internet connection.");
+    });
+
+    test('should identify private video', () => {
+      const stderr = "ERROR: Private video";
+      expect(parseYtDlpError(stderr)).toBe("This video is private.");
+    });
+
+    test('should identify unavailable video', () => {
+      const stderr = "ERROR: Video unavailable";
+      expect(parseYtDlpError(stderr)).toBe("This video is unavailable.");
+    });
+
+    test('should extract specific ERROR message', () => {
+      const stderr = "some info\nERROR: Specific error message \nmore info";
+      expect(parseYtDlpError(stderr)).toBe("Specific error message");
+    });
+
+    test('should fallback to last line if no ERROR prefix found', () => {
+      const stderr = "Line 1\nLine 2\nLast error line";
+      expect(parseYtDlpError(stderr)).toBe("Last error line");
+    });
+
+    test('should return Unknown error for empty string', () => {
+      expect(parseYtDlpError("")).toBe("Unknown error");
+    });
+  });
+
   describe('parseArtistNames', () => {
     test('should return ["Unknown"] for empty input', () => {
       expect(parseArtistNames(null)).toEqual(["Unknown"]);
