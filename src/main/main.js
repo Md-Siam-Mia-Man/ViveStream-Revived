@@ -12,18 +12,14 @@ const {
 const path = require("path");
 const fs = require("fs");
 const fse = require("fs-extra");
-const { spawn } = require("child_process");
 const crypto = require("crypto");
 const url = require("url");
 const db = require("./database");
-const { parseArtistNames, parseYtDlpError } = require("./utils");
+const { parseYtDlpError } = require("./utils");
 const { getPythonDetails, spawnPython } = require("./python-core");
 const Downloader = require("./downloader");
 const BrowserDiscovery = require("./browser-discovery");
 
-// * --------------------------------------------------------------------------
-// * PERFORMANCE TUNING
-// * --------------------------------------------------------------------------
 app.commandLine.appendSwitch("enable-begin-frame-scheduling");
 app.commandLine.appendSwitch("enable-native-gpu-memory-buffers");
 app.commandLine.appendSwitch("enable-gpu-rasterization");
@@ -31,7 +27,6 @@ app.commandLine.appendSwitch("enable-oop-rasterization");
 app.commandLine.appendSwitch("enable-zero-copy");
 app.commandLine.appendSwitch("ignore-gpu-blocklist");
 
-// Set App Name explicitly for Linux WM grouping
 app.setName("ViveStream");
 
 const isDev = !app.isPackaged;
@@ -40,9 +35,6 @@ if (isDev) {
   app.commandLine.appendSwitch("disable-features", "Autofill,ComponentUpdateServices");
 }
 
-// * --------------------------------------------------------------------------
-// * FILE SYSTEM CONFIGURATION
-// * --------------------------------------------------------------------------
 const userHomePath = app.getPath("home");
 const viveStreamPath = path.join(userHomePath, "ViveStream");
 const videoPath = path.join(viveStreamPath, "videos");
@@ -60,26 +52,11 @@ let externalFilePath = null;
 let resolvedFfmpegPath = null;
 let ffmpegResolutionPromise = null;
 
-// * --------------------------------------------------------------------------
-// * ICON CONFIGURATION
-// * --------------------------------------------------------------------------
 const getAssetPath = (fileName) => path.join(__dirname, "..", "..", "assets", fileName);
 
 const iconFileName = process.platform === "win32" ? "icon.ico" : "icon.png";
 const iconPathStr = getAssetPath(iconFileName);
-
-if (isDev) {
-  console.log(`[Icon Debug] Loading icon from: ${iconPathStr}`);
-}
-
-// Load NativeImage
 const appIconImage = nativeImage.createFromPath(iconPathStr);
-
-if (isDev && appIconImage.isEmpty()) {
-  console.error(`[Icon Debug] ❌ FAILED to load icon image. Check file integrity or format.`);
-} else if (isDev) {
-  console.log(`[Icon Debug] ✅ Icon loaded successfully. Size: ${JSON.stringify(appIconImage.getSize())}`);
-}
 
 mediaPaths.forEach((dir) => {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
@@ -94,10 +71,6 @@ const defaultSettings = {
   concurrentFragments: 1,
   speedLimit: "",
 };
-
-// * --------------------------------------------------------------------------
-// * HELPER FUNCTIONS
-// * --------------------------------------------------------------------------
 
 function getSettings() {
   if (fs.existsSync(settingsPath)) {
@@ -118,51 +91,18 @@ function saveSettings(settings) {
 }
 if (!fs.existsSync(settingsPath)) saveSettings(defaultSettings);
 
-/**
- * * Robust FFmpeg resolver.
- */
 function startFfmpegResolution() {
-  return new Promise(async (resolve) => {
+  const resolveTask = new Promise(async (resolve) => {
     const { pythonPath, binDir } = getPythonDetails();
-    console.log("Resolving FFmpeg...");
+    console.log(`[FFmpeg] Resolution start. Python Bin: ${binDir}`);
 
-    // 1. Try Python Script
-    const script = `
-import sys, os
-try:
-    import static_ffmpeg.run
-    ffmpeg, _ = static_ffmpeg.run.get_or_fetch_platform_executables_else_raise()
-    print(ffmpeg)
-except Exception as e:
-    print("ERR:" + str(e))
-`;
-    let pythonOutput = "";
-    try {
-      await new Promise((res) => {
-        const proc = spawnPython(["-c", script]);
-        proc.stdout.on("data", (d) => (pythonOutput += d.toString()));
-        proc.on("close", () => res());
-        proc.on("error", () => res());
-      });
+    const targetName = process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg";
 
-      const p = pythonOutput.trim();
-      if (p && !p.startsWith("ERR:") && fs.existsSync(p)) {
-        console.log("FFmpeg found via static_ffmpeg:", p);
-        if (process.platform !== 'win32') {
-          try { fs.chmodSync(p, 0o755); } catch (e) { }
-        }
-        resolvedFfmpegPath = p;
-        resolve(p);
-        return;
-      }
-    } catch (e) { }
-
-    // 2. Fallback: Check binDir
+    // 1. Primary Check: bin/Scripts folder (Where update-binaries.js puts it)
     if (binDir) {
-      const exe = process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg";
-      const candidate = path.join(binDir, exe);
+      const candidate = path.join(binDir, targetName);
       if (fs.existsSync(candidate)) {
-        console.log("FFmpeg found in bin dir:", candidate);
+        console.log("[FFmpeg] Found in Python bin/Scripts:", candidate);
         if (process.platform !== 'win32') {
           try { fs.chmodSync(candidate, 0o755); } catch (e) { }
         }
@@ -172,65 +112,75 @@ except Exception as e:
       }
     }
 
-    // 3. Fallback: Deep scan in site-packages
+    // 2. Secondary Check: Python Import (static_ffmpeg module)
     try {
-      let sitePackages = "";
-      if (process.platform === "win32") {
-        const baseDir = path.dirname(path.dirname(binDir));
-        sitePackages = path.join(baseDir, "Lib", "site-packages");
-      } else {
-        const root = path.dirname(binDir);
-        const libDir = path.join(root, "lib");
-        if (fs.existsSync(libDir)) {
-          const pyDir = fs.readdirSync(libDir).find(d => d.startsWith("python"));
-          if (pyDir) {
-            sitePackages = path.join(libDir, pyDir, "site-packages");
+      const script = "import static_ffmpeg.run; print(static_ffmpeg.run.get_or_fetch_platform_executables_else_raise()[0])";
+      let output = "";
+      await new Promise(r => {
+        const p = spawnPython(["-c", script]);
+        p.stdout.on("data", d => output += d);
+        p.on("close", r);
+        p.on("error", r);
+      });
+      const p = output.trim();
+      if (p && fs.existsSync(p)) {
+        console.log("[FFmpeg] Found via module:", p);
+        if (process.platform !== 'win32') try { fs.chmodSync(p, 0o755); } catch (e) { }
+        resolvedFfmpegPath = p;
+        resolve(p);
+        return;
+      }
+    } catch (e) { }
+
+    // 3. Fallback: Deep Search in Python Root
+    const searchRoot = path.dirname(path.dirname(binDir)); // Up 2 levels from Scripts/bin
+
+    const findFfmpegDeep = (dir, depth = 0) => {
+      if (depth > 6) return null;
+      try {
+        const files = fs.readdirSync(dir);
+        for (const file of files) {
+          const fp = path.join(dir, file);
+          let stat;
+          try { stat = fs.statSync(fp); } catch (e) { continue; }
+
+          if (stat.isDirectory()) {
+            if (!['__pycache__', 'doc', 'test', 'tests', 'tcl', 'share', 'include', 'libs'].includes(file)) {
+              const res = findFfmpegDeep(fp, depth + 1);
+              if (res) return res;
+            }
+          } else if (file.toLowerCase() === targetName) {
+            return fp;
           }
         }
-      }
+      } catch (e) { }
+      return null;
+    };
 
-      if (sitePackages && fs.existsSync(sitePackages)) {
-        const staticFfmpegBin = path.join(sitePackages, "static_ffmpeg", "bin");
-        if (fs.existsSync(staticFfmpegBin)) {
-          const findFfmpeg = (dir) => {
-            const files = fs.readdirSync(dir);
-            for (const file of files) {
-              const fp = path.join(dir, file);
-              const stat = fs.statSync(fp);
-              if (stat.isDirectory()) {
-                const found = findFfmpeg(fp);
-                if (found) return found;
-              } else if (file === "ffmpeg" || file === "ffmpeg.exe") {
-                return fp;
-              }
-            }
-            return null;
-          };
-
-          const found = findFfmpeg(staticFfmpegBin);
-          if (found) {
-            console.log("FFmpeg found via deep scan:", found);
-            if (process.platform !== 'win32') {
-              try { fs.chmodSync(found, 0o755); } catch (e) { }
-            }
-            resolvedFfmpegPath = found;
-            resolve(found);
-            return;
-          }
-        }
+    if (fs.existsSync(searchRoot)) {
+      const found = findFfmpegDeep(searchRoot);
+      if (found) {
+        console.log("[FFmpeg] Found via deep scan:", found);
+        if (process.platform !== 'win32') try { fs.chmodSync(found, 0o755); } catch (e) { }
+        resolvedFfmpegPath = found;
+        resolve(found);
+        return;
       }
-    } catch (e) {
-      console.warn("Deep scan failed:", e);
     }
 
-    console.warn("FFmpeg NOT found. Video merging may fail.");
+    console.warn("[FFmpeg] FATAL: Could not find ffmpeg binary.");
     resolve(null);
   });
-}
 
-// * --------------------------------------------------------------------------
-// * APP LIFECYCLE
-// * --------------------------------------------------------------------------
+  const timeoutTask = new Promise((resolve) => {
+    setTimeout(() => {
+      console.warn("[FFmpeg] Search timed out (10s).");
+      resolve(null);
+    }, 10000);
+  });
+
+  return Promise.race([resolveTask, timeoutTask]);
+}
 
 const gotTheLock = app.requestSingleInstanceLock();
 
@@ -307,7 +257,9 @@ const downloader = new Downloader({
   BrowserDiscovery,
   win,
   resolveFfmpegPath: async () => {
-    if (!resolvedFfmpegPath) await ffmpegResolutionPromise;
+    if (!resolvedFfmpegPath && ffmpegResolutionPromise) {
+      resolvedFfmpegPath = await ffmpegResolutionPromise;
+    }
     return resolvedFfmpegPath;
   }
 });
@@ -336,7 +288,6 @@ function createWindow() {
   win.loadFile(path.join(__dirname, "..", "renderer", "index.html"));
 
   win.once('ready-to-show', () => {
-    // Explicitly set icon for Linux after creation (fixes missing icon in Dev)
     if (process.platform === 'linux' && !appIconImage.isEmpty()) {
       win.setIcon(appIconImage);
     }
@@ -431,7 +382,6 @@ ipcMain.on("download-video", (e, { downloadOptions, jobId }) => {
   const args = ["-m", "yt_dlp", downloadOptions.url, "--dump-json", "--flat-playlist", "--no-warnings"];
   const s = getSettings();
 
-  // INTELLIGENT BROWSER DISCOVERY
   const browserArg = BrowserDiscovery.resolveBrowser(s.cookieBrowser);
   if (browserArg) {
     args.push("--cookies-from-browser", browserArg);
