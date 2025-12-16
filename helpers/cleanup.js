@@ -53,6 +53,10 @@ function isAllowlisted(filename) {
 }
 
 function cleanExecutablesFolder(folderPath) {
+    if (folderPath.split(path.sep).includes('static_ffmpeg')) {
+        return;
+    }
+
     console.log(`   ⚙️  Cleaning Executables in: ${folderPath}`);
     try {
         const files = fs.readdirSync(folderPath);
