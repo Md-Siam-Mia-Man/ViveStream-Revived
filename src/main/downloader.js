@@ -3,7 +3,7 @@ const path = require("path");
 const fse = require("fs-extra");
 const url = require("url");
 const { parseArtistNames, parseYtDlpError } = require("./utils");
-const { spawnPython } = require("./python-core");
+const { spawnPython, getPythonDetails } = require("./python-core");
 
 class Downloader {
   constructor({
@@ -51,8 +51,7 @@ class Downloader {
   processQueue() {
     while (this.activeDownloads.size < this.settings.concurrentDownloads && this.queue.length > 0) {
       const job = this.queue.shift();
-      // Reserve the slot immediately to prevent race conditions during async operations in startDownload
-      this.activeDownloads.set(job.videoInfo.id, { kill: () => {} });
+      this.activeDownloads.set(job.videoInfo.id, { kill: () => { } });
       this.startDownload(job).catch(err => {
         console.error("Start download error:", err);
         this.activeDownloads.delete(job.videoInfo.id);
@@ -64,39 +63,50 @@ class Downloader {
   cancelDownload(videoId) {
     const p = this.activeDownloads.get(videoId);
     if (p) {
-        if (typeof p.kill === 'function') p.kill();
-        this.activeDownloads.delete(videoId);
+      if (typeof p.kill === 'function') p.kill();
+      this.activeDownloads.delete(videoId);
     }
   }
 
   shutdown() {
     this.queue = [];
     for (const process of this.activeDownloads.values()) {
-        if (process && typeof process.kill === 'function') process.kill();
+      if (process && typeof process.kill === 'function') process.kill();
     }
     this.activeDownloads.clear();
   }
 
+  emitLog(id, text) {
+    if (this.win) {
+      if (text.includes("No supported JavaScript runtime")) return;
+      this.win.webContents.send("download-log", { id, text: text + "\n" });
+    }
+  }
+
   async startDownload(job) {
     const { videoInfo } = job;
+    const { id } = videoInfo;
 
+    this.emitLog(id, `[System]: Initializing download for: ${videoInfo.title}`);
+
+    if (!this.activeDownloads.has(id)) return;
+
+    this.emitLog(id, `[System]: Resolving FFmpeg...`);
     let resolvedFfmpegPath;
     try {
-        resolvedFfmpegPath = await this.resolveFfmpegPath();
-    } catch(e) {
-        console.warn("Failed to resolve ffmpeg path:", e);
+      resolvedFfmpegPath = await this.resolveFfmpegPath();
+      if (resolvedFfmpegPath) {
+        this.emitLog(id, `[System]: FFmpeg found at: ${resolvedFfmpegPath}`);
+      } else {
+        this.emitLog(id, `[System]: WARNING: FFmpeg NOT found. Fallback mode enabled.`);
+      }
+    } catch (e) {
+      this.emitLog(id, `[System]: Error resolving FFmpeg: ${e.message}`);
     }
 
-    // Check if download was cancelled while we were awaiting
-    if (!this.activeDownloads.has(videoInfo.id)) {
-        return;
-    }
+    if (!this.activeDownloads.has(id)) return;
 
-    if (!resolvedFfmpegPath) {
-      console.log("Warning: FFmpeg not resolved.");
-    }
-
-    const requestUrl = videoInfo.webpage_url || `https://www.youtube.com/watch?v=${videoInfo.id}`;
+    const requestUrl = videoInfo.webpage_url || `https://www.youtube.com/watch?v=${id}`;
 
     let args = [
       "-m", "yt_dlp",
@@ -111,36 +121,47 @@ class Downloader {
       "--write-description",
       "--embed-metadata",
       "--embed-chapters",
-      "--no-mtime"
+      "--no-mtime",
+      "--compat-options", "no-youtube-unavailable-videos"
     ];
 
     if (resolvedFfmpegPath) {
-      // Pass the directory so yt-dlp can find both ffmpeg and ffprobe
       args.push("--ffmpeg-location", path.dirname(resolvedFfmpegPath));
-    } else {
-      console.warn("Starting download WITHOUT FFmpeg. Merging will fail.");
     }
 
     if (job.downloadType === "video") {
-      const qualityFilter = job.quality === "best" ? "" : `[height<=${job.quality}]`;
-      const formatString = `bestvideo[ext=mp4]${qualityFilter}+bestaudio[ext=m4a]/bestvideo[vcodec^=avc]${qualityFilter}+bestaudio/best[ext=mp4]/best`;
-      args.push("-f", formatString, "--merge-output-format", "mp4");
+      if (resolvedFfmpegPath) {
+        // High quality merge mode (Requires FFmpeg)
+        const qualityFilter = job.quality === "best" ? "" : `[height<=${job.quality}]`;
+        const formatString = `bestvideo[ext=mp4]${qualityFilter}+bestaudio[ext=m4a]/bestvideo[vcodec^=avc]${qualityFilter}+bestaudio/best[ext=mp4]/best`;
+        args.push("-f", formatString, "--merge-output-format", "mp4");
+      } else {
+        // Fallback mode (No merging, single file only)
+        this.emitLog(id, `[System]: Using single-file format (best[ext=mp4]) to bypass missing FFmpeg.`);
+        args.push("-f", "best[ext=mp4]");
+      }
 
       if (job.downloadSubs) {
         args.push("--write-subs", "--sub-langs", "en.*,-live_chat");
         if (this.settings.downloadAutoSubs) args.push("--write-auto-subs");
       }
     } else {
-      args.push("-x", "--audio-format", job.audioFormat, "--audio-quality", job.audioQuality.toString());
-      if (job.embedThumbnail) args.push("--embed-thumbnail");
+      // Audio extraction requires FFmpeg for conversion (e.g. webm -> mp3)
+      // If ffmpeg missing, we must download best audio as-is
+      if (resolvedFfmpegPath) {
+        args.push("-x", "--audio-format", job.audioFormat, "--audio-quality", job.audioQuality.toString());
+        if (job.embedThumbnail) args.push("--embed-thumbnail");
+      } else {
+        this.emitLog(id, `[System]: FFmpeg missing. Downloading best available audio without conversion.`);
+        args.push("-f", "bestaudio");
+      }
     }
 
     if (job.playlistItems) args.push("--playlist-items", job.playlistItems);
     if (job.liveFromStart) args.push("--live-from-start");
-    if (this.settings.removeSponsors) args.push("--sponsorblock-remove", "all");
+    if (this.settings.removeSponsors && resolvedFfmpegPath) args.push("--sponsorblock-remove", "all");
     if (this.settings.concurrentFragments > 1) args.push("--concurrent-fragments", this.settings.concurrentFragments.toString());
 
-    // INTELLIGENT BROWSER DISCOVERY
     const browserArg = this.BrowserDiscovery.resolveBrowser(this.settings.cookieBrowser);
     if (browserArg) {
       args.push("--cookies-from-browser", browserArg);
@@ -149,7 +170,7 @@ class Downloader {
     if (this.settings.speedLimit) args.push("-r", this.settings.speedLimit);
 
     const proc = spawnPython(args);
-    this.activeDownloads.set(videoInfo.id, proc);
+    this.activeDownloads.set(id, proc);
 
     let stderrOutput = "";
     let stallTimeout;
@@ -157,19 +178,53 @@ class Downloader {
     const resetStallTimer = () => {
       clearTimeout(stallTimeout);
       stallTimeout = setTimeout(() => {
-        stderrOutput += "\n[System]: Download stalled (90s timeout).";
+        const stallMsg = "\n[System]: Download stalled (90s timeout). Killing process.";
+        stderrOutput += stallMsg;
+        this.emitLog(id, stallMsg);
         proc.kill();
       }, 90000);
     };
     resetStallTimer();
 
+    proc.on("error", (err) => {
+      clearTimeout(stallTimeout);
+      console.error(`[Downloader] Spawn Error (${id}):`, err);
+      const errorMsg = `Process failed to start: ${err.message}`;
+      stderrOutput += `\n${errorMsg}`;
+      this.emitLog(id, errorMsg);
+
+      if (this.activeDownloads.get(id) === proc) {
+        this.activeDownloads.delete(id);
+      }
+
+      this.db.addToHistory({
+        url: videoInfo.webpage_url,
+        title: videoInfo.title,
+        type: job.downloadType,
+        thumbnail: videoInfo.thumbnail,
+        status: "failed"
+      });
+
+      if (this.win) {
+        this.win.webContents.send("download-error", {
+          id: id,
+          error: "System Error: Failed to launch downloader.",
+          fullLog: stderrOutput,
+          job
+        });
+      }
+      this.processQueue();
+    });
+
     proc.stdout.on("data", (data) => {
       resetStallTimer();
       const str = data.toString();
+      this.emitLog(id, str);
+
       const m = str.match(/\[download\]\s+(\d+\.?\d*)%\s+of\s+~?\s*([\d.]+\w+)\s+at\s+([\d.]+\w+\/s)\s+ETA\s+([\d:]+)/);
       if (m && this.win) {
         this.win.webContents.send("download-progress", {
-          id: videoInfo.id,
+          id: id,
           percent: parseFloat(m[1]),
           totalSize: m[2],
           currentSpeed: m[3],
@@ -180,12 +235,16 @@ class Downloader {
 
     proc.stderr.on("data", (data) => {
       resetStallTimer();
-      stderrOutput += data.toString();
+      const str = data.toString();
+      stderrOutput += str;
+      this.emitLog(id, str);
     });
 
     proc.on("close", async (code) => {
       clearTimeout(stallTimeout);
-      this.activeDownloads.delete(videoInfo.id);
+      if (this.activeDownloads.get(id) === proc) {
+        this.activeDownloads.delete(id);
+      }
 
       if (code === 0) {
         await this.postProcess(videoInfo, job, `CMD: ${args.join(" ")}\n\nLOG:\n${stderrOutput}`);
@@ -200,7 +259,7 @@ class Downloader {
         });
         if (this.win) {
           this.win.webContents.send("download-error", {
-            id: videoInfo.id,
+            id: id,
             error: errorMsg,
             fullLog: stderrOutput,
             job
@@ -222,6 +281,7 @@ class Downloader {
       const info = JSON.parse(fs.readFileSync(infoJsonPath, "utf-8"));
       fs.unlinkSync(infoJsonPath);
 
+      // Find any file starting with ID that isn't metadata/thumb
       const mediaFile = files.find(f => f.startsWith(videoInfo.id) && !f.endsWith('.json') && !f.endsWith('.description') && !f.endsWith('.jpg') && !f.endsWith('.webp') && !f.endsWith('.vtt'));
 
       if (!mediaFile) throw new Error("Media file not found after download.");
