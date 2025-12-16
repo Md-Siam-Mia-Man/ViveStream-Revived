@@ -284,6 +284,8 @@ async function clearAllMedia() {
 
 async function createPlaylist(name) {
   try {
+    const existing = await db("playlists").where({ name }).first();
+    if (existing) return { success: false, error: "Playlist already exists." };
     const [id] = await db("playlists").insert({ name });
     return { success: true, id };
   } catch (error) {
@@ -298,8 +300,6 @@ async function findOrCreatePlaylistByName(name) {
     const [id] = await db("playlists").insert({ name });
     return { id, name };
   } catch (error) {
-    // ? Handle race condition
-    if (error.message.includes("UNIQUE constraint failed")) return db("playlists").where({ name }).first();
     return null;
   }
 }
