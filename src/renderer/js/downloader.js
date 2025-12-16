@@ -40,6 +40,7 @@ let currentType = "video";
 const downloadJobs = new Map();
 const pendingInfoJobs = new Map();
 const errorLogs = new Map();
+let currentLogModalId = null; // Track which ID is currently shown in modal
 
 // --- Helper for Empty States ---
 function updateEmptyStates() {
@@ -348,9 +349,10 @@ downloadQueueArea.addEventListener("click", (e) => {
     if (videoId) downloadJobs.delete(videoId);
   }
   else if (btn.classList.contains("log-btn")) {
-    const errorData = errorLogs.get(videoId || jobId);
-    if (errorData) showErrorLog(errorData);
-    else showNotification("No specific log available yet.", "info");
+    const id = videoId || jobId;
+    currentLogModalId = id;
+    const errorData = errorLogs.get(id);
+    showErrorLog(errorData || { error: "Log Details", fullLog: "Waiting for output..." });
   }
 
   updateEmptyStates();
@@ -370,11 +372,12 @@ queueClearBtn.addEventListener("click", async () => {
 function showErrorLog(errorData) {
   const modal = document.createElement("div");
   modal.className = "modal-overlay";
+  modal.id = "log-modal";
   modal.innerHTML = `
         <div class="modal-content" style="max-width: 650px;">
             <h3 style="display:flex;align-items:center;gap:10px;"><span class="material-symbols-outlined" style="color:var(--negative-accent);">bug_report</span> Download Log</h3>
             <p style="font-weight:bold;">${errorData.error || "Log Details"}</p>
-            <div class="log-content">${errorData.fullLog || "No detailed log."}</div>
+            <div class="log-content" id="log-content-area">${errorData.fullLog || "No logs yet."}</div>
             <div class="modal-actions">
                 <button id="copy-log-btn" class="modal-btn">Copy Log</button>
                 <button id="close-log-btn" class="modal-btn">Close</button>
@@ -384,12 +387,17 @@ function showErrorLog(errorData) {
   document.body.appendChild(modal);
   requestAnimationFrame(() => modal.classList.remove("hidden"));
 
+  // Auto-scroll to bottom
+  const logArea = modal.querySelector("#log-content-area");
+  logArea.scrollTop = logArea.scrollHeight;
+
   modal.querySelector("#close-log-btn").addEventListener("click", () => {
     modal.classList.add("hidden");
+    currentLogModalId = null; // Clear active log modal ID
     setTimeout(() => modal.remove(), 300);
   });
   modal.querySelector("#copy-log-btn").addEventListener("click", () => {
-    navigator.clipboard.writeText(errorData.fullLog || errorData.error);
+    navigator.clipboard.writeText(logArea.textContent);
     showNotification("Log copied", "info");
   });
 }
@@ -409,7 +417,6 @@ window.electronAPI.onDownloadQueueStart(({ infos, jobId }) => {
 
     const thumb = info.thumbnail || `${AppState.assetsPath}/logo.png`;
 
-    // ADDED decoding="async"
     card.innerHTML = `
         <div class="dl-card-thumb-container">
              <img src="${thumb}" class="dl-card-thumb" decoding="async" onerror="this.src='${AppState.assetsPath}/logo.png'">
@@ -438,10 +445,26 @@ window.electronAPI.onDownloadQueueStart(({ infos, jobId }) => {
     downloadQueueArea.prepend(card);
     updateItemActions(card, "queued");
 
-    errorLogs.set(info.id, { error: "Download in progress...", fullLog: "Waiting for output..." });
+    errorLogs.set(info.id, { error: "Download in progress...", fullLog: "" });
     downloadJobs.set(info.id, { ...info });
   });
   updateEmptyStates();
+});
+
+// NEW: Live Log Listener
+window.electronAPI.onDownloadLog(({ id, text }) => {
+  const currentData = errorLogs.get(id) || { error: "Download in progress...", fullLog: "" };
+  currentData.fullLog += text;
+  errorLogs.set(id, currentData);
+
+  // If this specific log is currently open in modal, update it live
+  if (currentLogModalId === id) {
+    const logArea = document.getElementById("log-content-area");
+    if (logArea) {
+      logArea.textContent = currentData.fullLog;
+      logArea.scrollTop = logArea.scrollHeight;
+    }
+  }
 });
 
 window.electronAPI.onDownloadProgress((data) => {
