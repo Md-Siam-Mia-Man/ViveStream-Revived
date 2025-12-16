@@ -16,7 +16,9 @@ const { spawn } = require("child_process");
 const crypto = require("crypto");
 const url = require("url");
 const db = require("./database");
-const { parseArtistNames } = require("./utils");
+const { parseArtistNames, parseYtDlpError } = require("./utils");
+const { getPythonDetails, spawnPython } = require("./python-core");
+const Downloader = require("./downloader");
 const BrowserDiscovery = require("./browser-discovery");
 
 // * --------------------------------------------------------------------------
@@ -56,7 +58,6 @@ let win = null;
 let externalFilePath = null;
 
 let resolvedFfmpegPath = null;
-let pythonDetails = null;
 let ffmpegResolutionPromise = null;
 
 // * --------------------------------------------------------------------------
@@ -116,64 +117,6 @@ function saveSettings(settings) {
   fs.writeFileSync(settingsPath, JSON.stringify({ ...getSettings(), ...settings }, null, 2));
 }
 if (!fs.existsSync(settingsPath)) saveSettings(defaultSettings);
-
-function getPythonDetails() {
-  if (pythonDetails) return pythonDetails;
-
-  const root = isDev
-    ? path.join(__dirname, "..", "..", "python-portable")
-    : path.join(process.resourcesPath, "python-portable");
-
-  let pythonPath = null;
-  let binDir = null;
-
-  if (process.platform === "win32") {
-    const winDir = path.join(root, "python-win-x64");
-    if (fs.existsSync(winDir)) {
-      pythonPath = path.join(winDir, "python.exe");
-      binDir = path.join(winDir, "Scripts");
-    } else {
-      pythonPath = "python";
-    }
-  } else if (process.platform === "darwin") {
-    const macDir = path.join(root, "python-mac-darwin");
-    if (fs.existsSync(path.join(macDir, "bin", "python3"))) {
-      pythonPath = path.join(macDir, "bin", "python3");
-      binDir = path.join(macDir, "bin");
-    } else {
-      pythonPath = "python3";
-    }
-  } else {
-    // Linux
-    const linuxGnu = path.join(root, "python-linux-gnu");
-    const linuxMusl = path.join(root, "python-linux-musl");
-    let targetDir = null;
-
-    if (fs.existsSync(linuxGnu)) targetDir = linuxGnu;
-    else if (fs.existsSync(linuxMusl)) targetDir = linuxMusl;
-
-    if (targetDir) {
-      pythonPath = path.join(targetDir, "bin", "python3");
-      binDir = path.join(targetDir, "bin");
-    } else {
-      pythonPath = "python3";
-    }
-  }
-
-  pythonDetails = { pythonPath, binDir };
-  return pythonDetails;
-}
-
-function spawnPython(args, options = {}) {
-  const { pythonPath, binDir } = getPythonDetails();
-  const env = { ...process.env, ...options.env };
-  if (binDir) {
-    const pathKey = process.platform === 'win32' ? 'Path' : 'PATH';
-    env[pathKey] = `${binDir}${path.delimiter}${env[pathKey] || ''}`;
-  }
-  env['PYTHONUNBUFFERED'] = '1';
-  return spawn(pythonPath, args, { ...options, env });
-}
 
 /**
  * * Robust FFmpeg resolver.
@@ -355,255 +298,19 @@ function sanitizeFilename(filename) {
   return filename.replace(/[\\/:"*?<>|]/g, "_");
 }
 
-function parseYtDlpError(stderr) {
-  if (stderr.includes("ffmpeg not found")) return "FFmpeg binary missing. Please re-run the app or check internet connection.";
-  if (stderr.includes("Private video")) return "This video is private.";
-  if (stderr.includes("Video unavailable")) return "This video is unavailable.";
-  const match = stderr.match(/ERROR: (.*)/);
-  return match ? match[1].trim() : (stderr.split("\n").pop() || "Unknown error");
-}
-
-// * --------------------------------------------------------------------------
-// * DOWNLOADER CLASS
-// * --------------------------------------------------------------------------
-
-class Downloader {
-  constructor() {
-    this.queue = [];
-    this.activeDownloads = new Map();
-    this.settings = getSettings();
+const downloader = new Downloader({
+  getSettings,
+  videoPath,
+  coverPath,
+  subtitlePath,
+  db,
+  BrowserDiscovery,
+  win,
+  resolveFfmpegPath: async () => {
+    if (!resolvedFfmpegPath) await ffmpegResolutionPromise;
+    return resolvedFfmpegPath;
   }
-  updateSettings(s) {
-    this.settings = s;
-    this.processQueue();
-  }
-  addToQueue(jobs) {
-    this.queue.push(...jobs);
-    this.processQueue();
-  }
-  retryDownload(job) {
-    this.queue.unshift(job);
-    this.processQueue();
-  }
-  processQueue() {
-    while (this.activeDownloads.size < this.settings.concurrentDownloads && this.queue.length > 0) {
-      this.startDownload(this.queue.shift());
-    }
-  }
-  cancelDownload(videoId) {
-    const p = this.activeDownloads.get(videoId);
-    if (p) p.kill();
-  }
-  shutdown() {
-    this.queue = [];
-    for (const process of this.activeDownloads.values()) process.kill();
-    this.activeDownloads.clear();
-  }
-
-  async startDownload(job) {
-    if (!resolvedFfmpegPath) {
-      console.log("Waiting for FFmpeg resolution...");
-      await ffmpegResolutionPromise;
-    }
-
-    const { videoInfo } = job;
-    const requestUrl = videoInfo.webpage_url || `https://www.youtube.com/watch?v=${videoInfo.id}`;
-
-    let args = [
-      "-m", "yt_dlp",
-      requestUrl,
-      "-o", path.join(videoPath, "%(id)s.%(ext)s"),
-      "--progress",
-      "--newline",
-      "--retries", "10",
-      "--write-info-json",
-      "--write-thumbnail",
-      "--convert-thumbnails", "jpg",
-      "--write-description",
-      "--embed-metadata",
-      "--embed-chapters",
-      "--no-mtime"
-    ];
-
-    if (resolvedFfmpegPath) {
-      // Pass the directory so yt-dlp can find both ffmpeg and ffprobe
-      args.push("--ffmpeg-location", path.dirname(resolvedFfmpegPath));
-    } else {
-      console.warn("Starting download WITHOUT FFmpeg. Merging will fail.");
-    }
-
-    if (job.downloadType === "video") {
-      const qualityFilter = job.quality === "best" ? "" : `[height<=${job.quality}]`;
-      const formatString = `bestvideo[ext=mp4]${qualityFilter}+bestaudio[ext=m4a]/bestvideo[vcodec^=avc]${qualityFilter}+bestaudio/best[ext=mp4]/best`;
-      args.push("-f", formatString, "--merge-output-format", "mp4");
-
-      if (job.downloadSubs) {
-        args.push("--write-subs", "--sub-langs", "en.*,-live_chat");
-        if (this.settings.downloadAutoSubs) args.push("--write-auto-subs");
-      }
-    } else {
-      args.push("-x", "--audio-format", job.audioFormat, "--audio-quality", job.audioQuality.toString());
-      if (job.embedThumbnail) args.push("--embed-thumbnail");
-    }
-
-    if (job.playlistItems) args.push("--playlist-items", job.playlistItems);
-    if (job.liveFromStart) args.push("--live-from-start");
-    if (this.settings.removeSponsors) args.push("--sponsorblock-remove", "all");
-    if (this.settings.concurrentFragments > 1) args.push("--concurrent-fragments", this.settings.concurrentFragments.toString());
-
-    // INTELLIGENT BROWSER DISCOVERY
-    const browserArg = BrowserDiscovery.resolveBrowser(this.settings.cookieBrowser);
-    if (browserArg) {
-      args.push("--cookies-from-browser", browserArg);
-    }
-
-    if (this.settings.speedLimit) args.push("-r", this.settings.speedLimit);
-
-    const proc = spawnPython(args);
-    this.activeDownloads.set(videoInfo.id, proc);
-
-    let stderrOutput = "";
-    let stallTimeout;
-
-    const resetStallTimer = () => {
-      clearTimeout(stallTimeout);
-      stallTimeout = setTimeout(() => {
-        stderrOutput += "\n[System]: Download stalled (90s timeout).";
-        proc.kill();
-      }, 90000);
-    };
-    resetStallTimer();
-
-    proc.stdout.on("data", (data) => {
-      resetStallTimer();
-      const str = data.toString();
-      const m = str.match(/\[download\]\s+(\d+\.?\d*)%\s+of\s+~?\s*([\d.]+\w+)\s+at\s+([\d.]+\w+\/s)\s+ETA\s+([\d:]+)/);
-      if (m && win) {
-        win.webContents.send("download-progress", {
-          id: videoInfo.id,
-          percent: parseFloat(m[1]),
-          totalSize: m[2],
-          currentSpeed: m[3],
-          eta: m[4],
-        });
-      }
-    });
-
-    proc.stderr.on("data", (data) => {
-      resetStallTimer();
-      stderrOutput += data.toString();
-    });
-
-    proc.on("close", async (code) => {
-      clearTimeout(stallTimeout);
-      this.activeDownloads.delete(videoInfo.id);
-
-      if (code === 0) {
-        await this.postProcess(videoInfo, job, `CMD: ${args.join(" ")}\n\nLOG:\n${stderrOutput}`);
-      } else if (code !== null) {
-        const errorMsg = parseYtDlpError(stderrOutput);
-        await db.addToHistory({
-          url: videoInfo.webpage_url,
-          title: videoInfo.title,
-          type: job.downloadType,
-          thumbnail: videoInfo.thumbnail,
-          status: "failed"
-        });
-        if (win) {
-          win.webContents.send("download-error", {
-            id: videoInfo.id,
-            error: errorMsg,
-            fullLog: stderrOutput,
-            job
-          });
-        }
-      }
-      this.processQueue();
-    });
-  }
-
-  async postProcess(videoInfo, job, fullLog) {
-    try {
-      const files = fs.readdirSync(videoPath);
-      const infoFile = files.find(f => f.startsWith(videoInfo.id) && f.endsWith('.info.json'));
-
-      if (!infoFile) throw new Error("Could not find metadata file.");
-
-      const infoJsonPath = path.join(videoPath, infoFile);
-      const info = JSON.parse(fs.readFileSync(infoJsonPath, "utf-8"));
-      fs.unlinkSync(infoJsonPath);
-
-      const mediaFile = files.find(f => f.startsWith(videoInfo.id) && !f.endsWith('.json') && !f.endsWith('.description') && !f.endsWith('.jpg') && !f.endsWith('.webp') && !f.endsWith('.vtt'));
-
-      if (!mediaFile) throw new Error("Media file not found after download.");
-      const mediaFilePath = path.join(videoPath, mediaFile);
-
-      let finalCoverPath = null;
-      const thumbFile = files.find(f => f.startsWith(videoInfo.id) && (f.endsWith('.jpg') || f.endsWith('.webp')));
-      if (thumbFile) {
-        finalCoverPath = path.join(coverPath, `${info.id}.jpg`);
-        await fse.move(path.join(videoPath, thumbFile), finalCoverPath, { overwrite: true });
-      }
-      const finalCoverUri = finalCoverPath ? url.pathToFileURL(finalCoverPath).href : null;
-
-      let subFileUri = null;
-      const subFile = files.find(f => f.startsWith(videoInfo.id) && f.endsWith('.vtt'));
-      if (subFile) {
-        const destSub = path.join(subtitlePath, `${info.id}.vtt`);
-        await fse.move(path.join(videoPath, subFile), destSub, { overwrite: true });
-        subFileUri = url.pathToFileURL(destSub).href;
-      }
-
-      const descFile = files.find(f => f.startsWith(videoInfo.id) && f.endsWith('.description'));
-      if (descFile) fs.unlinkSync(path.join(videoPath, descFile));
-
-      const artistString = info.artist || info.creator || info.uploader;
-      const artistNames = parseArtistNames(artistString);
-
-      for (const name of artistNames) {
-        const artist = await db.findOrCreateArtist(name, finalCoverUri);
-        if (artist) await db.linkVideoToArtist(info.id, artist.id);
-      }
-
-      const videoData = {
-        id: info.id,
-        title: info.title,
-        uploader: info.uploader,
-        creator: artistString,
-        description: info.description,
-        duration: info.duration,
-        upload_date: info.upload_date,
-        originalUrl: info.webpage_url,
-        filePath: url.pathToFileURL(mediaFilePath).href,
-        coverPath: finalCoverUri,
-        subtitlePath: subFileUri,
-        hasEmbeddedSubs: !!subFileUri,
-        type: job.downloadType === "audio" ? "audio" : "video",
-        downloadedAt: new Date().toISOString(),
-        isFavorite: false,
-        source: "youtube"
-      };
-
-      await db.addOrUpdateVideo(videoData);
-      if (job.playlistId) await db.addVideoToPlaylist(job.playlistId, videoData.id);
-
-      await db.addToHistory({
-        url: info.webpage_url,
-        title: info.title,
-        type: job.downloadType,
-        thumbnail: finalCoverUri,
-        status: "success"
-      });
-
-      if (win) win.webContents.send("download-complete", { id: videoInfo.id, videoData, fullLog });
-
-    } catch (e) {
-      console.error(`Post-Process Error (${videoInfo.id}):`, e);
-      if (win) win.webContents.send("download-error", { id: videoInfo.id, error: "Processing failed: " + e.message, fullLog, job });
-    }
-  }
-}
-const downloader = new Downloader();
+});
 
 function createWindow() {
   win = new BrowserWindow({
@@ -623,6 +330,8 @@ function createWindow() {
     title: "ViveStream",
     show: false
   });
+
+  downloader.setWindow(win);
 
   win.loadFile(path.join(__dirname, "..", "renderer", "index.html"));
 
