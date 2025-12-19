@@ -18,23 +18,18 @@ function getPythonDetails() {
   let pythonPath = null;
   let binDir = null;
 
+  // 1. Try Portable Python First
   if (process.platform === "win32") {
     const winDir = path.join(root, "python-win-x64");
     if (fs.existsSync(winDir)) {
       pythonPath = path.join(winDir, "python.exe");
       binDir = path.join(winDir, "Scripts");
-    } else {
-      console.warn("[Python Core] Portable Python not found at expected path:", winDir);
-      pythonPath = "python";
     }
   } else if (process.platform === "darwin") {
     const macDir = path.join(root, "python-mac-darwin");
     if (fs.existsSync(path.join(macDir, "bin", "python3"))) {
       pythonPath = path.join(macDir, "bin", "python3");
       binDir = path.join(macDir, "bin");
-    } else {
-      console.warn("[Python Core] Portable Python not found at expected path:", macDir);
-      pythonPath = "python3";
     }
   } else {
     // Linux
@@ -48,14 +43,36 @@ function getPythonDetails() {
     if (targetDir) {
       pythonPath = path.join(targetDir, "bin", "python3");
       binDir = path.join(targetDir, "bin");
-    } else {
-      console.warn("[Python Core] Portable Python not found at expected paths:", linuxGnu);
-      pythonPath = "python3";
+    }
+  }
+
+  // 2. Fallback to System Python if Portable not found
+  if (!pythonPath || !fs.existsSync(pythonPath)) {
+    console.warn("[Python Core] Portable Python not found. Checking system...");
+    try {
+      // Check if python3 or python matches our requirements (simple version check)
+      // This is a synchronous check to ensure we have a valid path before returning
+      const { execSync } = require('child_process');
+      try {
+        const out = execSync('python3 --version').toString();
+        if (out.includes('Python 3')) {
+          pythonPath = 'python3';
+          console.log("[Python Core] System 'python3' found:", out.trim());
+        }
+      } catch (e) {
+        const out = execSync('python --version').toString();
+        if (out.includes('Python 3')) {
+          pythonPath = 'python';
+          console.log("[Python Core] System 'python' found:", out.trim());
+        }
+      }
+    } catch (e) {
+      console.error("[Python Core] No system Python found either.");
     }
   }
 
   pythonDetails = { pythonPath, binDir };
-  console.log(`[Python Core] Resolved: ${pythonPath}`);
+  console.log(`[Python Core] Final Resolution: binary=${pythonPath}, scriptDir=${binDir}`);
   return pythonDetails;
 }
 
