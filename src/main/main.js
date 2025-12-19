@@ -15,6 +15,7 @@ const fse = require("fs-extra");
 const crypto = require("crypto");
 const url = require("url");
 const db = require("./database");
+const { parseArtistNames } = require("./utils");
 const { parseYtDlpError } = require("./utils");
 const { getPythonDetails, spawnPython } = require("./python-core");
 const Downloader = require("./downloader");
@@ -472,8 +473,11 @@ ipcMain.handle("media:import-files", async () => {
       };
       await db.addOrUpdateVideo(vData);
 
-      const artist = await db.findOrCreateArtist(vData.creator, coverUri);
-      if (artist) await db.linkVideoToArtist(id, artist.id);
+      const artistNames = parseArtistNames(vData.creator);
+      for (const name of artistNames) {
+        const artist = await db.findOrCreateArtist(name, coverUri);
+        if (artist) await db.linkVideoToArtist(id, artist.id);
+      }
 
       count++;
     } catch (e) { console.error(e); }
@@ -540,6 +544,7 @@ ipcMain.handle("playlist:update-cover", async (e, pid) => {
 });
 
 ipcMain.handle("artist:get-all", () => db.getAllArtistsWithStats());
+ipcMain.handle("artist:regenerate", () => db.regenerateArtists());
 ipcMain.handle("artist:get-details", (e, id) => db.getArtistDetails(id));
 ipcMain.handle("artist:rename", (e, id, n) => db.updateArtistName(id, n));
 ipcMain.handle("artist:delete", (e, id) => db.deleteArtist(id));
