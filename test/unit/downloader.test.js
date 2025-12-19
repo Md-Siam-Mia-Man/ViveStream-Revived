@@ -39,19 +39,19 @@ const flushPromises = () => new Promise(resolve => {
   // Use setImmediate to break the execution flow and allow other promises to resolve
   // jest.useFakeTimers() mocks setImmediate, so we should rely on Promise.resolve
   if (global.setImmediate) {
-      // If real timers are used
-      global.setImmediate(resolve);
+    // If real timers are used
+    global.setImmediate(resolve);
   } else {
-      // Fallback
-      Promise.resolve().then(resolve);
+    // Fallback
+    Promise.resolve().then(resolve);
   }
 });
 
 // Since we are testing with fake timers sometimes, we need a robust wait.
 const waitTick = async () => {
-    await Promise.resolve();
-    await Promise.resolve();
-    await Promise.resolve();
+  await Promise.resolve();
+  await Promise.resolve();
+  await Promise.resolve();
 };
 
 describe('Downloader', () => {
@@ -174,8 +174,8 @@ describe('Downloader', () => {
     await Promise.resolve();
     await Promise.resolve();
 
-    // Simulate no activity for 90s
-    jest.advanceTimersByTime(91000);
+    // Simulate no activity for 121s (timeout is 120s)
+    jest.advanceTimersByTime(121000);
 
     expect(mockProcess.kill).toHaveBeenCalled();
     jest.useRealTimers();
@@ -207,7 +207,7 @@ describe('Downloader', () => {
   });
 
   test('should handle concurrent downloads limit', async () => {
-     mockGetSettings.mockReturnValue({
+    mockGetSettings.mockReturnValue({
       concurrentDownloads: 2, // Limit to 2
       cookieBrowser: 'none'
     });
@@ -247,9 +247,9 @@ describe('Downloader', () => {
 });
 
 describe('Downloader Concurrency', () => {
-   let downloader;
+  let downloader;
 
-   beforeEach(() => {
+  beforeEach(() => {
     jest.clearAllMocks();
 
     mockGetSettings.mockReturnValue({
@@ -259,11 +259,11 @@ describe('Downloader Concurrency', () => {
 
     // Return unique process for each spawn
     mockSpawnPython.mockImplementation(() => {
-        const p = new events.EventEmitter();
-        p.kill = jest.fn();
-        p.stdout = new events.EventEmitter();
-        p.stderr = new events.EventEmitter();
-        return p;
+      const p = new events.EventEmitter();
+      p.kill = jest.fn();
+      p.stdout = new events.EventEmitter();
+      p.stderr = new events.EventEmitter();
+      return p;
     });
 
     downloader = new Downloader({
