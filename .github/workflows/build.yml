@@ -92,19 +92,9 @@ jobs:
       - name: Build Application
         shell: bash
         run: |
-          mkdir -p logs
-          # Pass --verbose to trigger internal logging in builder.js
-          ${{ matrix.build_command }} --verbose 2>&1 | tee logs/packaging.log
+          ${{ matrix.build_command }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload Packaging Logs
-        if: failure() || success()
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.platform }}-logs
-          path: logs/packaging.log
-          retention-days: 5
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4

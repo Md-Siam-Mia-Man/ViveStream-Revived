@@ -22,7 +22,7 @@ jobs:
         include:
           - platform: Linux
             os: ubuntu-24.04
-            build_command: npm run build:linux:ci -- --target=AppImage,deb,rpm --publish
+            build_command: npm run build:linux:ci -- --target=AppImage,deb,rpm
             artifact_path: |
               release/linux/*.AppImage
               release/linux/*.deb
@@ -30,12 +30,12 @@ jobs:
 
           - platform: Windows
             os: windows-latest
-            build_command: npm run build:win -- --publish
+            build_command: npm run build:win
             artifact_path: release/win/*.exe
 
           - platform: macOS
             os: macos-latest
-            build_command: npm run build -- --publish
+            build_command: npm run build
             artifact_path: release/mac/*.dmg
 
     steps:
@@ -94,20 +94,27 @@ jobs:
       - name: Build Application
         shell: bash
         run: |
-          mkdir -p logs
-          ${{ matrix.build_command }} 2>&1 | tee logs/packaging.log
+          ${{ matrix.build_command }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload Packaging Logs
-        if: failure() || success()
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.platform }}-logs
-          path: logs/packaging.log
-          retention-days: 5
+      - name: Clean Blockmaps
+        shell: bash
+        run: find release -name "*.blockmap" -delete
 
-      - name: Upload Artifacts
+      - name: Upload Artifacts to Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+        with:
+          files: ${{ matrix.artifact_path }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          tag_name: ${{ github.ref_name || 'v10.0.0' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Artifacts to Run
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.platform }}-Builds

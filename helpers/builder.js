@@ -203,10 +203,10 @@ function cleanUnwantedFiles(dirPath) {
                 } catch (e) { }
             }
         } else {
-            if (file.endsWith(".yml")) {
+            if (file.endsWith(".yml") || file.endsWith(".blockmap")) {
                 try {
                     fs.unlinkSync(fullPath);
-                    console.log(`   ${colors.yellow}× Deleted Config: ${file}${colors.reset}`);
+                    console.log(`   ${colors.yellow}× Deleted Unwanted File: ${file}${colors.reset}`);
                 } catch (e) { }
             }
         }
