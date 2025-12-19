@@ -173,38 +173,38 @@ class Downloader {
     this.activeDownloads.set(id, proc);
 
     let stderrOutput = "";
+    let stdoutOutput = "";
+
+    // Safer timeout mechanism
     let stallTimeout;
+    const STALL_LIMIT = 120000; // 2 minutes
 
     const resetStallTimer = () => {
       clearTimeout(stallTimeout);
       stallTimeout = setTimeout(() => {
-        const stallMsg = "\n[System]: Download stalled (90s timeout). Killing process.";
+        const stallMsg = `\n[System]: Download stalled for ${STALL_LIMIT / 1000}s. Killing process to prevent zombie.`;
         stderrOutput += stallMsg;
         this.emitLog(id, stallMsg);
-        proc.kill();
-      }, 90000);
+        try { proc.kill("SIGKILL"); } catch (e) { } // Force kill
+      }, STALL_LIMIT);
     };
     resetStallTimer();
 
+    // Handle spawn-time errors specifically
     proc.on("error", (err) => {
       clearTimeout(stallTimeout);
       console.error(`[Downloader] Spawn Error (${id}):`, err);
       const errorMsg = `Process failed to start: ${err.message}`;
+      if (err.code === "ENOENT") {
+        stderrOutput += "\n[System]: Python or yt-dlp executable not found. Please checks settings or logs.";
+      }
       stderrOutput += `\n${errorMsg}`;
       this.emitLog(id, errorMsg);
 
       if (this.activeDownloads.get(id) === proc) {
         this.activeDownloads.delete(id);
       }
-
-      this.db.addToHistory({
-        url: videoInfo.webpage_url,
-        title: videoInfo.title,
-        type: job.downloadType,
-        thumbnail: videoInfo.thumbnail,
-        status: "failed"
-      });
-
+      // Ensure we clean up this job from queue logic
       if (this.win) {
         this.win.webContents.send("download-error", {
           id: id,
@@ -219,7 +219,10 @@ class Downloader {
     proc.stdout.on("data", (data) => {
       resetStallTimer();
       const str = data.toString();
-      this.emitLog(id, str);
+      stdoutOutput += str;
+
+      // Only emit lines to UI to save IPC bandwidth, but keep full log internally if needed
+      if (str.trim()) this.emitLog(id, str);
 
       const m = str.match(/\[download\]\s+(\d+\.?\d*)%\s+of\s+~?\s*([\d.]+\w+)\s+at\s+([\d.]+\w+\/s)\s+ETA\s+([\d:]+)/);
       if (m && this.win) {
@@ -246,10 +249,15 @@ class Downloader {
         this.activeDownloads.delete(id);
       }
 
+      const fullLog = `CMD: ${args.join(" ")}\n\nSTDOUT:\n${stdoutOutput}\n\nSTDERR:\n${stderrOutput}`;
+
       if (code === 0) {
-        await this.postProcess(videoInfo, job, `CMD: ${args.join(" ")}\n\nLOG:\n${stderrOutput}`);
-      } else if (code !== null) {
-        const errorMsg = parseYtDlpError(stderrOutput);
+        await this.postProcess(videoInfo, job, fullLog);
+      } else {
+        // Non-null exit code generic handler
+        const errorMsg = parseYtDlpError(stderrOutput) || `Process exited with code ${code}`;
+        console.warn(`[Downloader] Job ${id} failed. Code: ${code}. Msg: ${errorMsg}`);
+
         await this.db.addToHistory({
           url: videoInfo.webpage_url,
           title: videoInfo.title,
@@ -257,11 +265,12 @@ class Downloader {
           thumbnail: videoInfo.thumbnail,
           status: "failed"
         });
+
         if (this.win) {
           this.win.webContents.send("download-error", {
             id: id,
             error: errorMsg,
-            fullLog: stderrOutput,
+            fullLog: fullLog,
             job
           });
         }
