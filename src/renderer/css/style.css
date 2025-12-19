@@ -44,9 +44,9 @@
      --primary-accent: #ef233c;
      --primary-accent-dark: #d90429;
 
-     --primary-background: #121212;
-     --secondary-background: #1e1e1e;
-     --tertiary-background: #2c2c2c;
+     --primary-background: #000000;
+     --secondary-background: #121212;
+     --tertiary-background: #1E1E1E;
 
      --primary-text: #f1f1f1;
      --secondary-text: #a0a0a0;
@@ -61,9 +61,9 @@
 
      --button-hover-bg: #2c2c2c;
 
-     --positive-accent: limegreen;
-     --negative-accent: crimson;
-     --warning-accent: #f0c32f;
+     --positive-accent: #82C91E;
+     --negative-accent: #dc143c;
+     --warning-accent: #D9B34A;
 
      --sidebar-collapsed-width: 57px;
      --sidebar-expanded-width: 240px;
