@@ -171,15 +171,6 @@ function startFfmpegResolution() {
     console.warn("[FFmpeg] FATAL: Could not find ffmpeg binary.");
     resolve(null);
   });
-
-  const timeoutTask = new Promise((resolve) => {
-    setTimeout(() => {
-      console.warn("[FFmpeg] Search timed out (10s).");
-      resolve(null);
-    }, 10000);
-  });
-
-  return Promise.race([resolveTask, timeoutTask]);
 }
 
 const gotTheLock = app.requestSingleInstanceLock();
