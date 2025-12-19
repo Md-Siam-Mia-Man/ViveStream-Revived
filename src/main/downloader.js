@@ -318,11 +318,6 @@ class Downloader {
       const artistString = info.artist || info.creator || info.uploader;
       const artistNames = parseArtistNames(artistString);
 
-      for (const name of artistNames) {
-        const artist = await this.db.findOrCreateArtist(name, finalCoverUri);
-        if (artist) await this.db.linkVideoToArtist(info.id, artist.id);
-      }
-
       const videoData = {
         id: info.id,
         title: info.title,
@@ -343,6 +338,12 @@ class Downloader {
       };
 
       await this.db.addOrUpdateVideo(videoData);
+
+      for (const name of artistNames) {
+        const artist = await this.db.findOrCreateArtist(name, finalCoverUri);
+        if (artist) await this.db.linkVideoToArtist(info.id, artist.id);
+      }
+
       if (job.playlistId) await this.db.addVideoToPlaylist(job.playlistId, videoData.id);
 
       await this.db.addToHistory({
