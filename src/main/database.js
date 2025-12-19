@@ -213,6 +213,20 @@ async function getVideoById(id) {
 async function updateVideoMetadata(videoId, metadata) {
   try {
     await db("videos").where({ id: videoId }).update(metadata);
+
+    if (metadata.creator) {
+      await db("video_artists").where({ videoId }).del();
+      const artistNames = parseArtistNames(metadata.creator);
+
+      const video = await db("videos").where({ id: videoId }).first("coverPath");
+      const coverUri = video ? video.coverPath : null;
+
+      for (const name of artistNames) {
+        const artist = await findOrCreateArtist(name, coverUri);
+        if (artist) await linkVideoToArtist(videoId, artist.id);
+      }
+    }
+
     return { success: true };
   } catch (error) {
     return { success: false, error: error.message };
