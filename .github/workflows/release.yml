@@ -11,6 +11,7 @@ on:
 
 permissions:
   contents: write
+  discussions: write
 
 jobs:
   build:
@@ -91,6 +92,24 @@ jobs:
             exit 1
           }
 
+      - name: Verify Version
+        shell: bash
+        id: version_check
+        run: |
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          echo "val=$PKG_VERSION" >> $GITHUB_OUTPUT
+          # Handle both tag trigger and manual dispatch
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            TAG_VERSION=${GITHUB_REF_NAME#v}
+            if [ "$PKG_VERSION" != "$TAG_VERSION" ]; then
+              echo "::error::Version mismatch! package.json ($PKG_VERSION) vs Tag ($TAG_VERSION)"
+              exit 1
+            fi
+            echo "Version Verified: $PKG_VERSION"
+          else
+            echo "Manual run, skipping version/tag strict match check."
+          fi
+
       - name: Build Application
         shell: bash
         run: |
@@ -98,19 +117,53 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Clean Blockmaps
+      - name: Clean Unwanted Files
         shell: bash
-        run: find release -name "*.blockmap" -delete
+        run: |
+          find release -name "*.blockmap" -delete
+          find release -name "*.yml" -delete
+
+      - name: Create Source Archive
+        if: matrix.platform == 'Linux'
+        shell: bash
+        run: |
+          # Use zip for reliability, label clearly
+          zip -r release/linux/ViveStream-Source-v${{ steps.version_check.outputs.val }}.zip . \
+            -x "node_modules/*" "python-portable/*" ".git/*" "release/*" "*.log" "helpers/large-file-manager.js"
 
       - name: Upload Artifacts to Release
         uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/')
         with:
-          files: ${{ matrix.artifact_path }}
-          draft: false
+          files: |
+            ${{ matrix.artifact_path }}
+            release/linux/ViveStream-Source-*.zip
+          draft: true
           prerelease: false
+          make_latest: true
           generate_release_notes: true
-          tag_name: ${{ github.ref_name || 'v10.0.0' }}
+          name: "ViveStream Revived v${{ steps.version_check.outputs.val }} 🚀"
+          tag_name: "v${{ steps.version_check.outputs.val }}"
+          body: |
+            ## 🌟 ViveStream Revived - What's New?
+            
+            Welcome to the latest version of **ViveStream**! This release brings performance improvements, bug fixes, and better stability.
+            
+            ### 🛠️ Installation
+            - **Windows**: Download the `.exe` installer.
+            - **Linux**: Use the `AppImage`, `.deb`, or `.rpm` packages.
+            - **macOS**: Download the `.dmg` file.
+            
+            ---
+            ### ⚠️ Security Note (Code Signing)
+            > **Notice**: This application is not code-signed because the developer does not currently have a commercial signing certificate. 
+            > 
+            > - **Windows**: You may see a "Microsoft Defender SmartScreen" warning. Click **"More info"** and then **"Run anyway"**.
+            > - **macOS**: You may see a warning that the app cannot be opened. **Right-click (or Control-click)** the app icon and select **"Open"** from the menu to bypass this.
+            
+            Rest assured, the application is safe to use and the source code is provided below for transparency.
+            
+            ---
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -118,5 +171,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.platform }}-Builds
-          path: ${{ matrix.artifact_path }}
+          path: |
+            ${{ matrix.artifact_path }}
+            release/linux/ViveStream-Source-*.zip
           retention-days: 5
