@@ -64,12 +64,23 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload Artifacts
+      - name: Upload Linux AppImage
         uses: actions/upload-artifact@v4
         with:
-          name: Linux-Builds
-          path: |
-            release/linux/*.AppImage
-            release/linux/*.deb
-            release/linux/*.rpm
+          name: Linux-AppImage
+          path: release/linux/*.AppImage
+          retention-days: 5
+
+      - name: Upload Linux Deb
+        uses: actions/upload-artifact@v4
+        with:
+          name: Linux-Deb
+          path: release/linux/*.deb
+          retention-days: 5
+
+      - name: Upload Linux Rpm
+        uses: actions/upload-artifact@v4
+        with:
+          name: Linux-Rpm
+          path: release/linux/*.rpm
           retention-days: 5

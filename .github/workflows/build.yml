@@ -20,20 +20,14 @@ jobs:
           - platform: Linux
             os: ubuntu-24.04
             build_command: npm run build:linux:ci -- --target=AppImage,deb,rpm
-            artifact_path: |
-              release/linux/*.AppImage
-              release/linux/*.deb
-              release/linux/*.rpm
 
           - platform: Windows
             os: windows-latest
             build_command: npm run build:win
-            artifact_path: release/win/*.exe
 
           - platform: macOS
             os: macos-latest
             build_command: npm run build
-            artifact_path: release/mac/*.dmg
 
     steps:
       - name: Checkout Source Code
@@ -96,9 +90,42 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload Artifacts
+      - name: Upload Linux AppImage
+        if: matrix.platform == 'Linux'
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.platform }}-Builds
-          path: ${{ matrix.artifact_path }}
+          name: Linux-AppImage
+          path: release/linux/*.AppImage
+          retention-days: 5
+
+      - name: Upload Linux Deb
+        if: matrix.platform == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Linux-Deb
+          path: release/linux/*.deb
+          retention-days: 5
+
+      - name: Upload Linux Rpm
+        if: matrix.platform == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Linux-Rpm
+          path: release/linux/*.rpm
+          retention-days: 5
+
+      - name: Upload Windows Installer
+        if: matrix.platform == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Windows-Installer
+          path: release/win/*.exe
+          retention-days: 5
+
+      - name: Upload macOS Installer
+        if: matrix.platform == 'macOS'
+        uses: actions/upload-artifact@v4
+        with:
+          name: macOS-Installer
+          path: release/mac/*.dmg
           retention-days: 5
