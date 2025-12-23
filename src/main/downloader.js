@@ -157,7 +157,19 @@ class Downloader {
       }
     }
 
-    if (job.playlistItems) args.push("--playlist-items", job.playlistItems);
+    // If the requestUrl is a direct video link, --playlist-items will be ignored by yt-dlp or might cause warnings.
+    // However, if we constructed requestUrl from an ID that was part of a playlist, passing --playlist-items is unnecessary
+    // because we are downloading a specific video ID.
+    // We only pass --playlist-items if the URL is actually a playlist URL.
+    // Since we process videos individually (via addToQueue loop in main.js), requestUrl is usually a video URL.
+    // So we generally skip adding --playlist-items here to avoid confusion, unless it's strictly required.
+    // But since the user might have provided a playlist URL + items, and main.js split them...
+    // Actually, checking if requestUrl contains "list=" might be better, but main.js converts everything to single video jobs.
+    // So we safely remove it here for single video jobs to prevent issues, OR we keep it if it's harmless.
+    // Given the issues, removing it for single video jobs is safer.
+
+    // if (job.playlistItems) args.push("--playlist-items", job.playlistItems);
+
     if (job.liveFromStart) args.push("--live-from-start");
     if (this.settings.removeSponsors && resolvedFfmpegPath) args.push("--sponsorblock-remove", "all");
     if (this.settings.concurrentFragments > 1) args.push("--concurrent-fragments", this.settings.concurrentFragments.toString());
@@ -282,24 +294,34 @@ class Downloader {
   async postProcess(videoInfo, job, fullLog) {
     try {
       const files = fs.readdirSync(this.videoPath);
-      const infoFile = files.find(f => f.startsWith(videoInfo.id) && f.endsWith('.info.json'));
+      // Try finding info file using videoInfo.id first
+      let infoFile = files.find(f => f.startsWith(videoInfo.id) && f.endsWith('.info.json'));
 
-      if (!infoFile) throw new Error("Could not find metadata file.");
+      // Fallback: If not found, maybe look for ANY .info.json that was just created?
+      // Unsafe if concurrent downloads.
+
+      if (!infoFile) throw new Error(`Could not find metadata file for ${videoInfo.id}.`);
 
       const infoJsonPath = path.join(this.videoPath, infoFile);
       const info = JSON.parse(fs.readFileSync(infoJsonPath, "utf-8"));
       fs.unlinkSync(infoJsonPath);
 
+      // Use the ID from the actual info.json as the authoritative ID
+      const realId = info.id;
+
       // Find any file starting with ID that isn't metadata/thumb
-      const mediaFile = files.find(f => f.startsWith(videoInfo.id) && !f.endsWith('.json') && !f.endsWith('.description') && !f.endsWith('.jpg') && !f.endsWith('.webp') && !f.endsWith('.vtt'));
+      // We check both videoInfo.id and realId just in case
+      const mediaFile = files.find(f => (f.startsWith(videoInfo.id) || f.startsWith(realId)) && !f.endsWith('.json') && !f.endsWith('.description') && !f.endsWith('.jpg') && !f.endsWith('.webp') && !f.endsWith('.vtt'));
 
       if (!mediaFile) throw new Error("Media file not found after download.");
       const mediaFilePath = path.join(this.videoPath, mediaFile);
 
       let finalCoverPath = null;
-      const thumbFile = files.find(f => f.startsWith(videoInfo.id) && (f.endsWith('.jpg') || f.endsWith('.webp')));
+      // Search for thumbnail using both IDs
+      const thumbFile = files.find(f => (f.startsWith(videoInfo.id) || f.startsWith(realId)) && (f.endsWith('.jpg') || f.endsWith('.webp')));
+
       if (thumbFile) {
-        finalCoverPath = path.join(this.coverPath, `${info.id}.jpg`);
+        finalCoverPath = path.join(this.coverPath, `${realId}.jpg`);
         await fse.move(path.join(this.videoPath, thumbFile), finalCoverPath, { overwrite: true });
       }
       const finalCoverUri = finalCoverPath ? url.pathToFileURL(finalCoverPath).href : null;

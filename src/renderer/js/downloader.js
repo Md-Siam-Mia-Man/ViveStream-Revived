@@ -10,6 +10,10 @@ const typeOptions = document.querySelectorAll(".dl-type-option");
 const tabBtns = document.querySelectorAll(".dl-tab-btn");
 const tabContents = document.querySelectorAll(".dl-tab-content");
 const queueClearBtn = document.getElementById("queue-clear-btn");
+const downloadSummaryBar = document.getElementById("download-summary-bar");
+const summaryActive = document.getElementById("summary-active");
+const summaryCompleted = document.getElementById("summary-completed");
+const summaryFailed = document.getElementById("summary-failed");
 
 // Config Elements
 const qualityConfig = document.getElementById("quality-config");
@@ -49,6 +53,31 @@ function updateEmptyStates() {
 
   const hasHistoryItems = historyListContainer.children.length > 0;
   historyEmptyState.classList.toggle("hidden", hasHistoryItems);
+}
+
+function updateSummary() {
+  if (!downloadSummaryBar) return;
+  const cards = Array.from(downloadQueueArea.querySelectorAll(".download-card"));
+  if (cards.length === 0) {
+    downloadSummaryBar.classList.add("hidden");
+    return;
+  }
+
+  downloadSummaryBar.classList.remove("hidden");
+  let active = 0;
+  let completed = 0;
+  let failed = 0;
+
+  cards.forEach(card => {
+    const status = card.dataset.status;
+    if (status === "completed") completed++;
+    else if (status === "error" || status === "info-error") failed++;
+    else active++;
+  });
+
+  summaryActive.textContent = `Running: ${active}`;
+  summaryCompleted.textContent = `Completed: ${completed}`;
+  summaryFailed.textContent = `Failed: ${failed}`;
 }
 
 // --- UI Logic ---
@@ -271,6 +300,7 @@ function createFetchingPlaceholder(url, jobId) {
 
   downloadQueueArea.insertAdjacentElement("afterbegin", card);
   updateEmptyStates();
+  updateSummary();
 }
 
 function updateItemActions(item, status) {
@@ -334,6 +364,7 @@ downloadQueueArea.addEventListener("click", (e) => {
     }
     card.remove();
     if (jobId) pendingInfoJobs.delete(jobId);
+    updateSummary();
   }
   else if (btn.classList.contains("retry-btn")) {
     const job = downloadJobs.get(videoId);
@@ -342,11 +373,13 @@ downloadQueueArea.addEventListener("click", (e) => {
       card.querySelector(".dl-card-stats span").textContent = `Queued for retry...`;
       card.dataset.status = "queued";
       card.querySelector(".log-btn").classList.remove("error");
+      updateSummary();
     }
   }
   else if (btn.classList.contains("remove-btn")) {
     card.remove();
     if (videoId) downloadJobs.delete(videoId);
+    updateSummary();
   }
   else if (btn.classList.contains("log-btn")) {
     const id = videoId || jobId;
@@ -364,8 +397,20 @@ queueClearBtn.addEventListener("click", async () => {
     await window.electronAPI.historyClear();
     loadHistory();
   } else {
-    downloadQueueArea.innerHTML = "";
+    const cards = Array.from(downloadQueueArea.querySelectorAll(".download-card"));
+    cards.forEach(card => {
+        const status = card.dataset.status;
+        // Only clear finished or failed tasks, keep active ones
+        if (status === "completed" || status === "error" || status === "info-error") {
+            const videoId = card.dataset.id;
+            const jobId = card.dataset.jobId;
+            if (videoId) downloadJobs.delete(videoId);
+            if (jobId) pendingInfoJobs.delete(jobId);
+            card.remove();
+        }
+    });
     updateEmptyStates();
+    updateSummary();
   }
 });
 
@@ -402,7 +447,7 @@ function showErrorLog(errorData) {
   });
 }
 
-window.electronAPI.onDownloadQueueStart(({ infos, jobId }) => {
+window.electronAPI.onDownloadQueueStart(({ infos, jobId, downloadOptions, playlistId }) => {
   const placeholder = downloadQueueArea.querySelector(`.download-card[data-job-id="${jobId}"]`);
   if (placeholder) placeholder.remove();
   pendingInfoJobs.delete(jobId);
@@ -446,9 +491,16 @@ window.electronAPI.onDownloadQueueStart(({ infos, jobId }) => {
     updateItemActions(card, "queued");
 
     errorLogs.set(info.id, { error: "Download in progress...", fullLog: "" });
-    downloadJobs.set(info.id, { ...info });
+
+    // Store FULL job details so retries work
+    downloadJobs.set(info.id, {
+        videoInfo: info,
+        ...downloadOptions,
+        playlistId
+    });
   });
   updateEmptyStates();
+  updateSummary();
 });
 
 // NEW: Live Log Listener
@@ -475,6 +527,7 @@ window.electronAPI.onDownloadProgress((data) => {
     card.dataset.status = 'downloading';
     updateItemActions(card, 'downloading');
     card.querySelector(".dl-card-thumb-overlay").innerHTML = "";
+    updateSummary();
   }
 
   card.querySelector(".dl-progress-bar").style.width = `${data.percent}%`;
@@ -502,6 +555,7 @@ window.electronAPI.onDownloadComplete((data) => {
     card.querySelector(".dl-card-thumb-overlay").innerHTML = `<span class="material-symbols-outlined dl-card-play-icon">play_arrow</span>`;
     updateItemActions(card, "completed");
     showNotification("Download Complete", "success", data.videoData.title);
+    updateSummary();
   }
   loadLibrary();
   loadHistory();
@@ -514,6 +568,7 @@ window.electronAPI.onDownloadError((data) => {
     card.querySelector(".status-text").textContent = "Error";
     errorLogs.set(data.id, { error: data.error, fullLog: data.fullLog });
     updateItemActions(card, "error");
+    updateSummary();
   }
 });
 
@@ -527,6 +582,7 @@ window.electronAPI.onDownloadInfoError(({ jobId, error, fullLog }) => {
 
     errorLogs.set(jobId, { error, fullLog });
     updateItemActions(card, "info-error");
+    updateSummary();
   }
 });
 

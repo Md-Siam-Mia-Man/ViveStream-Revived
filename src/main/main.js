@@ -411,7 +411,7 @@ ipcMain.on("retry-download", (e, job) => downloader.retryDownload(job));
 
 ipcMain.handle("updater:check-yt-dlp", () => {
   return new Promise((resolve) => {
-    const proc = spawnPython(["-m", "pip", "install", "-U", "yt-dlp", "static-ffmpeg"]);
+    const proc = spawnPython(["-m", "pip", "install", "-U", "yt-dlp[default]", "static-ffmpeg"]);
     proc.stdout.on("data", (d) => win.webContents.send("updater:yt-dlp-progress", d.toString()));
     proc.stderr.on("data", (d) => win.webContents.send("updater:yt-dlp-progress", d.toString()));
 
