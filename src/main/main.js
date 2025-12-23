@@ -9,6 +9,7 @@ const {
   globalShortcut,
   nativeImage,
 } = require("electron");
+const { spawn } = require("child_process");
 const path = require("path");
 const fs = require("fs");
 const fse = require("fs-extra");
@@ -172,6 +173,7 @@ function startFfmpegResolution() {
     console.warn("[FFmpeg] FATAL: Could not find ffmpeg binary.");
     resolve(null);
   });
+  return resolveTask;
 }
 
 const gotTheLock = app.requestSingleInstanceLock();
