@@ -23,21 +23,22 @@ jobs:
         include:
           - platform: Linux
             os: ubuntu-24.04
-            build_command: npm run build:linux:ci -- --target=AppImage,deb,rpm
+            build_command: npm run build:linux:ci
             artifact_path: |
               release/linux/*.AppImage
               release/linux/*.deb
               release/linux/*.rpm
+              release/linux/*.snap
+              release/linux/*.flatpak
+              release/linux/*.tar.gz
+              release/linux/*.tar.xz
 
           - platform: Windows
             os: windows-latest
-            build_command: npm run build:win
-            artifact_path: release/win/*.exe
-
-          - platform: macOS
-            os: macos-latest
-            build_command: npm run build
-            artifact_path: release/mac/*.dmg
+            build_command: node helpers/builder.js --win --target=nsis,msi
+            artifact_path: |
+              release/win/*.exe
+              release/win/*.msi
 
     steps:
       - name: Checkout Source Code
@@ -66,6 +67,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y rpm libarchive-tools flatpak flatpak-builder fakeroot dpkg-dev libsecret-1-dev libfuse2 libgl1-mesa-dev build-essential graphicsmagick
+          sudo snap install snapcraft --classic
 
       - name: Clean NPM Cache (Optional)
         if: ${{ inputs.clean_cache }}
@@ -150,16 +152,14 @@ jobs:
             Welcome to the latest version of **ViveStream**! This release brings performance improvements, bug fixes, and better stability.
             
             ### 🛠️ Installation
-            - **Windows**: Download the `.exe` installer.
-            - **Linux**: Use the `AppImage`, `.deb`, or `.rpm` packages.
-            - **macOS**: Download the `.dmg` file.
+            - **Windows**: Download the `.exe` or `.msi` installer.
+            - **Linux**: Use the `AppImage`, `.deb`, `.rpm`, `.snap`, `.flatpak` or tarballs.
             
             ---
             ### ⚠️ Security Note (Code Signing)
             > **Notice**: This application is not code-signed because the developer does not currently have a commercial signing certificate. 
             > 
             > - **Windows**: You may see a "Microsoft Defender SmartScreen" warning. Click **"More info"** and then **"Run anyway"**.
-            > - **macOS**: You may see a warning that the app cannot be opened. **Right-click (or Control-click)** the app icon and select **"Open"** from the menu to bypass this.
             
             Rest assured, the application is safe to use and the source code is provided below for transparency.
             

@@ -1,4 +1,4 @@
-name: Build Windows
+name: Linux Builds
 
 on:
   workflow_dispatch:
@@ -10,9 +10,25 @@ on:
         default: false
 
 jobs:
-  build-windows:
-    name: Build Windows
-    runs-on: windows-latest
+  build-linux:
+    name: Build Linux ${{ matrix.target }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: "AppImage"
+            ext: "AppImage"
+          - target: "deb"
+            ext: "deb"
+          - target: "rpm"
+            ext: "rpm"
+          - target: "snap"
+            ext: "snap"
+          - target: "flatpak"
+            ext: "flatpak"
+          - target: "tar.gz,tar.xz"
+            ext: "tar.gz" # Will capture both if we use wildcard or separate them
 
     steps:
       - name: Checkout Source Code
@@ -36,6 +52,12 @@ jobs:
       - name: Reassemble Large Files
         run: npm run files:join
 
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y rpm libarchive-tools flatpak flatpak-builder fakeroot dpkg-dev libsecret-1-dev libfuse2 libgl1-mesa-dev build-essential graphicsmagick
+          sudo snap install snapcraft --classic
+
       - name: Clean NPM Cache (Optional)
         if: ${{ inputs.clean_cache }}
         run: npm cache clean --force
@@ -52,24 +74,18 @@ jobs:
       - name: Hydrate Python Environment
         run: npm run env:update
 
-      - name: Verify Windows Assets
-        shell: powershell
-        run: |
-          if (-not (Test-Path "build/installer.nsh")) {
-            Write-Error "build/installer.nsh NOT FOUND. Build will fail."
-            exit 1
-          }
-
       - name: Build Application
         shell: bash
         run: |
-          npm run build:win
+          node helpers/builder.js --linux --target=${{ matrix.target }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: Windows-Installer
-          path: release/win/*.exe
+          name: Linux-${{ matrix.target }}
+          path: |
+             release/linux/*.${{ matrix.ext }}
+             release/linux/*.tar.xz
           retention-days: 5
