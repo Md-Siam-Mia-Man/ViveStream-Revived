@@ -22,7 +22,8 @@
     "build:linux:appimage": "node helpers/builder.js --linux --target=AppImage",
     "build:linux:flatpak": "node helpers/builder.js --linux --target=flatpak",
     "build:linux:snap": "node helpers/builder.js --linux --target=snap",
-    "build:linux:ci": "node helpers/builder.js --linux --target=AppImage,deb,rpm,snap",
+    "build:linux:tar": "node helpers/builder.js --linux --target=tar.gz,tar.xz",
+    "build:linux:ci": "node helpers/builder.js --linux --target=AppImage,deb,rpm,snap,flatpak,tar.gz,tar.xz",
     "postinstall": "npm run rebuild && npm run files:join && npm run vendor:init",
     "test": "jest"
   },

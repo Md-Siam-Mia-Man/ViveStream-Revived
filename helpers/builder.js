@@ -44,7 +44,7 @@ function parseTargets() {
         if (arg.startsWith("--target=")) {
             const val = arg.split("=")[1];
             if (val === "all") {
-                targets = ["AppImage", "deb", "rpm"];
+                targets = ["AppImage", "deb", "rpm", "snap", "flatpak", "tar.gz", "tar.xz"];
             } else {
                 targets = val.split(",").map(t => t.trim());
             }
@@ -60,7 +60,6 @@ function getPlatformConfig() {
     let platform = process.platform;
     if (args.includes('--win')) platform = 'win32';
     else if (args.includes('--linux')) platform = 'linux';
-    else if (args.includes('--mac')) platform = 'darwin';
 
     switch (platform) {
         case "win32":
@@ -69,17 +68,8 @@ function getPlatformConfig() {
                 name: "Windows",
                 pythonSource: "python-portable/python-win-x64",
                 cliFlag: "--win",
-                target: targets.length > 0 ? targets : "nsis",
+                target: targets.length > 0 ? targets : ["nsis", "msi"],
                 excludePatterns: ["**/bin/linux/**", "**/bin/darwin/**", "**/bin/osx/**"]
-            };
-        case "darwin":
-            return {
-                id: "mac",
-                name: "macOS",
-                pythonSource: "python-portable/python-mac-darwin",
-                cliFlag: "--mac",
-                target: targets.length > 0 ? targets : "dmg",
-                excludePatterns: ["**/bin/linux/**", "**/bin/win32/**"]
             };
         case "linux":
             const gnuPath = "python-portable/python-linux-gnu";
@@ -90,10 +80,14 @@ function getPlatformConfig() {
                 name: "Linux",
                 pythonSource: pythonSource,
                 cliFlag: "--linux",
-                target: targets.length > 0 ? targets : ["AppImage"],
+                target: targets.length > 0 ? targets : ["AppImage", "deb", "rpm", "snap", "flatpak", "tar.gz", "tar.xz"],
                 excludePatterns: ["**/bin/win32/**", "**/bin/darwin/**", "**/bin/osx/**"]
             };
         default:
+            // Fallback or throw if someone tries mac on a non-mac machine or explicitly asks for it
+            if (args.includes('--mac') || platform === 'darwin') {
+                 throw new Error("macOS build is no longer supported.");
+            }
             throw new Error(`Unsupported platform: ${platform}`);
     }
 }
@@ -132,8 +126,8 @@ async function executeCommand(command, args, cwd) {
             } else if (lowerStr.includes("packaging") && !hasLoggedPackaging) {
                 console.log(`   ${colors.green}→  Packaging application...${colors.reset}`);
                 hasLoggedPackaging = true;
-            } else if ((lowerStr.includes("msi") || lowerStr.includes("nsis") || lowerStr.includes("dmg") || lowerStr.includes("snap") || lowerStr.includes("deb") || lowerStr.includes("rpm")) && !hasLoggedInstaller && lowerStr.includes("building")) {
-                console.log(`   ${colors.green}→  Building Installer...${colors.reset}`);
+            } else if ((lowerStr.includes("msi") || lowerStr.includes("nsis") || lowerStr.includes("dmg") || lowerStr.includes("snap") || lowerStr.includes("deb") || lowerStr.includes("rpm") || lowerStr.includes("flatpak") || lowerStr.includes("tar")) && !hasLoggedInstaller && lowerStr.includes("building")) {
+                console.log(`   ${colors.green}→  Building Installer/Package...${colors.reset}`);
                 hasLoggedInstaller = true;
             } else if (lowerStr.includes("rebuilding native dependencies")) {
                 console.log(`   ${colors.yellow}⧗  Rebuilding native dependencies...${colors.reset}`);
@@ -169,7 +163,8 @@ function moveArtifacts(sourceDir, destDir) {
 
     const files = fs.readdirSync(sourceDir);
     const movedFiles = [];
-    const interestingExtensions = [".exe", ".msi", ".dmg", ".AppImage", ".deb", ".rpm", ".snap", ".flatpak", ".zip"];
+    // Added .tar.gz and .tar.xz
+    const interestingExtensions = [".exe", ".msi", ".AppImage", ".deb", ".rpm", ".snap", ".flatpak", ".zip", ".tar.gz", ".tar.xz"];
 
     for (const file of files) {
         const fullPath = path.join(sourceDir, file);
@@ -296,7 +291,7 @@ async function runBuild() {
         compression: debug ? "store" : "maximum",
         asar: true,
         win: {
-            target: platformConfig.id === "win" ? platformConfig.target : "nsis",
+            target: platformConfig.id === "win" ? platformConfig.target : ["nsis", "msi"],
             icon: toPosix(path.join(rootDir, "assets", "icon.ico")),
             legalTrademarks: "ViveStream"
         },
@@ -309,8 +304,15 @@ async function runBuild() {
             runAfterFinish: true,
             shortcutName: "ViveStream"
         },
+        // MSI Configuration
+        msi: {
+            oneClick: false,
+            perMachine: true,
+            runAfterFinish: true,
+            shortcutName: "ViveStream"
+        },
         linux: {
-            target: platformConfig.id === "linux" ? platformConfig.target : "AppImage",
+            target: platformConfig.id === "linux" ? platformConfig.target : ["AppImage"],
             // FIXED: Point to the directory for Linux, not the file
             icon: toPosix(path.join(rootDir, "assets")),
             category: "Video",
@@ -319,10 +321,7 @@ async function runBuild() {
             synopsis: "Offline media player and downloader",
             description: "Your personal, offline, and stylish media sanctuary."
         },
-        mac: {
-            target: platformConfig.id === "mac" ? platformConfig.target : "dmg",
-            icon: toPosix(path.join(rootDir, "assets", "icon.icns"))
-        }
+        // Removed MacOS configuration
     };
 
     fs.writeFileSync(tempConfigPath, JSON.stringify(buildConfig, null, 2));

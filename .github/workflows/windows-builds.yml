@@ -1,4 +1,4 @@
-name: Build macOS
+name: Windows Builds
 
 on:
   workflow_dispatch:
@@ -10,9 +10,17 @@ on:
         default: false
 
 jobs:
-  build-macos:
-    name: Build macOS
-    runs-on: macos-latest
+  build-win:
+    name: Build Windows ${{ matrix.target }}
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: "nsis"
+            ext: "exe"
+          - target: "msi"
+            ext: "msi"
 
     steps:
       - name: Checkout Source Code
@@ -52,16 +60,24 @@ jobs:
       - name: Hydrate Python Environment
         run: npm run env:update
 
+      - name: Verify Windows Assets
+        shell: powershell
+        run: |
+          if (-not (Test-Path "build/installer.nsh")) {
+            Write-Error "build/installer.nsh NOT FOUND. Build will fail."
+            exit 1
+          }
+
       - name: Build Application
         shell: bash
         run: |
-          npm run build
+          node helpers/builder.js --win --target=${{ matrix.target }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: macOS-Installer
-          path: release/mac/*.dmg
+          name: Windows-${{ matrix.target }}
+          path: release/win/*.${{ matrix.ext }}
           retention-days: 5
