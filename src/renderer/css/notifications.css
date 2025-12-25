@@ -1,109 +1,109 @@
 #notification-container {
-     position: fixed;
-     bottom: 20px;
-     left: 50%;
-     transform: translateX(-50%);
-     z-index: 10001;
-     display: flex;
-     flex-direction: column-reverse;
-     gap: 12px;
-     align-items: center;
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10001;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 12px;
+  align-items: center;
 }
 
 .notification {
-     min-width: 320px;
-     max-width: 450px;
-     background-color: var(--glass-bg);
-     backdrop-filter: blur(10px);
-     -webkit-backdrop-filter: blur(10px);
-     border-radius: 12px;
-     padding: 14px 20px;
-     border: 1px solid var(--glass-border);
-     box-shadow: 0 5px 20px var(--shadow-color-heavy);
-     display: flex;
-     align-items: center;
-     gap: 16px;
-     animation: bounce-in 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  min-width: 320px;
+  max-width: 450px;
+  background-color: var(--glass-bg);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-radius: 12px;
+  padding: 14px 20px;
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 5px 20px var(--shadow-color-heavy);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  animation: bounce-in 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
 }
 
 .notification.fade-out {
-     animation: bounce-out 0.4s cubic-bezier(0.6, -0.28, 0.735, 0.045) forwards;
+  animation: bounce-out 0.4s cubic-bezier(0.6, -0.28, 0.735, 0.045) forwards;
 }
 
 .notification.info .notification-icon {
-     color: aquamarine;
+  color: aquamarine;
 }
 
 .notification.success .notification-icon {
-     color: var(--positive-accent);
+  color: var(--positive-accent);
 }
 
 .notification.error .notification-icon {
-     color: var(--negative-accent);
+  color: var(--negative-accent);
 }
 
 .notification .notification-icon {
-     font-size: 24px;
-     flex-shrink: 0;
+  font-size: 24px;
+  flex-shrink: 0;
 }
 
 .notification .notification-content {
-     flex-grow: 1;
+  flex-grow: 1;
 }
 
 .notification-content p {
-     font-size: 0.95rem;
-     line-height: 1.4;
-     color: var(--primary-text);
-     font-weight: 500;
-     margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.4;
+  color: var(--primary-text);
+  font-weight: 500;
+  margin: 0;
 }
 
 .notification-content span {
-     font-size: 0.85rem;
-     color: var(--secondary-text);
+  font-size: 0.85rem;
+  color: var(--secondary-text);
 }
 
 .close-notification {
-     background: none;
-     border: none;
-     color: var(--secondary-text);
-     cursor: pointer;
-     font-size: 24px;
-     padding: 0;
-     line-height: 1;
-     transition: color 0.2s;
-     align-self: flex-start;
-     margin-left: auto;
-     display: flex;
-     align-items: center;
-     justify-content: center;
+  background: none;
+  border: none;
+  color: var(--secondary-text);
+  cursor: pointer;
+  font-size: 24px;
+  padding: 0;
+  line-height: 1;
+  transition: color 0.2s;
+  align-self: flex-start;
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .close-notification:hover {
-     color: var(--primary-text);
+  color: var(--primary-text);
 }
 
 @keyframes bounce-in {
-     from {
-          opacity: 0;
-          transform: translateY(100px) scale(0.8);
-     }
+  from {
+    opacity: 0;
+    transform: translateY(100px) scale(0.8);
+  }
 
-     to {
-          opacity: 1;
-          transform: translateY(0) scale(1);
-     }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 @keyframes bounce-out {
-     from {
-          opacity: 1;
-          transform: translateY(0) scale(1);
-     }
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 
-     to {
-          opacity: 0;
-          transform: translateY(50px) scale(0.9);
-     }
+  to {
+    opacity: 0;
+    transform: translateY(50px) scale(0.9);
+  }
 }

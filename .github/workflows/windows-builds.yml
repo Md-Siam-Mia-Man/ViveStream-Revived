@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       clean_cache:
-        description: "Clean NPM cache"
+        description: 'Clean NPM cache'
         required: false
         type: boolean
         default: false
@@ -17,10 +17,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - target: "nsis"
-            ext: "exe"
-          - target: "msi"
-            ext: "msi"
+          - target: 'nsis'
+            ext: 'exe'
+          - target: 'msi'
+            ext: 'msi'
 
     steps:
       - name: Checkout Source Code
@@ -38,8 +38,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "25"
-          cache: "npm"
+          node-version: '25'
+          cache: 'npm'
 
       - name: Reassemble Large Files
         run: npm run files:join

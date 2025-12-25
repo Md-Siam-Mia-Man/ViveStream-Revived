@@ -5,34 +5,34 @@ changelog:
     authors:
       - octocat
   categories:
-    - title: "🚀 Features"
+    - title: '🚀 Features'
       labels:
         - feature
         - enhancement
-    - title: "🐛 Bug Fixes"
+    - title: '🐛 Bug Fixes'
       labels:
         - bug
         - fix
-    - title: "💅 Polish"
+    - title: '💅 Polish'
       labels:
         - UI
         - UX
         - design
-    - title: "🛠️ Refactoring"
+    - title: '🛠️ Refactoring'
       labels:
         - refactor
-    - title: "📦 Dependency Updates"
+    - title: '📦 Dependency Updates'
       labels:
         - dependencies
-    - title: "📖 Documentation"
+    - title: '📖 Documentation'
       labels:
         - documentation
-    - title: "🚧 Implementation details"
+    - title: '🚧 Implementation details'
       labels:
         - logic
-    - title: "🧪 Testing"
+    - title: '🧪 Testing'
       labels:
         - test
-    - title: "🧹 Chore"
+    - title: '🧹 Chore'
       labels:
         - chore

@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       clean_cache:
-        description: "Clean NPM cache"
+        description: 'Clean NPM cache'
         required: false
         type: boolean
         default: false
@@ -17,18 +17,18 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - target: "AppImage"
-            ext: "AppImage"
-          - target: "deb"
-            ext: "deb"
-          - target: "rpm"
-            ext: "rpm"
-          - target: "snap"
-            ext: "snap"
-          - target: "flatpak"
-            ext: "flatpak"
-          - target: "tar.gz,tar.xz"
-            ext: "tar.gz" # Will capture both if we use wildcard or separate them
+          - target: 'AppImage'
+            ext: 'AppImage'
+          - target: 'deb'
+            ext: 'deb'
+          - target: 'rpm'
+            ext: 'rpm'
+          - target: 'snap'
+            ext: 'snap'
+          - target: 'flatpak'
+            ext: 'flatpak'
+          - target: 'tar.gz,tar.xz'
+            ext: 'tar.gz' # Will capture both if we use wildcard or separate them
 
     steps:
       - name: Checkout Source Code
@@ -46,8 +46,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "25"
-          cache: "npm"
+          node-version: '25'
+          cache: 'npm'
 
       - name: Reassemble Large Files
         run: npm run files:join
@@ -86,6 +86,6 @@ jobs:
         with:
           name: Linux-${{ matrix.target }}
           path: |
-             release/linux/*.${{ matrix.ext }}
-             release/linux/*.tar.xz
+            release/linux/*.${{ matrix.ext }}
+            release/linux/*.tar.xz
           retention-days: 5

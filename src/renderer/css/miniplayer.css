@@ -1,49 +1,51 @@
 #miniplayer {
-     position: fixed;
-     bottom: 20px;
-     right: 20px;
-     width: 360px;
-     height: 202.5px;
-     background-color: #000;
-     border-radius: 12px;
-     z-index: 1000;
-     overflow: hidden;
-     transform: translateY(150%);
-     transition: transform 0.3s ease-in-out, box-shadow 0.2s;
-     box-shadow: 0 5px 15px var(--shadow-color-heavy);
-     border: 1px solid var(--border-color);
-     cursor: pointer;
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 360px;
+  height: 202.5px;
+  background-color: #000;
+  border-radius: 12px;
+  z-index: 1000;
+  overflow: hidden;
+  transform: translateY(150%);
+  transition:
+    transform 0.3s ease-in-out,
+    box-shadow 0.2s;
+  box-shadow: 0 5px 15px var(--shadow-color-heavy);
+  border: 1px solid var(--border-color);
+  cursor: pointer;
 }
 
 #miniplayer:hover {
-     box-shadow: 0 8px 25px var(--shadow-color-heavy);
+  box-shadow: 0 8px 25px var(--shadow-color-heavy);
 }
 
 #miniplayer:not(.hidden) {
-     transform: translateY(0);
+  transform: translateY(0);
 }
 
 #miniplayer.hidden {
-     pointer-events: none;
+  pointer-events: none;
 }
 
 #miniplayer-video-container {
-     position: absolute;
-     top: 0;
-     left: 0;
-     width: 100%;
-     height: 100%;
-     z-index: 1;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
 }
 
 #miniplayer.audio-mode #miniplayer-video-container {
-     display: none;
+  display: none;
 }
 
 #miniplayer-video-container #video-player {
-     width: 100%;
-     height: 100%;
-     object-fit: cover;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 /* 
@@ -51,141 +53,141 @@
    Calculates 60% of the user-defined size to fit the small window
 */
 #miniplayer video::cue {
-     font-size: calc(var(--subtitle-size, 1.25rem) * 0.6) !important;
+  font-size: calc(var(--subtitle-size, 1.25rem) * 0.6) !important;
 }
 
 .miniplayer-artwork {
-     position: absolute;
-     top: 0;
-     left: 0;
-     width: 100%;
-     height: 100%;
-     object-fit: cover;
-     z-index: 2;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 2;
 }
 
 .miniplayer-artwork.hidden {
-     display: none;
+  display: none;
 }
 
 .miniplayer-info,
 .miniplayer-controls,
 .miniplayer-actions {
-     position: absolute;
-     z-index: 3;
-     transition: opacity 0.2s ease-in-out;
+  position: absolute;
+  z-index: 3;
+  transition: opacity 0.2s ease-in-out;
 }
 
 .miniplayer-controls,
 .miniplayer-actions {
-     opacity: 0;
+  opacity: 0;
 }
 
 #miniplayer:hover .miniplayer-controls,
 #miniplayer:hover .miniplayer-actions {
-     opacity: 1;
+  opacity: 1;
 }
 
 .miniplayer-info {
-     bottom: 5px;
-     left: 12px;
-     right: 12px;
-     background: linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent);
-     padding: 25px 0 5px 0;
-     pointer-events: none;
+  bottom: 5px;
+  left: 12px;
+  right: 12px;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent);
+  padding: 25px 0 5px 0;
+  pointer-events: none;
 }
 
 .miniplayer-title,
 .miniplayer-uploader {
-     white-space: nowrap;
-     overflow: hidden;
-     text-overflow: ellipsis;
-     padding: 0 5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0 5px;
 }
 
 .miniplayer-title {
-     font-size: 0.9rem;
-     font-weight: 500;
-     color: #fff;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #fff;
 }
 
 .miniplayer-uploader {
-     font-size: 0.8rem;
-     color: var(--secondary-text);
+  font-size: 0.8rem;
+  color: var(--secondary-text);
 }
 
 .miniplayer-controls {
-     top: 50%;
-     left: 50%;
-     transform: translate(-50%, -50%);
-     display: flex;
-     gap: 20px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  gap: 20px;
 }
 
 .mini-control-button {
-     background: rgba(0, 0, 0, 0.5);
-     border: none;
-     color: #fff;
-     cursor: pointer;
-     border-radius: 50%;
-     width: 45px;
-     height: 45px;
-     display: flex;
-     align-items: center;
-     justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  border-radius: 50%;
+  width: 45px;
+  height: 45px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .mini-control-button .material-symbols-outlined {
-     font-size: 28px;
+  font-size: 28px;
 }
 
 .mini-control-button:hover {
-     background: rgba(0, 0, 0, 0.8);
+  background: rgba(0, 0, 0, 0.8);
 }
 
 .miniplayer-actions {
-     top: 8px;
-     right: 8px;
-     display: flex;
-     gap: 5px;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 5px;
 }
 
 .mini-action-button {
-     background: rgba(0, 0, 0, 0.5);
-     border: none;
-     color: var(--secondary-text);
-     cursor: pointer;
-     padding: 5px;
-     border-radius: 50%;
-     width: 28px;
-     height: 28px;
-     display: flex;
-     align-items: center;
-     justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+  border: none;
+  color: var(--secondary-text);
+  cursor: pointer;
+  padding: 5px;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .mini-action-button .material-symbols-outlined {
-     font-size: 20px;
+  font-size: 20px;
 }
 
 .mini-action-button:hover {
-     color: #fff;
-     background: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  background: rgba(0, 0, 0, 0.8);
 }
 
 .miniplayer-progress-container {
-     position: absolute;
-     bottom: 0;
-     left: 0;
-     width: 100%;
-     height: 3px;
-     background-color: rgba(255, 255, 255, 0.2);
-     z-index: 2;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background-color: rgba(255, 255, 255, 0.2);
+  z-index: 2;
 }
 
 .miniplayer-progress-bar {
-     width: 0%;
-     height: 100%;
-     background-color: var(--primary-accent);
-     transition: width 0.1s linear;
+  width: 0%;
+  height: 100%;
+  background-color: var(--primary-accent);
+  transition: width 0.1s linear;
 }

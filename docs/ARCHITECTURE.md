@@ -31,19 +31,19 @@ ViveStream Revived is an Electron-based application that follows a standard mult
 
 The backend logic is split into three core modules:
 
-* **`main.js`**: The entry point.
-  * Initializes the `BrowserWindow`.
-  * Sets up IPC event listeners (`ipcMain`).
-  * Manages native menus and tray icons.
-  * Handles "single instance" locking.
-* **`database.js`**: Data persistence layer.
-  * Uses `knex` as a query builder.
-  * Uses `sqlite3` as the database engine.
-  * Manages schema migrations and relational data (Videos <-> Artists, Videos <-> Playlists).
-* **`utils.js`**: Utility belt.
-  * Wraps `yt-dlp` for downloading content.
-  * Wraps `ffmpeg` for media processing.
-  * Handles file system operations (path sanitization, cleanup).
+- **`main.js`**: The entry point.
+  - Initializes the `BrowserWindow`.
+  - Sets up IPC event listeners (`ipcMain`).
+  - Manages native menus and tray icons.
+  - Handles "single instance" locking.
+- **`database.js`**: Data persistence layer.
+  - Uses `knex` as a query builder.
+  - Uses `sqlite3` as the database engine.
+  - Manages schema migrations and relational data (Videos <-> Artists, Videos <-> Playlists).
+- **`utils.js`**: Utility belt.
+  - Wraps `yt-dlp` for downloading content.
+  - Wraps `ffmpeg` for media processing.
+  - Handles file system operations (path sanitization, cleanup).
 
 ### 2. The Bridge (`src/preload/`)
 
@@ -52,8 +52,8 @@ To maintain security, the Renderer process has **no direct access** to Node.js A
 ```javascript
 // Exposing a specific function, not the entire 'fs' module
 contextBridge.exposeInMainWorld('api', {
-    downloadVideo: (url) => ipcRenderer.send('download-video', url),
-    onProgress: (callback) => ipcRenderer.on('download-progress', callback)
+  downloadVideo: (url) => ipcRenderer.send('download-video', url),
+  onProgress: (callback) => ipcRenderer.on('download-progress', callback),
 });
 ```
 
@@ -61,9 +61,9 @@ contextBridge.exposeInMainWorld('api', {
 
 A standard React SPA (Single Page Application) bundled with Vite.
 
-* **State Management**: Uses a custom `state.js` (lightweight store) or React Context.
-* **Routing**: Likely client-side routing or simple conditional rendering.
-* **Styling**: CSS/SCSS.
+- **State Management**: Uses a custom `state.js` (lightweight store) or React Context.
+- **Routing**: Likely client-side routing or simple conditional rendering.
+- **Styling**: CSS/SCSS.
 
 ## Data Flow: The Download Lifecycle
 
@@ -73,31 +73,31 @@ A standard React SPA (Single Page Application) bundled with Vite.
 4. **Metadata Fetch**: Main calls `utils.getVideoInfo(url)` (spawns `yt-dlp --dump-json`).
 5. **DB Insert**: A record is created in `videos` table with status "pending".
 6. **Download**: Main spawns `yt-dlp` process.
-    * `stdout` is parsed for progress percentage.
-    * Progress is sent to Renderer via `win.webContents.send('download-progress', ...)`.
+   - `stdout` is parsed for progress percentage.
+   - Progress is sent to Renderer via `win.webContents.send('download-progress', ...)`.
 7. **Post-Processing**: If needed, `ffmpeg` is spawned to convert/merge formats.
 8. **Finalization**:
-    * File is moved to the library folder.
-    * DB record updated to "completed".
-    * `library-updated` event sent to Renderer.
+   - File is moved to the library folder.
+   - DB record updated to "completed".
+   - `library-updated` event sent to Renderer.
 
 ## "Vendor" Binary Management
 
 A unique feature of this project is how it handles dependencies like `ffmpeg` and `yt-dlp`.
 
-* **No Runtime Downloads**: We do **not** download binaries at runtime. This ensures offline capability and security.
-* **Git LFS**: Large binaries are stored in `vendor/<platform>/` and tracked with Git LFS.
-* **Build-Time Injection**:
-  * `helpers/builder.js` detects the target platform.
-  * It copies the specific binaries from `vendor/<platform>/` into the app's `resources` folder.
-  * `utils.js` detects the OS at runtime and locates the binaries relative to `process.resourcesPath`.
+- **No Runtime Downloads**: We do **not** download binaries at runtime. This ensures offline capability and security.
+- **Git LFS**: Large binaries are stored in `vendor/<platform>/` and tracked with Git LFS.
+- **Build-Time Injection**:
+  - `helpers/builder.js` detects the target platform.
+  - It copies the specific binaries from `vendor/<platform>/` into the app's `resources` folder.
+  - `utils.js` detects the OS at runtime and locates the binaries relative to `process.resourcesPath`.
 
 ## Build System
 
 We use a custom wrapper around `electron-builder` (`helpers/builder.js`) to handle complex cross-platform requirements:
 
-* **Windows**: Injects a portable Python environment (`python-portable/`) so users don't need Python installed.
-* **Linux**: Supports AppImage, Deb, RPM, Snap.
-* **macOS**: Handles DMG creation.
+- **Windows**: Injects a portable Python environment (`python-portable/`) so users don't need Python installed.
+- **Linux**: Supports AppImage, Deb, RPM, Snap.
+- **macOS**: Handles DMG creation.
 
 See [Build System](./BUILD_SYSTEM.md) for details.

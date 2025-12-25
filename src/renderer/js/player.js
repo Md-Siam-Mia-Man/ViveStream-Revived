@@ -1,76 +1,76 @@
-import { AppState, setCurrentlyPlaying } from "./state.js";
-import { showPage } from "./renderer.js";
-import { activateMiniplayer } from "./miniplayer.js";
-import { openAddToPlaylistModal } from "./playlists.js";
-import { toggleFavoriteStatus, applyFilters, updateSlider } from "./ui.js";
-import { showNotification } from "./notifications.js";
-import { eventBus } from "./event-bus.js";
-import { formatTime, fuzzySearch } from "./utils.js";
+import { AppState, setCurrentlyPlaying } from './state.js';
+import { showPage } from './renderer.js';
+import { activateMiniplayer } from './miniplayer.js';
+import { openAddToPlaylistModal } from './playlists.js';
+import { toggleFavoriteStatus, applyFilters, updateSlider } from './ui.js';
+import { showNotification } from './notifications.js';
+import { eventBus } from './event-bus.js';
+import { formatTime, fuzzySearch } from './utils.js';
 
-const playerPage = document.getElementById("player-page");
-const playerSection = document.getElementById("player-section");
-const videoPlayer = document.getElementById("video-player");
-const videoPlayerPreload = document.getElementById("video-player-preload");
-const audioArtworkImg = document.getElementById("audio-artwork-img");
-const videoDescriptionBox = document.getElementById("video-description-box");
-const descriptionContent = document.getElementById("description-content");
-const showMoreDescBtn = document.getElementById("show-more-desc-btn");
-const videoInfoTitle = document.getElementById("video-info-title");
-const channelThumb = document.getElementById("channel-thumb");
-const videoInfoUploader = document.getElementById("video-info-uploader");
-const videoInfoDate = document.getElementById("video-info-date");
-const upNextContainer = document.getElementById("up-next-container");
-const upNextList = document.getElementById("up-next-list");
-const upNextHeaderText = document.getElementById("up-next-header-text");
-const favoriteBtn = document.getElementById("favorite-btn");
-const addToPlaylistBtn = document.getElementById("add-to-playlist-btn");
-const theaterBtn = document.getElementById("theater-btn");
-const fullscreenBtn = document.getElementById("fullscreen-btn");
-const playPauseBtn = document.querySelector(".play-pause-btn");
-const nextBtn = document.querySelector(".next-btn");
-const prevBtn = document.querySelector(".prev-btn");
-const muteBtn = document.querySelector(".mute-btn");
-const volumeSlider = document.querySelector(".volume-slider");
-const currentTimeEl = document.querySelector(".current-time");
-const totalTimeEl = document.querySelector(".total-time");
-const timelineContainer = document.querySelector(".timeline-container");
-const timelineProgress = document.querySelector(".timeline-progress");
-const autoplayToggle = document.getElementById("autoplay-toggle");
-const settingsBtn = document.getElementById("settings-btn");
-const settingsMenu = document.getElementById("settings-menu");
-const speedSubmenu = document.getElementById("speed-submenu");
-const sleepSubmenu = document.getElementById("sleep-submenu");
-const subtitleSubmenu = document.getElementById("subtitle-submenu");
-const subtitleStyleSubmenu = document.getElementById("subtitle-style-submenu");
-const subtitleSyncSubmenu = document.getElementById("subtitle-sync-submenu");
-const controlsContainer = document.querySelector(".video-controls-container");
-const videoMenuBtn = document.getElementById("video-menu-btn");
-const miniplayerBtn = document.getElementById("miniplayer-btn");
-const videoContextMenu = document.getElementById("video-item-context-menu");
-const miniplayer = document.getElementById("miniplayer");
-const editableTitleInput = document.getElementById("editable-title-input");
-const editableCreatorInput = document.getElementById("editable-creator-input");
+const playerPage = document.getElementById('player-page');
+const playerSection = document.getElementById('player-section');
+const videoPlayer = document.getElementById('video-player');
+const videoPlayerPreload = document.getElementById('video-player-preload');
+const audioArtworkImg = document.getElementById('audio-artwork-img');
+const videoDescriptionBox = document.getElementById('video-description-box');
+const descriptionContent = document.getElementById('description-content');
+const showMoreDescBtn = document.getElementById('show-more-desc-btn');
+const videoInfoTitle = document.getElementById('video-info-title');
+const channelThumb = document.getElementById('channel-thumb');
+const videoInfoUploader = document.getElementById('video-info-uploader');
+const videoInfoDate = document.getElementById('video-info-date');
+const upNextContainer = document.getElementById('up-next-container');
+const upNextList = document.getElementById('up-next-list');
+const upNextHeaderText = document.getElementById('up-next-header-text');
+const favoriteBtn = document.getElementById('favorite-btn');
+const addToPlaylistBtn = document.getElementById('add-to-playlist-btn');
+const theaterBtn = document.getElementById('theater-btn');
+const fullscreenBtn = document.getElementById('fullscreen-btn');
+const playPauseBtn = document.querySelector('.play-pause-btn');
+const nextBtn = document.querySelector('.next-btn');
+const prevBtn = document.querySelector('.prev-btn');
+const muteBtn = document.querySelector('.mute-btn');
+const volumeSlider = document.querySelector('.volume-slider');
+const currentTimeEl = document.querySelector('.current-time');
+const totalTimeEl = document.querySelector('.total-time');
+const timelineContainer = document.querySelector('.timeline-container');
+const timelineProgress = document.querySelector('.timeline-progress');
+const autoplayToggle = document.getElementById('autoplay-toggle');
+const settingsBtn = document.getElementById('settings-btn');
+const settingsMenu = document.getElementById('settings-menu');
+const speedSubmenu = document.getElementById('speed-submenu');
+const sleepSubmenu = document.getElementById('sleep-submenu');
+const subtitleSubmenu = document.getElementById('subtitle-submenu');
+const subtitleStyleSubmenu = document.getElementById('subtitle-style-submenu');
+const subtitleSyncSubmenu = document.getElementById('subtitle-sync-submenu');
+const controlsContainer = document.querySelector('.video-controls-container');
+const videoMenuBtn = document.getElementById('video-menu-btn');
+const miniplayerBtn = document.getElementById('miniplayer-btn');
+const videoContextMenu = document.getElementById('video-item-context-menu');
+const miniplayer = document.getElementById('miniplayer');
+const editableTitleInput = document.getElementById('editable-title-input');
+const editableCreatorInput = document.getElementById('editable-creator-input');
 const editableDescriptionTextarea = document.getElementById(
-  "editable-description-textarea"
+  'editable-description-textarea'
 );
-const saveEditBtn = document.getElementById("save-edit-btn");
-const cancelEditBtn = document.getElementById("cancel-edit-btn");
-const mainContent = playerPage.querySelector(".main-content");
-const playerFeedback = document.getElementById("player-feedback");
+const saveEditBtn = document.getElementById('save-edit-btn');
+const cancelEditBtn = document.getElementById('cancel-edit-btn');
+const mainContent = playerPage.querySelector('.main-content');
+const playerFeedback = document.getElementById('player-feedback');
 
 let hideControlsTimeout;
 let feedbackTimeout;
 
 const playerState = {
-  subtitleMode: "off",
+  subtitleMode: 'off',
   subtitleOffset: 0,
   subtitleStyles: {
     font: 'Poppins',
     size: '1.25rem',
     color: '#ffffff',
     bg: 'rgba(0,0,0,0.7)',
-    pos: '0%'
-  }
+    pos: '0%',
+  },
 };
 
 class SleepTimerManager {
@@ -79,8 +79,8 @@ class SleepTimerManager {
     this.type = null;
     this.value = 0;
     this.remaining = 0;
-    this.statusEl = document.getElementById("sleep-timer-status");
-    this.statusTextEl = document.getElementById("sleep-timer-status-text");
+    this.statusEl = document.getElementById('sleep-timer-status');
+    this.statusTextEl = document.getElementById('sleep-timer-status-text');
     this.onTrackChange = this.onTrackChange.bind(this);
   }
 
@@ -90,13 +90,13 @@ class SleepTimerManager {
     this.value = parseInt(value, 10);
     this.remaining = this.value;
 
-    if (this.type === "minutes") {
+    if (this.type === 'minutes') {
       this.remaining *= 60;
       this.id = setInterval(() => this.update(), 1000);
-    } else if (this.type === "tracks") {
-      eventBus.on("playback:trackchange", this.onTrackChange);
-    } else if (this.type === "time") {
-      const [hours, minutes] = value.split(":").map(Number);
+    } else if (this.type === 'tracks') {
+      eventBus.on('playback:trackchange', this.onTrackChange);
+    } else if (this.type === 'time') {
+      const [hours, minutes] = value.split(':').map(Number);
       const now = new Date();
       const endTime = new Date();
       endTime.setHours(hours, minutes, 0, 0);
@@ -105,16 +105,16 @@ class SleepTimerManager {
       this.id = setInterval(() => this.update(), 1000);
     }
     this.updateDisplay();
-    this.statusEl.classList.remove("hidden");
-    showNotification(`Sleep timer set.`, "info");
+    this.statusEl.classList.remove('hidden');
+    showNotification(`Sleep timer set.`, 'info');
   }
 
   stop() {
     clearInterval(this.id);
-    eventBus.off("playback:trackchange", this.onTrackChange);
+    eventBus.off('playback:trackchange', this.onTrackChange);
     this.id = null;
     this.type = null;
-    this.statusEl.classList.add("hidden");
+    this.statusEl.classList.add('hidden');
   }
 
   onTrackChange() {
@@ -131,14 +131,15 @@ class SleepTimerManager {
 
   trigger() {
     videoPlayer.pause();
-    showNotification(`Sleep timer ended. Playback paused.`, "info");
+    showNotification(`Sleep timer ended. Playback paused.`, 'info');
     this.stop();
   }
 
   updateDisplay() {
-    if (this.type === "tracks") {
-      this.statusTextEl.textContent = `${this.remaining} track${this.remaining > 1 ? "s" : ""
-        } left`;
+    if (this.type === 'tracks') {
+      this.statusTextEl.textContent = `${this.remaining} track${
+        this.remaining > 1 ? 's' : ''
+      } left`;
     } else {
       this.statusTextEl.textContent = formatTime(this.remaining);
     }
@@ -147,7 +148,7 @@ class SleepTimerManager {
   clear() {
     if (this.id || this.type) {
       this.stop();
-      showNotification(`Sleep timer cleared.`, "info");
+      showNotification(`Sleep timer cleared.`, 'info');
     }
   }
 }
@@ -164,21 +165,21 @@ const lazyLoadObserver = new IntersectionObserver(
       }
     });
   },
-  { root: mainContent, rootMargin: "0px 0px 200px 0px" }
+  { root: mainContent, rootMargin: '0px 0px 200px 0px' }
 );
 
 function showPlayerFeedback(iconName, text) {
   if (!playerFeedback) return;
   clearTimeout(feedbackTimeout);
-  playerFeedback.classList.remove("visible");
+  playerFeedback.classList.remove('visible');
   void playerFeedback.offsetWidth;
-  const iconEl = playerFeedback.querySelector(".material-symbols-outlined");
-  const textEl = playerFeedback.querySelector(".feedback-text");
+  const iconEl = playerFeedback.querySelector('.material-symbols-outlined');
+  const textEl = playerFeedback.querySelector('.feedback-text');
   iconEl.textContent = iconName;
   textEl.textContent = text;
-  playerFeedback.classList.add("visible");
+  playerFeedback.classList.add('visible');
   feedbackTimeout = setTimeout(() => {
-    playerFeedback.classList.remove("visible");
+    playerFeedback.classList.remove('visible');
   }, 1000);
 }
 
@@ -189,24 +190,29 @@ function applySubtitleStyles() {
   videoPlayer.style.setProperty('--subtitle-color', s.color);
   videoPlayer.style.setProperty('--subtitle-bg', s.bg);
   videoPlayer.style.setProperty('--subtitle-pos', s.pos);
-  localStorage.setItem("subtitleStyles", JSON.stringify(s));
+  localStorage.setItem('subtitleStyles', JSON.stringify(s));
 }
 
 function syncSubtitleOffset(offsetDelta) {
   playerState.subtitleOffset += offsetDelta;
-  const track = Array.from(videoPlayer.textTracks).find(t => t.mode !== 'disabled');
+  const track = Array.from(videoPlayer.textTracks).find(
+    (t) => t.mode !== 'disabled'
+  );
   if (track && track.cues) {
-    Array.from(track.cues).forEach(cue => {
+    Array.from(track.cues).forEach((cue) => {
       cue.startTime += offsetDelta;
       cue.endTime += offsetDelta;
     });
-    showPlayerFeedback("timer", `Sync: ${playerState.subtitleOffset.toFixed(1)}s`);
+    showPlayerFeedback(
+      'timer',
+      `Sync: ${playerState.subtitleOffset.toFixed(1)}s`
+    );
   }
 }
 
 function loadSubtitleTrack(filePath, mode = 'hidden') {
   const oldTracks = videoPlayer.querySelectorAll('track');
-  oldTracks.forEach(t => t.remove());
+  oldTracks.forEach((t) => t.remove());
   if (filePath) {
     const track = document.createElement('track');
     track.kind = 'subtitles';
@@ -226,13 +232,15 @@ function toggleSubtitleMode(forceState = null) {
   if (forceState) {
     playerState.subtitleMode = forceState;
   } else {
-    playerState.subtitleMode = playerState.subtitleMode === "on" ? "off" : "on";
+    playerState.subtitleMode = playerState.subtitleMode === 'on' ? 'off' : 'on';
   }
-  const track = Array.from(videoPlayer.textTracks).find(t => t.kind === 'subtitles');
+  const track = Array.from(videoPlayer.textTracks).find(
+    (t) => t.kind === 'subtitles'
+  );
   if (track) {
-    track.mode = playerState.subtitleMode === "on" ? "showing" : "hidden";
+    track.mode = playerState.subtitleMode === 'on' ? 'showing' : 'hidden';
   }
-  localStorage.setItem("subtitleMode", playerState.subtitleMode);
+  localStorage.setItem('subtitleMode', playerState.subtitleMode);
 }
 
 function preloadNextItem() {
@@ -252,8 +260,8 @@ function handleTrackEnd() {
   if (autoplayToggle.checked) {
     playNext();
   } else {
-    playPauseBtn.querySelector("span").textContent = "play_arrow";
-    eventBus.emit("playback:pause");
+    playPauseBtn.querySelector('span').textContent = 'play_arrow';
+    eventBus.emit('playback:pause');
   }
 }
 
@@ -266,44 +274,53 @@ function playLibraryItem({ index, queue, context = null, options = {} }) {
   videoPlayer.src = decodeURIComponent(item.filePath);
 
   // ! Lazy load description if missing (async, non-blocking)
-  if (!item.description && item.id && !item.id.startsWith("external-")) {
-    window.electronAPI.getVideoDetails(item.id).then((fullDetails) => {
-      if (fullDetails && fullDetails.description) {
-        item.description = fullDetails.description;
-        // Also update the item in the main library if it exists there
-        const libItem = AppState.library.find((v) => v.id === item.id);
-        if (libItem) {
-          libItem.description = fullDetails.description;
+  if (!item.description && item.id && !item.id.startsWith('external-')) {
+    window.electronAPI
+      .getVideoDetails(item.id)
+      .then((fullDetails) => {
+        if (fullDetails && fullDetails.description) {
+          item.description = fullDetails.description;
+          // Also update the item in the main library if it exists there
+          const libItem = AppState.library.find((v) => v.id === item.id);
+          if (libItem) {
+            libItem.description = fullDetails.description;
+          }
+          // Update UI if this item is still playing
+          if (
+            AppState.playbackQueue[AppState.currentlyPlayingIndex]?.id ===
+            item.id
+          ) {
+            updateVideoDetails(item);
+          }
         }
-        // Update UI if this item is still playing
-        if (AppState.playbackQueue[AppState.currentlyPlayingIndex]?.id === item.id) {
-          updateVideoDetails(item);
-        }
-      }
-    }).catch((e) => {
-      console.error("Failed to load video details:", e);
-    });
+      })
+      .catch((e) => {
+        console.error('Failed to load video details:', e);
+      });
   }
 
   playerState.subtitleOffset = 0;
   if (item.subtitlePath) {
-    const savedMode = localStorage.getItem("subtitleMode") || "off";
+    const savedMode = localStorage.getItem('subtitleMode') || 'off';
     playerState.subtitleMode = savedMode;
-    loadSubtitleTrack(decodeURIComponent(item.subtitlePath), savedMode === 'on' ? 'showing' : 'hidden');
+    loadSubtitleTrack(
+      decodeURIComponent(item.subtitlePath),
+      savedMode === 'on' ? 'showing' : 'hidden'
+    );
   } else {
     loadSubtitleTrack(null);
   }
 
-  if (item.type === "audio") {
-    playerSection.classList.add("audio-mode");
+  if (item.type === 'audio') {
+    playerSection.classList.add('audio-mode');
     audioArtworkImg.src = item.coverPath
       ? decodeURIComponent(item.coverPath)
       : `${AppState.assetsPath}/logo.png`;
     theaterBtn.disabled = true;
     fullscreenBtn.disabled = true;
   } else {
-    playerSection.classList.remove("audio-mode");
-    audioArtworkImg.src = "";
+    playerSection.classList.remove('audio-mode');
+    audioArtworkImg.src = '';
     theaterBtn.disabled = false;
     fullscreenBtn.disabled = false;
   }
@@ -311,19 +328,19 @@ function playLibraryItem({ index, queue, context = null, options = {} }) {
   const playPromise = videoPlayer.play();
   if (playPromise) {
     playPromise.catch((e) => {
-      if (e.name !== "AbortError") console.error("Playback error:", e);
+      if (e.name !== 'AbortError') console.error('Playback error:', e);
     });
   }
 
   updateVideoDetails(item);
   renderUpNextList();
   preloadNextItem();
-  eventBus.emit("playback:trackchange", item);
+  eventBus.emit('playback:trackchange', item);
 
   if (options.stayInMiniplayer) {
     activateMiniplayer();
-  } else if (playerPage.classList.contains("hidden")) {
-    showPage("player");
+  } else if (playerPage.classList.contains('hidden')) {
+    showPage('player');
   }
 
   if (options.startInEditMode) {
@@ -335,12 +352,12 @@ export function updateVideoDetails(item) {
   const placeholderSrc = `${AppState.assetsPath}/logo.png`;
 
   if (!item) {
-    videoInfoTitle.textContent = "No media selected";
-    videoInfoUploader.textContent = "";
-    videoInfoDate.textContent = "";
-    channelThumb.src = "";
-    videoDescriptionBox.style.display = "none";
-    favoriteBtn.classList.remove("is-favorite");
+    videoInfoTitle.textContent = 'No media selected';
+    videoInfoUploader.textContent = '';
+    videoInfoDate.textContent = '';
+    channelThumb.src = '';
+    videoDescriptionBox.style.display = 'none';
+    favoriteBtn.classList.remove('is-favorite');
     return;
   }
 
@@ -354,34 +371,34 @@ export function updateVideoDetails(item) {
   };
   videoInfoDate.textContent = item.upload_date
     ? ` • ${new Date(
-      item.upload_date.replace(/(\d{4})(\d{2})(\d{2})/, "$1-$2-$3")
-    ).toLocaleDateString()}`
-    : "";
+        item.upload_date.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3')
+      ).toLocaleDateString()}`
+    : '';
 
-  eventBus.emit("ui:favorite_toggled", item.id, !!item.isFavorite);
+  eventBus.emit('ui:favorite_toggled', item.id, !!item.isFavorite);
 
   if (item.description?.trim()) {
-    videoDescriptionBox.style.display = "block";
+    videoDescriptionBox.style.display = 'block';
     descriptionContent.textContent = item.description;
     setTimeout(() => {
       showMoreDescBtn.style.display =
         descriptionContent.scrollHeight > descriptionContent.clientHeight &&
-          !playerPage.classList.contains("edit-mode")
-          ? "block"
-          : "none";
+        !playerPage.classList.contains('edit-mode')
+          ? 'block'
+          : 'none';
     }, 100);
-    videoDescriptionBox.classList.remove("expanded");
-    showMoreDescBtn.textContent = "Show more";
+    videoDescriptionBox.classList.remove('expanded');
+    showMoreDescBtn.textContent = 'Show more';
   } else {
-    videoDescriptionBox.style.display = "none";
+    videoDescriptionBox.style.display = 'none';
   }
 }
 
 function createUpNextItem(video, isPlaying) {
   const placeholderSrc = `${AppState.assetsPath}/logo.png`;
-  const li = document.createElement("li");
-  li.className = "up-next-item";
-  li.classList.toggle("is-playing", isPlaying);
+  const li = document.createElement('li');
+  li.className = 'up-next-item';
+  li.classList.toggle('is-playing', isPlaying);
   li.dataset.id = video.id;
   const actualSrc = video.coverPath
     ? decodeURIComponent(video.coverPath)
@@ -398,34 +415,34 @@ function createUpNextItem(video, isPlaying) {
 
 function sortQueueForDisplay(queue, sortKey) {
   if (!sortKey) return queue;
-  const [key, direction] = sortKey.split("-");
+  const [key, direction] = sortKey.split('-');
   return [...queue].sort((a, b) => {
     let valA = a[key];
     let valB = b[key];
-    if (valA === undefined || valA === null) valA = "";
-    if (valB === undefined || valB === null) valB = "";
-    if (key === "title") {
+    if (valA === undefined || valA === null) valA = '';
+    if (valB === undefined || valB === null) valB = '';
+    if (key === 'title') {
       valA = valA.toLowerCase();
       valB = valB.toLowerCase();
     }
-    if (valA < valB) return direction === "asc" ? -1 : 1;
-    if (valA > valB) return direction === "asc" ? 1 : -1;
+    if (valA < valB) return direction === 'asc' ? -1 : 1;
+    if (valA > valB) return direction === 'asc' ? 1 : -1;
     return 0;
   });
 }
 
-export function renderUpNextList({ searchTerm = "", sortKey = "" } = {}) {
-  upNextList.innerHTML = "";
+export function renderUpNextList({ searchTerm = '', sortKey = '' } = {}) {
+  upNextList.innerHTML = '';
 
   if (
     AppState.currentlyPlayingIndex < 0 ||
     AppState.playbackQueue.length === 0
   ) {
-    upNextContainer.classList.add("hidden");
+    upNextContainer.classList.add('hidden');
     return;
   }
 
-  upNextContainer.classList.remove("hidden");
+  upNextContainer.classList.remove('hidden');
 
   const context = AppState.playbackContext;
   let displayQueue = [...AppState.playbackQueue];
@@ -434,7 +451,7 @@ export function renderUpNextList({ searchTerm = "", sortKey = "" } = {}) {
   displayQueue = applyFilters(displayQueue);
 
   if (searchTerm.trim()) {
-    displayQueue = fuzzySearch(searchTerm, displayQueue, ["title", "creator"]);
+    displayQueue = fuzzySearch(searchTerm, displayQueue, ['title', 'creator']);
   }
 
   if (sortKey) {
@@ -443,14 +460,15 @@ export function renderUpNextList({ searchTerm = "", sortKey = "" } = {}) {
 
   if (context && context.name) {
     const icon = {
-      playlist: "playlist_play",
-      artist: "artist",
-      favorites: "favorite",
+      playlist: 'playlist_play',
+      artist: 'artist',
+      favorites: 'favorite',
     }[context.type];
-    upNextHeaderText.innerHTML = `<span class="material-symbols-outlined">${icon || "list"
-      }</span> ${context.name}`;
+    upNextHeaderText.innerHTML = `<span class="material-symbols-outlined">${
+      icon || 'list'
+    }</span> ${context.name}`;
   } else {
-    upNextHeaderText.innerHTML = "Up Next";
+    upNextHeaderText.innerHTML = 'Up Next';
   }
 
   if (displayQueue.length === 0) {
@@ -463,7 +481,7 @@ export function renderUpNextList({ searchTerm = "", sortKey = "" } = {}) {
     upNextList.appendChild(itemEl);
   });
 
-  const allLazyImages = upNextList.querySelectorAll(".thumbnail.lazy");
+  const allLazyImages = upNextList.querySelectorAll('.thumbnail.lazy');
   allLazyImages.forEach((img) => lazyLoadObserver.observe(img));
 }
 
@@ -471,10 +489,10 @@ function togglePlay() {
   if (videoPlayer.src) {
     if (videoPlayer.paused) {
       videoPlayer.play();
-      showPlayerFeedback("play_arrow", "Play");
+      showPlayerFeedback('play_arrow', 'Play');
     } else {
       videoPlayer.pause();
-      showPlayerFeedback("pause", "Pause");
+      showPlayerFeedback('pause', 'Pause');
     }
   }
 }
@@ -507,13 +525,13 @@ function playPrevious() {
 function updateVolume(newVolume) {
   const vol = Math.max(0, Math.min(1, newVolume));
   if (vol > 0) {
-    localStorage.setItem("playerVolume", vol);
+    localStorage.setItem('playerVolume', vol);
   }
   videoPlayer.volume = vol;
   videoPlayerPreload.volume = vol;
   videoPlayer.muted = vol === 0;
   videoPlayerPreload.muted = vol === 0;
-  localStorage.setItem("playerMuted", vol === 0);
+  localStorage.setItem('playerMuted', vol === 0);
 }
 
 export function updateVolumeUI() {
@@ -521,25 +539,25 @@ export function updateVolumeUI() {
   const muted = videoPlayer.muted;
   volumeSlider.value = muted ? 0 : vol;
   updateSlider(volumeSlider);
-  const icon = muteBtn.querySelector("span");
-  if (muted || vol === 0) icon.textContent = "volume_off";
-  else if (vol < 0.5) icon.textContent = "volume_down";
-  else icon.textContent = "volume_up";
+  const icon = muteBtn.querySelector('span');
+  if (muted || vol === 0) icon.textContent = 'volume_off';
+  else if (vol < 0.5) icon.textContent = 'volume_down';
+  else icon.textContent = 'volume_up';
 }
 
 export function loadSettings() {
-  const savedVolume = localStorage.getItem("playerVolume");
-  const savedMuted = localStorage.getItem("playerMuted") === "true";
-  const savedTheater = localStorage.getItem("theaterMode") === "true";
-  const savedAutoplay = localStorage.getItem("autoplayEnabled");
-  const savedSubs = localStorage.getItem("subtitleStyles");
+  const savedVolume = localStorage.getItem('playerVolume');
+  const savedMuted = localStorage.getItem('playerMuted') === 'true';
+  const savedTheater = localStorage.getItem('theaterMode') === 'true';
+  const savedAutoplay = localStorage.getItem('autoplayEnabled');
+  const savedSubs = localStorage.getItem('subtitleStyles');
 
   if (savedSubs) {
     try {
       const styles = JSON.parse(savedSubs);
       playerState.subtitleStyles = { ...playerState.subtitleStyles, ...styles };
       applySubtitleStyles();
-    } catch (e) { }
+    } catch (e) {}
   }
 
   videoPlayer.muted = savedMuted;
@@ -551,54 +569,61 @@ export function loadSettings() {
   }
   updateVolumeUI();
 
-  if (savedTheater) playerPage.classList.add("theater-mode");
-  autoplayToggle.checked = savedAutoplay !== "false";
+  if (savedTheater) playerPage.classList.add('theater-mode');
+  autoplayToggle.checked = savedAutoplay !== 'false';
   videoPlayer.disablePictureInPicture = true;
   videoPlayerPreload.disablePictureInPicture = true;
 }
 
 function buildSettingsMenu() {
   settingsMenu.innerHTML = `
-        <div class="settings-item" data-setting="speed"><span class="material-symbols-outlined">speed</span><span>Playback Speed</span><span class="setting-value" id="speed-value">${videoPlayer.playbackRate === 1 ? "Normal" : videoPlayer.playbackRate + "x"}</span><span class="chevron material-symbols-outlined">arrow_forward_ios</span></div>
+        <div class="settings-item" data-setting="speed"><span class="material-symbols-outlined">speed</span><span>Playback Speed</span><span class="setting-value" id="speed-value">${videoPlayer.playbackRate === 1 ? 'Normal' : videoPlayer.playbackRate + 'x'}</span><span class="chevron material-symbols-outlined">arrow_forward_ios</span></div>
         <div class="settings-item" data-setting="subtitles"><span class="material-symbols-outlined">subtitles</span><span>Subtitles</span><span class="setting-value">${playerState.subtitleMode === 'on' ? 'On' : 'Off'}</span><span class="chevron material-symbols-outlined">arrow_forward_ios</span></div>
-        <div class="settings-item" data-setting="sleep"><span class="material-symbols-outlined">bedtime</span><span>Sleep Timer</span><span class="setting-value" id="sleep-value">${sleepTimer.type ? "On" : "Off"}</span><span class="chevron material-symbols-outlined">arrow_forward_ios</span></div>`;
+        <div class="settings-item" data-setting="sleep"><span class="material-symbols-outlined">bedtime</span><span>Sleep Timer</span><span class="setting-value" id="sleep-value">${sleepTimer.type ? 'On' : 'Off'}</span><span class="chevron material-symbols-outlined">arrow_forward_ios</span></div>`;
 }
 
 function handleSubmenu(mainSel, subMenuEl, values, type, labelFormatter) {
   const mainItem = settingsMenu.querySelector(mainSel);
-  if (!mainItem || mainItem.classList.contains("disabled")) return;
+  if (!mainItem || mainItem.classList.contains('disabled')) return;
 
   const openSubmenu = () => {
-    settingsMenu.classList.remove("active");
-    const currentVal = type === "speed" ? videoPlayer.playbackRate : null;
+    settingsMenu.classList.remove('active');
+    const currentVal = type === 'speed' ? videoPlayer.playbackRate : null;
     subMenuEl.innerHTML = `
       <div class="submenu-item" data-action="back">
           <span class="chevron material-symbols-outlined">arrow_back_ios</span>
-          <span>${mainItem.querySelector("span:nth-child(2)").textContent
-      }</span>
+          <span>${
+            mainItem.querySelector('span:nth-child(2)').textContent
+          }</span>
       </div>
       ${values
         .map(
           (v) =>
-            `<div class="submenu-item ${v == currentVal ? "active" : ""
+            `<div class="submenu-item ${
+              v == currentVal ? 'active' : ''
             }" data-${type}="${v}"><span class="check material-symbols-outlined">done</span><span>${labelFormatter(
               v
             )}</span></div>`
         )
-        .join("")}`;
-    subMenuEl.classList.add("active");
+        .join('')}`;
+    subMenuEl.classList.add('active');
   };
-  mainItem.addEventListener("click", openSubmenu);
+  mainItem.addEventListener('click', openSubmenu);
 }
 
 function createCustomDropdownHTML(id, options, currentValue) {
-  const selectedOption = options.find(o => o.value === currentValue) || options[0];
-  const optionsHTML = options.map(opt => `
+  const selectedOption =
+    options.find((o) => o.value === currentValue) || options[0];
+  const optionsHTML = options
+    .map(
+      (opt) => `
         <div class="player-dropdown-item ${opt.value === currentValue ? 'selected' : ''}" 
              data-value="${opt.value}">
              ${opt.label}
         </div>
-    `).join('');
+    `
+    )
+    .join('');
 
   return `
         <div class="player-dropdown" id="${id}">
@@ -613,17 +638,17 @@ export function enterEditMode() {
   const item = AppState.playbackQueue[AppState.currentlyPlayingIndex];
   if (!item) return;
 
-  playerPage.classList.add("edit-mode");
-  videoDescriptionBox.classList.add("expanded");
-  showMoreDescBtn.style.display = "none";
+  playerPage.classList.add('edit-mode');
+  videoDescriptionBox.classList.add('expanded');
+  showMoreDescBtn.style.display = 'none';
   editableTitleInput.value = item.title;
-  editableCreatorInput.value = item.creator || item.uploader || "";
-  editableDescriptionTextarea.value = item.description || "";
+  editableCreatorInput.value = item.creator || item.uploader || '';
+  editableDescriptionTextarea.value = item.description || '';
   editableTitleInput.focus();
 }
 
 function exitEditMode() {
-  playerPage.classList.remove("edit-mode");
+  playerPage.classList.remove('edit-mode');
   const item = AppState.playbackQueue[AppState.currentlyPlayingIndex];
   if (item) {
     updateVideoDetails(item);
@@ -646,7 +671,7 @@ async function saveMetadataChanges() {
   );
 
   if (result.success) {
-    showNotification("Metadata updated successfully.", "success");
+    showNotification('Metadata updated successfully.', 'success');
     Object.assign(item, updatedData);
     const libraryItem = AppState.library.find((v) => v.id === item.id);
     if (libraryItem) Object.assign(libraryItem, updatedData);
@@ -654,116 +679,116 @@ async function saveMetadataChanges() {
     updateVideoDetails(item);
     exitEditMode();
   } else {
-    showNotification(`Error: ${result.error}`, "error");
+    showNotification(`Error: ${result.error}`, 'error');
   }
 }
 
 [videoPlayer, videoPlayerPreload].forEach((player) => {
-  player.addEventListener("play", () => {
-    playerSection.classList.remove("paused");
-    playPauseBtn.querySelector("span").textContent = "pause";
-    if (player === videoPlayer) eventBus.emit("playback:play");
+  player.addEventListener('play', () => {
+    playerSection.classList.remove('paused');
+    playPauseBtn.querySelector('span').textContent = 'pause';
+    if (player === videoPlayer) eventBus.emit('playback:play');
   });
-  player.addEventListener("pause", () => {
-    playerSection.classList.add("paused");
-    playPauseBtn.querySelector("span").textContent = "play_arrow";
-    if (player === videoPlayer) eventBus.emit("playback:pause");
+  player.addEventListener('pause', () => {
+    playerSection.classList.add('paused');
+    playPauseBtn.querySelector('span').textContent = 'play_arrow';
+    if (player === videoPlayer) eventBus.emit('playback:pause');
   });
-  player.addEventListener("ended", handleTrackEnd);
-  player.addEventListener("timeupdate", () => {
+  player.addEventListener('ended', handleTrackEnd);
+  player.addEventListener('timeupdate', () => {
     if (player === videoPlayer) {
       const { currentTime, duration } = videoPlayer;
       currentTimeEl.textContent = formatTime(currentTime);
       const progress = (currentTime / duration) * 100 || 0;
       timelineProgress.style.width = `${progress}%`;
-      eventBus.emit("playback:timeupdate", progress);
+      eventBus.emit('playback:timeupdate', progress);
     }
   });
-  player.addEventListener("loadedmetadata", () => {
+  player.addEventListener('loadedmetadata', () => {
     if (player === videoPlayer)
       totalTimeEl.textContent = formatTime(videoPlayer.duration);
   });
-  player.addEventListener("volumechange", () => {
+  player.addEventListener('volumechange', () => {
     if (player === videoPlayer) updateVolumeUI();
   });
 });
 
-playerSection.addEventListener("click", (e) => {
+playerSection.addEventListener('click', (e) => {
   if (
     e.target.matches(
-      ".player-section, #video-player, .audio-artwork-container, #audio-artwork-img"
+      '.player-section, #video-player, .audio-artwork-container, #audio-artwork-img'
     )
   )
     togglePlay();
 });
-playPauseBtn.addEventListener("click", togglePlay);
-nextBtn.addEventListener("click", playNext);
-prevBtn.addEventListener("click", playPrevious);
-muteBtn.addEventListener("click", () => {
-  const lastVolume = parseFloat(localStorage.getItem("playerVolume")) || 1;
+playPauseBtn.addEventListener('click', togglePlay);
+nextBtn.addEventListener('click', playNext);
+prevBtn.addEventListener('click', playPrevious);
+muteBtn.addEventListener('click', () => {
+  const lastVolume = parseFloat(localStorage.getItem('playerVolume')) || 1;
   const isCurrentlyMuted = videoPlayer.muted || videoPlayer.volume === 0;
 
   if (isCurrentlyMuted) {
     updateVolume(lastVolume);
-    showPlayerFeedback("volume_up", Math.round(lastVolume * 100) + "%");
+    showPlayerFeedback('volume_up', Math.round(lastVolume * 100) + '%');
   } else {
     updateVolume(0);
-    showPlayerFeedback("volume_off", "Muted");
+    showPlayerFeedback('volume_off', 'Muted');
   }
 });
-volumeSlider.addEventListener("input", (e) =>
+volumeSlider.addEventListener('input', (e) =>
   updateVolume(parseFloat(e.target.value))
 );
-timelineContainer.addEventListener("click", (e) => {
+timelineContainer.addEventListener('click', (e) => {
   if (!videoPlayer.duration) return;
   const rect = timelineContainer.getBoundingClientRect();
   const time = ((e.clientX - rect.left) / rect.width) * videoPlayer.duration;
   videoPlayer.currentTime = time;
-  showPlayerFeedback("schedule", formatTime(time));
+  showPlayerFeedback('schedule', formatTime(time));
 });
-theaterBtn.addEventListener("click", () => {
-  playerPage.classList.toggle("theater-mode");
+theaterBtn.addEventListener('click', () => {
+  playerPage.classList.toggle('theater-mode');
   localStorage.setItem(
-    "theaterMode",
-    playerPage.classList.contains("theater-mode")
+    'theaterMode',
+    playerPage.classList.contains('theater-mode')
   );
 });
-fullscreenBtn.addEventListener("click", () => {
+fullscreenBtn.addEventListener('click', () => {
   if (document.fullscreenElement) {
     document.exitFullscreen();
-    showPlayerFeedback("fullscreen_exit", "Exit Fullscreen");
+    showPlayerFeedback('fullscreen_exit', 'Exit Fullscreen');
   } else {
     playerSection.requestFullscreen();
-    showPlayerFeedback("fullscreen", "Fullscreen");
+    showPlayerFeedback('fullscreen', 'Fullscreen');
   }
 });
-miniplayerBtn.addEventListener("click", () => {
+miniplayerBtn.addEventListener('click', () => {
   if (videoPlayer.src) {
     activateMiniplayer();
-    showPage("home");
+    showPage('home');
   }
 });
-autoplayToggle.addEventListener("change", (e) => {
-  localStorage.setItem("autoplayEnabled", e.target.checked);
+autoplayToggle.addEventListener('change', (e) => {
+  localStorage.setItem('autoplayEnabled', e.target.checked);
   if (e.target.checked) preloadNextItem();
 });
-document.addEventListener("fullscreenchange", () => {
+document.addEventListener('fullscreenchange', () => {
   const isFullscreen = !!document.fullscreenElement;
-  playerPage.classList.toggle("fullscreen-mode", isFullscreen);
-  fullscreenBtn.querySelector("span").textContent = isFullscreen
-    ? "fullscreen_exit"
-    : "fullscreen";
+  playerPage.classList.toggle('fullscreen-mode', isFullscreen);
+  fullscreenBtn.querySelector('span').textContent = isFullscreen
+    ? 'fullscreen_exit'
+    : 'fullscreen';
 });
-videoDescriptionBox.addEventListener("click", () => {
-  videoDescriptionBox.classList.toggle("expanded");
+videoDescriptionBox.addEventListener('click', () => {
+  videoDescriptionBox.classList.toggle('expanded');
   showMoreDescBtn.textContent = videoDescriptionBox.classList.contains(
-    "expanded"
+    'expanded'
   )
-    ? "Show less"
-    : "Show more";
+    ? 'Show less'
+    : 'Show more';
 });
-upNextList.addEventListener("click", (e) => {
-  const itemEl = e.target.closest(".up-next-item");
+upNextList.addEventListener('click', (e) => {
+  const itemEl = e.target.closest('.up-next-item');
   if (itemEl) {
     const queue = AppState.playbackQueue;
     playLibraryItem({
@@ -773,203 +798,214 @@ upNextList.addEventListener("click", (e) => {
     });
   }
 });
-favoriteBtn.addEventListener("click", () => {
+favoriteBtn.addEventListener('click', () => {
   if (AppState.currentlyPlayingIndex > -1)
     toggleFavoriteStatus(
       AppState.playbackQueue[AppState.currentlyPlayingIndex].id
     );
 });
-addToPlaylistBtn.addEventListener("click", () => {
+addToPlaylistBtn.addEventListener('click', () => {
   if (AppState.currentlyPlayingIndex > -1)
     openAddToPlaylistModal(
       AppState.playbackQueue[AppState.currentlyPlayingIndex].id
     );
 });
-videoMenuBtn.addEventListener("click", (e) => {
+videoMenuBtn.addEventListener('click', (e) => {
   e.stopPropagation();
   const currentVideo = AppState.playbackQueue[AppState.currentlyPlayingIndex];
   if (!currentVideo) return;
   const rect = videoMenuBtn.getBoundingClientRect();
-  videoContextMenu.style.left = `${rect.left - videoContextMenu.offsetWidth + rect.width
-    }px`;
+  videoContextMenu.style.left = `${
+    rect.left - videoContextMenu.offsetWidth + rect.width
+  }px`;
   videoContextMenu.style.top = `${rect.bottom + 5}px`;
   videoContextMenu.dataset.videoId = currentVideo.id;
-  videoContextMenu.classList.add("visible");
+  videoContextMenu.classList.add('visible');
 });
-playerSection.addEventListener("mousemove", () => {
+playerSection.addEventListener('mousemove', () => {
   controlsContainer.style.opacity = 1;
-  playerSection.style.cursor = "default";
+  playerSection.style.cursor = 'default';
   clearTimeout(hideControlsTimeout);
   if (!videoPlayer.paused)
     hideControlsTimeout = setTimeout(() => {
       if (
-        !settingsMenu.classList.contains("active") &&
-        !speedSubmenu.classList.contains("active") &&
-        !sleepSubmenu.classList.contains("active") &&
-        !subtitleSubmenu.classList.contains("active") &&
-        !subtitleStyleSubmenu.classList.contains("active") &&
-        !subtitleSyncSubmenu.classList.contains("active")
+        !settingsMenu.classList.contains('active') &&
+        !speedSubmenu.classList.contains('active') &&
+        !sleepSubmenu.classList.contains('active') &&
+        !subtitleSubmenu.classList.contains('active') &&
+        !subtitleStyleSubmenu.classList.contains('active') &&
+        !subtitleSyncSubmenu.classList.contains('active')
       ) {
         controlsContainer.style.opacity = 0;
-        playerSection.style.cursor = "none";
+        playerSection.style.cursor = 'none';
       }
     }, 3000);
 });
-playerSection.addEventListener("mouseleave", () => {
+playerSection.addEventListener('mouseleave', () => {
   if (!videoPlayer.paused) {
     clearTimeout(hideControlsTimeout);
     hideControlsTimeout = setTimeout(() => {
       controlsContainer.style.opacity = 0;
-      playerSection.style.cursor = "none";
+      playerSection.style.cursor = 'none';
     }, 500);
   }
 });
-document.addEventListener("keydown", (e) => {
+document.addEventListener('keydown', (e) => {
   if (
-    document.activeElement.tagName.toLowerCase() === "input" ||
-    document.activeElement.tagName.toLowerCase() === "textarea" ||
-    document.querySelector(".modal-overlay:not(.hidden)")
+    document.activeElement.tagName.toLowerCase() === 'input' ||
+    document.activeElement.tagName.toLowerCase() === 'textarea' ||
+    document.querySelector('.modal-overlay:not(.hidden)')
   )
     return;
   const isPlayerActive =
-    !playerPage.classList.contains("hidden") ||
-    !miniplayer.classList.contains("hidden");
+    !playerPage.classList.contains('hidden') ||
+    !miniplayer.classList.contains('hidden');
   if (!isPlayerActive) return;
 
   e.preventDefault();
   switch (e.key.toLowerCase()) {
-    case "k":
-    case " ":
+    case 'k':
+    case ' ':
       togglePlay();
       break;
-    case "m":
+    case 'm':
       muteBtn.click();
       break;
-    case "f":
-      if (miniplayer.classList.contains("hidden")) fullscreenBtn.click();
+    case 'f':
+      if (miniplayer.classList.contains('hidden')) fullscreenBtn.click();
       break;
-    case "t":
-      if (miniplayer.classList.contains("hidden")) theaterBtn.click();
+    case 't':
+      if (miniplayer.classList.contains('hidden')) theaterBtn.click();
       break;
-    case "i":
+    case 'i':
       if (videoPlayer.src) {
-        if (miniplayer.classList.contains("hidden")) {
+        if (miniplayer.classList.contains('hidden')) {
           activateMiniplayer();
-          showPage("home");
+          showPage('home');
         } else {
-          showPage("player");
+          showPage('player');
         }
       }
       break;
-    case "arrowleft":
+    case 'arrowleft':
       if (videoPlayer.duration) {
         videoPlayer.currentTime -= 5;
-        showPlayerFeedback("rewind", "-5s");
+        showPlayerFeedback('rewind', '-5s');
       }
       break;
-    case "arrowright":
+    case 'arrowright':
       if (videoPlayer.duration) {
         videoPlayer.currentTime += 5;
-        showPlayerFeedback("fast_forward", "+5s");
+        showPlayerFeedback('fast_forward', '+5s');
       }
       break;
-    case "arrowup":
+    case 'arrowup':
       {
         const v = Math.min(1, videoPlayer.volume + 0.1);
         updateVolume(v);
-        showPlayerFeedback("volume_up", Math.round(v * 100) + "%");
+        showPlayerFeedback('volume_up', Math.round(v * 100) + '%');
       }
       break;
-    case "arrowdown":
+    case 'arrowdown':
       {
         const v = Math.max(0, videoPlayer.volume - 0.1);
         updateVolume(v);
-        showPlayerFeedback(v === 0 ? "volume_off" : "volume_down", Math.round(v * 100) + "%");
+        showPlayerFeedback(
+          v === 0 ? 'volume_off' : 'volume_down',
+          Math.round(v * 100) + '%'
+        );
       }
       break;
-    case "n":
+    case 'n':
       playNext();
       break;
-    case "p":
+    case 'p':
       playPrevious();
       break;
   }
 });
-settingsBtn.addEventListener("click", (e) => {
+settingsBtn.addEventListener('click', (e) => {
   e.stopPropagation();
-  const isActive = settingsMenu.classList.contains("active");
-  [settingsMenu, speedSubmenu, sleepSubmenu, subtitleSubmenu, subtitleStyleSubmenu, subtitleSyncSubmenu]
-    .forEach(el => el.classList.remove("active"));
+  const isActive = settingsMenu.classList.contains('active');
+  [
+    settingsMenu,
+    speedSubmenu,
+    sleepSubmenu,
+    subtitleSubmenu,
+    subtitleStyleSubmenu,
+    subtitleSyncSubmenu,
+  ].forEach((el) => el.classList.remove('active'));
 
   if (!isActive) {
     buildSettingsMenu();
-    settingsMenu.classList.add("active");
+    settingsMenu.classList.add('active');
   }
 });
-settingsMenu.addEventListener("click", (e) => {
-  const item = e.target.closest(".settings-item");
+settingsMenu.addEventListener('click', (e) => {
+  const item = e.target.closest('.settings-item');
   if (!item) return;
   const setting = item.dataset.setting;
-  if (setting === "speed") {
+  if (setting === 'speed') {
     handleSubmenu(
       `[data-setting="speed"]`,
       speedSubmenu,
       [0.5, 0.75, 1, 1.5, 2],
-      "speed",
-      (v) => (v === 1 ? "Normal" : v + "x")
+      'speed',
+      (v) => (v === 1 ? 'Normal' : v + 'x')
     );
     item.click();
-  } else if (setting === "sleep") {
-    settingsMenu.classList.remove("active");
+  } else if (setting === 'sleep') {
+    settingsMenu.classList.remove('active');
     sleepSubmenu.innerHTML = `
             <div class="submenu-item" data-action="back"><span class="chevron material-symbols-outlined">arrow_back_ios</span><span>Sleep Timer</span></div>
             <div class="submenu-item" data-minutes="0"><span class="check material-symbols-outlined">done</span><span>Off</span></div>
             <div class="submenu-item"><div class="sleep-timer-input-group"><input type="number" min="1" id="sleep-tracks-input" placeholder="Tracks"><button id="sleep-tracks-btn">Set</button></div></div>
             <div class="submenu-item"><div class="sleep-timer-input-group"><input type="number" min="1" id="sleep-minutes-input" placeholder="Minutes"><button id="sleep-minutes-btn">Set</button></div></div>
             <div class="submenu-item"><div class="sleep-timer-input-group"><input type="time" id="sleep-time-input"><button id="sleep-time-btn">Set</button></div></div>`;
-    sleepSubmenu.classList.add("active");
-  } else if (setting === "subtitles") {
-    settingsMenu.classList.remove("active");
+    sleepSubmenu.classList.add('active');
+  } else if (setting === 'subtitles') {
+    settingsMenu.classList.remove('active');
     subtitleSubmenu.innerHTML = `
         <div class="submenu-item" data-action="back"><span class="chevron material-symbols-outlined">arrow_back_ios</span><span>Subtitles</span></div>
         <div class="submenu-item" data-sub-action="toggle"><span>Show/Hide</span><span class="setting-value">${playerState.subtitleMode === 'on' ? 'On' : 'Off'}</span></div>
         <div class="submenu-item" data-sub-action="style"><span>Customize Style</span><span class="chevron material-symbols-outlined">arrow_forward_ios</span></div>
         <div class="submenu-item" data-sub-action="sync"><span>Sync Offset</span><span class="chevron material-symbols-outlined">arrow_forward_ios</span></div>
     `;
-    subtitleSubmenu.classList.add("active");
+    subtitleSubmenu.classList.add('active');
   }
 });
 
-subtitleSubmenu.addEventListener("click", (e) => {
+subtitleSubmenu.addEventListener('click', (e) => {
   e.stopPropagation();
-  const item = e.target.closest(".submenu-item");
+  const item = e.target.closest('.submenu-item');
   if (!item) return;
 
-  if (item.dataset.action === "back") {
-    subtitleSubmenu.classList.remove("active");
+  if (item.dataset.action === 'back') {
+    subtitleSubmenu.classList.remove('active');
     buildSettingsMenu();
-    settingsMenu.classList.add("active");
+    settingsMenu.classList.add('active');
     return;
   }
 
   const action = item.dataset.subAction;
-  if (action === "toggle") {
+  if (action === 'toggle') {
     toggleSubtitleMode();
-    item.querySelector(".setting-value").textContent = playerState.subtitleMode === 'on' ? 'On' : 'Off';
-  } else if (action === "style") {
-    subtitleSubmenu.classList.remove("active");
+    item.querySelector('.setting-value').textContent =
+      playerState.subtitleMode === 'on' ? 'On' : 'Off';
+  } else if (action === 'style') {
+    subtitleSubmenu.classList.remove('active');
 
     const sizeOptions = [
       { value: '1rem', label: 'Small' },
       { value: '1.25rem', label: 'Normal' },
       { value: '1.5rem', label: 'Large' },
-      { value: '2rem', label: 'Huge' }
+      { value: '2rem', label: 'Huge' },
     ];
 
     const bgOptions = [
       { value: 'rgba(0,0,0,0)', label: 'None' },
       { value: 'rgba(0,0,0,0.7)', label: 'Black (70%)' },
-      { value: 'rgba(0,0,0,1)', label: 'Black (100%)' }
+      { value: 'rgba(0,0,0,1)', label: 'Black (100%)' },
     ];
 
     subtitleStyleSubmenu.innerHTML = `
@@ -991,16 +1027,16 @@ subtitleSubmenu.addEventListener("click", (e) => {
                 <input type="range" id="sub-pos-range" min="-45" max="0" value="${parseInt(playerState.subtitleStyles.pos)}" style="width:100%;">
             </div>
         `;
-    subtitleStyleSubmenu.classList.add("active");
-  } else if (action === "sync") {
-    subtitleSubmenu.classList.remove("active");
+    subtitleStyleSubmenu.classList.add('active');
+  } else if (action === 'sync') {
+    subtitleSubmenu.classList.remove('active');
     subtitleSyncSubmenu.innerHTML = `
             <div class="submenu-item" data-action="back"><span class="chevron material-symbols-outlined">arrow_back_ios</span><span>Sync</span></div>
             <div class="submenu-item" data-sync="-0.5"><span class="material-symbols-outlined">remove</span> -0.5s</div>
             <div class="submenu-item" data-sync="0.5"><span class="material-symbols-outlined">add</span> +0.5s</div>
             <div class="submenu-item" data-sync="reset" style="justify-content:center;color:var(--secondary-text);">Reset Sync</div>
         `;
-    subtitleSyncSubmenu.classList.add("active");
+    subtitleSyncSubmenu.classList.add('active');
   }
 });
 
@@ -1008,16 +1044,18 @@ subtitleStyleSubmenu.addEventListener('click', (e) => {
   e.stopPropagation();
 
   if (e.target.closest('[data-action="back"]')) {
-    subtitleStyleSubmenu.classList.remove("active");
-    subtitleSubmenu.classList.add("active");
+    subtitleStyleSubmenu.classList.remove('active');
+    subtitleSubmenu.classList.add('active');
     return;
   }
 
   const dd = e.target.closest('.player-dropdown');
   if (dd) {
-    subtitleStyleSubmenu.querySelectorAll('.player-dropdown.open').forEach(el => {
-      if (el !== dd) el.classList.remove('open');
-    });
+    subtitleStyleSubmenu
+      .querySelectorAll('.player-dropdown.open')
+      .forEach((el) => {
+        if (el !== dd) el.classList.remove('open');
+      });
 
     if (e.target.closest('.player-dropdown-item')) {
       const item = e.target.closest('.player-dropdown-item');
@@ -1025,7 +1063,9 @@ subtitleStyleSubmenu.addEventListener('click', (e) => {
       const label = item.innerText;
 
       dd.querySelector('.selected-text').textContent = label;
-      dd.querySelectorAll('.player-dropdown-item').forEach(i => i.classList.remove('selected'));
+      dd.querySelectorAll('.player-dropdown-item').forEach((i) =>
+        i.classList.remove('selected')
+      );
       item.classList.add('selected');
       dd.classList.remove('open');
 
@@ -1038,30 +1078,32 @@ subtitleStyleSubmenu.addEventListener('click', (e) => {
     return;
   }
 
-  subtitleStyleSubmenu.querySelectorAll('.player-dropdown.open').forEach(el => el.classList.remove('open'));
+  subtitleStyleSubmenu
+    .querySelectorAll('.player-dropdown.open')
+    .forEach((el) => el.classList.remove('open'));
 });
 
-subtitleStyleSubmenu.addEventListener("input", (e) => {
-  if (e.target.id === "sub-color-input") {
+subtitleStyleSubmenu.addEventListener('input', (e) => {
+  if (e.target.id === 'sub-color-input') {
     playerState.subtitleStyles.color = e.target.value;
     applySubtitleStyles();
   }
-  if (e.target.id === "sub-pos-range") {
-    playerState.subtitleStyles.pos = e.target.value + "%";
+  if (e.target.id === 'sub-pos-range') {
+    playerState.subtitleStyles.pos = e.target.value + '%';
     applySubtitleStyles();
     updateSlider(e.target);
   }
 });
 
-subtitleSyncSubmenu.addEventListener("click", (e) => {
+subtitleSyncSubmenu.addEventListener('click', (e) => {
   e.stopPropagation();
-  const item = e.target.closest(".submenu-item");
+  const item = e.target.closest('.submenu-item');
   if (item) {
-    if (item.dataset.action === "back") {
-      subtitleSyncSubmenu.classList.remove("active");
-      subtitleSubmenu.classList.add("active");
+    if (item.dataset.action === 'back') {
+      subtitleSyncSubmenu.classList.remove('active');
+      subtitleSubmenu.classList.add('active');
     } else if (item.dataset.sync) {
-      if (item.dataset.sync === "reset") {
+      if (item.dataset.sync === 'reset') {
         syncSubtitleOffset(-playerState.subtitleOffset);
       } else {
         syncSubtitleOffset(parseFloat(item.dataset.sync));
@@ -1070,61 +1112,75 @@ subtitleSyncSubmenu.addEventListener("click", (e) => {
   }
 });
 
-speedSubmenu.addEventListener("click", (e) => {
+speedSubmenu.addEventListener('click', (e) => {
   e.stopPropagation();
-  const target = e.target.closest(".submenu-item");
+  const target = e.target.closest('.submenu-item');
   if (!target) return;
-  if (target.dataset.action === "back") {
-    speedSubmenu.classList.remove("active");
-    settingsMenu.classList.add("active");
+  if (target.dataset.action === 'back') {
+    speedSubmenu.classList.remove('active');
+    settingsMenu.classList.add('active');
     return;
   }
   const value = parseFloat(target.dataset.speed);
   videoPlayer.playbackRate = value;
   videoPlayerPreload.playbackRate = value;
-  settingsMenu.querySelector("#speed-value").textContent =
-    value === 1 ? "Normal" : `${value}x`;
-  speedSubmenu.classList.remove("active");
+  settingsMenu.querySelector('#speed-value').textContent =
+    value === 1 ? 'Normal' : `${value}x`;
+  speedSubmenu.classList.remove('active');
 });
-sleepSubmenu.addEventListener("click", (e) => {
+sleepSubmenu.addEventListener('click', (e) => {
   e.stopPropagation();
-  const target = e.target.closest(".submenu-item, button");
+  const target = e.target.closest('.submenu-item, button');
   if (!target) return;
-  if (target.dataset.action === "back") {
-    sleepSubmenu.classList.remove("active");
-    settingsMenu.classList.add("active");
-  } else if (target.dataset.minutes === "0") {
+  if (target.dataset.action === 'back') {
+    sleepSubmenu.classList.remove('active');
+    settingsMenu.classList.add('active');
+  } else if (target.dataset.minutes === '0') {
     sleepTimer.clear();
-    sleepSubmenu.classList.remove("active");
-  } else if (target.id === "sleep-tracks-btn") {
-    const val = document.getElementById("sleep-tracks-input").value;
-    if (val) sleepTimer.start("tracks", val);
-    sleepSubmenu.classList.remove("active");
-  } else if (target.id === "sleep-minutes-btn") {
-    const val = document.getElementById("sleep-minutes-input").value;
-    if (val) sleepTimer.start("minutes", val);
-    sleepSubmenu.classList.remove("active");
-  } else if (target.id === "sleep-time-btn") {
-    const val = document.getElementById("sleep-time-input").value;
-    if (val) sleepTimer.start("time", val);
-    sleepSubmenu.classList.remove("active");
+    sleepSubmenu.classList.remove('active');
+  } else if (target.id === 'sleep-tracks-btn') {
+    const val = document.getElementById('sleep-tracks-input').value;
+    if (val) sleepTimer.start('tracks', val);
+    sleepSubmenu.classList.remove('active');
+  } else if (target.id === 'sleep-minutes-btn') {
+    const val = document.getElementById('sleep-minutes-input').value;
+    if (val) sleepTimer.start('minutes', val);
+    sleepSubmenu.classList.remove('active');
+  } else if (target.id === 'sleep-time-btn') {
+    const val = document.getElementById('sleep-time-input').value;
+    if (val) sleepTimer.start('time', val);
+    sleepSubmenu.classList.remove('active');
   }
 });
-document.addEventListener("click", (e) => {
+document.addEventListener('click', (e) => {
   if (
     !settingsBtn.contains(e.target) &&
-    ![settingsMenu, speedSubmenu, sleepSubmenu, subtitleSubmenu, subtitleStyleSubmenu, subtitleSyncSubmenu].some(el => el.contains(e.target))
+    ![
+      settingsMenu,
+      speedSubmenu,
+      sleepSubmenu,
+      subtitleSubmenu,
+      subtitleStyleSubmenu,
+      subtitleSyncSubmenu,
+    ].some((el) => el.contains(e.target))
   ) {
-    [settingsMenu, speedSubmenu, sleepSubmenu, subtitleSubmenu, subtitleStyleSubmenu, subtitleSyncSubmenu].forEach(el => el.classList.remove("active"));
+    [
+      settingsMenu,
+      speedSubmenu,
+      sleepSubmenu,
+      subtitleSubmenu,
+      subtitleStyleSubmenu,
+      subtitleSyncSubmenu,
+    ].forEach((el) => el.classList.remove('active'));
   }
 });
-cancelEditBtn.addEventListener("click", exitEditMode);
-saveEditBtn.addEventListener("click", saveMetadataChanges);
+cancelEditBtn.addEventListener('click', exitEditMode);
+saveEditBtn.addEventListener('click', saveMetadataChanges);
 
-sleepTimer.statusEl.addEventListener("click", () => sleepTimer.clear());
+sleepTimer.statusEl.addEventListener('click', () => sleepTimer.clear());
 
-eventBus.on("player:play_request", playLibraryItem);
-eventBus.on("controls:toggle_play", togglePlay);
-eventBus.on("controls:next", playNext);
-eventBus.on("controls:prev", playPrevious);
-eventBus.on("controls:pause", () => videoPlayer.pause());
+eventBus.on('player:play_request', playLibraryItem);
+eventBus.on('controls:toggle_play', togglePlay);
+eventBus.on('controls:next', playNext);
+eventBus.on('controls:prev', playPrevious);
+eventBus.on('controls:pause', () => videoPlayer.pause());

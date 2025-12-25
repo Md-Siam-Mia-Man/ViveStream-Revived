@@ -17,9 +17,9 @@
 - **Install:** The standard macOS experience is a Disk Image (`.dmg`). The user drags the `ViveStream.app` into the `Applications` folder. There is no "Wizard".
 - **Uninstall:** Users uninstall apps by dragging them to the Trash. **macOS does not provide a hook to run code when an app is dragged to the Trash.**
 - **Data Removal:** Because we cannot detect when the app is deleted, we cannot ask the user to clean up their data.
-- **Solution:** Users must use the in-app **Settings > Danger Zone > Clear All Data** button *before* dragging the app to the Trash if they want a clean removal.
+- **Solution:** Users must use the in-app **Settings > Danger Zone > Clear All Data** button _before_ dragging the app to the Trash if they want a clean removal.
 
-*Note: We could build a `.pkg` installer (Wizard style), but on macOS, this is considered bad practice for simple desktop apps, and it still does not solve the uninstallation issue (deleting a `.app` never triggers a script).*
+_Note: We could build a `.pkg` installer (Wizard style), but on macOS, this is considered bad practice for simple desktop apps, and it still does not solve the uninstallation issue (deleting a `.app` never triggers a script)._
 
 ## 🐧 Linux (AppImage / Deb / RPM)
 
@@ -34,9 +34,9 @@
 
 ## Summary
 
-| Feature | Windows | macOS | Linux |
-| :--- | :--- | :--- | :--- |
-| **Install Method** | Wizard (Next > Next) | Drag & Drop | Package Manager / Portable |
-| **Custom Install Path**| ✅ Yes | ✅ Yes (Drag anywhere) | ❌ No (System standard paths) |
-| **Uninstall Trigger** | Control Panel | Drag to Trash | `apt remove` / Delete file |
-| **Data Cleanup Prompt**| ✅ Yes (Popup) | ❌ No (OS limitation) | ❌ No (OS/Permission limitation) |
+| Feature                 | Windows              | macOS                  | Linux                            |
+| :---------------------- | :------------------- | :--------------------- | :------------------------------- |
+| **Install Method**      | Wizard (Next > Next) | Drag & Drop            | Package Manager / Portable       |
+| **Custom Install Path** | ✅ Yes               | ✅ Yes (Drag anywhere) | ❌ No (System standard paths)    |
+| **Uninstall Trigger**   | Control Panel        | Drag to Trash          | `apt remove` / Delete file       |
+| **Data Cleanup Prompt** | ✅ Yes (Popup)       | ❌ No (OS limitation)  | ❌ No (OS/Permission limitation) |

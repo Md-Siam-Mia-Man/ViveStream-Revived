@@ -1,5 +1,5 @@
 export function formatTime(seconds) {
-  if (isNaN(seconds) || seconds < 0) return "0:00";
+  if (isNaN(seconds) || seconds < 0) return '0:00';
   const date = new Date(0);
   date.setSeconds(seconds);
   const timeString = date.toISOString().substr(11, 8);
@@ -63,7 +63,7 @@ export function fuzzySearch(term, items, keys) {
         if (!value) continue;
 
         let score = 0;
-        const isPrimaryField = key === "title" || key === "name";
+        const isPrimaryField = key === 'title' || key === 'name';
 
         if (value === lowerTerm) {
           score = weights.EXACT_MATCH;

@@ -35,17 +35,18 @@ jest.mock('fs-extra', () => ({
 }));
 
 // Helper to flush promises
-const flushPromises = () => new Promise(resolve => {
-  // Use setImmediate to break the execution flow and allow other promises to resolve
-  // jest.useFakeTimers() mocks setImmediate, so we should rely on Promise.resolve
-  if (global.setImmediate) {
-    // If real timers are used
-    global.setImmediate(resolve);
-  } else {
-    // Fallback
-    Promise.resolve().then(resolve);
-  }
-});
+const flushPromises = () =>
+  new Promise((resolve) => {
+    // Use setImmediate to break the execution flow and allow other promises to resolve
+    // jest.useFakeTimers() mocks setImmediate, so we should rely on Promise.resolve
+    if (global.setImmediate) {
+      // If real timers are used
+      global.setImmediate(resolve);
+    } else {
+      // Fallback
+      Promise.resolve().then(resolve);
+    }
+  });
 
 // Since we are testing with fake timers sometimes, we need a robust wait.
 const waitTick = async () => {
@@ -93,7 +94,11 @@ describe('Downloader', () => {
 
   test('should start download and process queue', async () => {
     const job = {
-      videoInfo: { id: '123', webpage_url: 'http://test.com', title: 'Test Video' },
+      videoInfo: {
+        id: '123',
+        webpage_url: 'http://test.com',
+        title: 'Test Video',
+      },
       downloadType: 'video',
       quality: 'best',
     };
@@ -105,22 +110,30 @@ describe('Downloader', () => {
     expect(downloader.activeDownloads.has('123')).toBe(true);
 
     // Simulate progress
-    mockProcess.stdout.emit('data', '[download]  50.0% of 10.00MiB at  2.00MiB/s ETA 00:05');
-    expect(mockWin.webContents.send).toHaveBeenCalledWith('download-progress', expect.objectContaining({
-      id: '123',
-      percent: 50.0
-    }));
+    mockProcess.stdout.emit(
+      'data',
+      '[download]  50.0% of 10.00MiB at  2.00MiB/s ETA 00:05'
+    );
+    expect(mockWin.webContents.send).toHaveBeenCalledWith(
+      'download-progress',
+      expect.objectContaining({
+        id: '123',
+        percent: 50.0,
+      })
+    );
 
     // Mock file system for post-process
     fs.readdirSync.mockReturnValue(['123.info.json', '123.mp4', '123.jpg']);
-    fs.readFileSync.mockReturnValue(JSON.stringify({
-      id: '123',
-      title: 'Test Video',
-      uploader: 'Tester',
-      duration: 100,
-      upload_date: '20230101',
-      webpage_url: 'http://test.com'
-    }));
+    fs.readFileSync.mockReturnValue(
+      JSON.stringify({
+        id: '123',
+        title: 'Test Video',
+        uploader: 'Tester',
+        duration: 100,
+        upload_date: '20230101',
+        webpage_url: 'http://test.com',
+      })
+    );
 
     // Simulate completion
     mockProcess.emit('close', 0);
@@ -128,14 +141,21 @@ describe('Downloader', () => {
     // Wait for postProcess
     await waitTick();
 
-    expect(mockWin.webContents.send).toHaveBeenCalledWith('download-complete', expect.anything());
+    expect(mockWin.webContents.send).toHaveBeenCalledWith(
+      'download-complete',
+      expect.anything()
+    );
     expect(mockDb.addOrUpdateVideo).toHaveBeenCalled();
     expect(downloader.activeDownloads.has('123')).toBe(false);
   });
 
   test('should handle download errors', async () => {
     const job = {
-      videoInfo: { id: 'fail', webpage_url: 'http://fail.com', title: 'Fail Video' },
+      videoInfo: {
+        id: 'fail',
+        webpage_url: 'http://fail.com',
+        title: 'Fail Video',
+      },
       downloadType: 'video',
       quality: 'best',
     };
@@ -151,18 +171,27 @@ describe('Downloader', () => {
 
     await waitTick();
 
-    expect(mockWin.webContents.send).toHaveBeenCalledWith('download-error', expect.objectContaining({
-      error: 'This video is unavailable.'
-    }));
-    expect(mockDb.addToHistory).toHaveBeenCalledWith(expect.objectContaining({
-      status: 'failed'
-    }));
+    expect(mockWin.webContents.send).toHaveBeenCalledWith(
+      'download-error',
+      expect.objectContaining({
+        error: 'This video is unavailable.',
+      })
+    );
+    expect(mockDb.addToHistory).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: 'failed',
+      })
+    );
   });
 
   test('should detect stalled downloads', async () => {
     jest.useFakeTimers();
     const job = {
-      videoInfo: { id: 'stall', webpage_url: 'http://stall.com', title: 'Stall Video' },
+      videoInfo: {
+        id: 'stall',
+        webpage_url: 'http://stall.com',
+        title: 'Stall Video',
+      },
       downloadType: 'video',
       quality: 'best',
     };
@@ -184,7 +213,11 @@ describe('Downloader', () => {
   test('should NOT detect stall if progress continues slowly (bad internet simulation)', async () => {
     jest.useFakeTimers();
     const job = {
-      videoInfo: { id: 'slow', webpage_url: 'http://slow.com', title: 'Slow Video' },
+      videoInfo: {
+        id: 'slow',
+        webpage_url: 'http://slow.com',
+        title: 'Slow Video',
+      },
       downloadType: 'video',
       quality: 'best',
     };
@@ -209,7 +242,7 @@ describe('Downloader', () => {
   test('should handle concurrent downloads limit', async () => {
     mockGetSettings.mockReturnValue({
       concurrentDownloads: 2, // Limit to 2
-      cookieBrowser: 'none'
+      cookieBrowser: 'none',
     });
     // Re-init to pick up mocked settings
     downloader = new Downloader({
@@ -254,7 +287,7 @@ describe('Downloader Concurrency', () => {
 
     mockGetSettings.mockReturnValue({
       concurrentDownloads: 2,
-      cookieBrowser: 'none'
+      cookieBrowser: 'none',
     });
 
     // Return unique process for each spawn

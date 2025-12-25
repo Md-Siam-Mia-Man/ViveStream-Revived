@@ -46,7 +46,10 @@ describe('Preload Script', () => {
     const jobId = '123';
     exposedApi.downloadVideo(options, jobId);
 
-    expect(mockIpcRenderer.send).toHaveBeenCalledWith('download-video', { downloadOptions: options, jobId });
+    expect(mockIpcRenderer.send).toHaveBeenCalledWith('download-video', {
+      downloadOptions: options,
+      jobId,
+    });
   });
 
   test('getLibrary should call ipcRenderer.invoke("get-library")', () => {

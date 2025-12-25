@@ -1,16 +1,16 @@
-const notificationContainer = document.getElementById("notification-container");
+const notificationContainer = document.getElementById('notification-container');
 
-export function showNotification(message, type = "success", details = "") {
+export function showNotification(message, type = 'success', details = '') {
   if (!notificationContainer) return;
 
-  const notification = document.createElement("div");
+  const notification = document.createElement('div');
   notification.className = `notification ${type}`;
 
-  const detailsHTML = details ? `<span>${details}</span>` : "";
+  const detailsHTML = details ? `<span>${details}</span>` : '';
   const iconName = {
-    success: "check_circle",
-    error: "warning",
-    info: "info",
+    success: 'check_circle',
+    error: 'warning',
+    info: 'info',
   }[type];
 
   notification.innerHTML = `
@@ -24,16 +24,16 @@ export function showNotification(message, type = "success", details = "") {
 
   notificationContainer.appendChild(notification);
 
-  const closeButton = notification.querySelector(".close-notification");
+  const closeButton = notification.querySelector('.close-notification');
   const close = () => {
-    notification.classList.add("fade-out");
-    notification.addEventListener("animationend", () => {
+    notification.classList.add('fade-out');
+    notification.addEventListener('animationend', () => {
       if (notification.parentNode) {
         notification.parentNode.removeChild(notification);
       }
     });
   };
 
-  closeButton.addEventListener("click", close);
+  closeButton.addEventListener('click', close);
   setTimeout(close, 5000);
 }

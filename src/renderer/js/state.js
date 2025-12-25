@@ -1,7 +1,7 @@
 // src/renderer/js/state.js
 
 export const AppState = {
-  assetsPath: "",
+  assetsPath: '',
 
   library: [],
   playbackQueue: [],
@@ -9,17 +9,17 @@ export const AppState = {
   playbackContext: {
     type: null,
     id: null,
-    name: "",
+    name: '',
   },
 
   playlists: [],
   artists: [],
 
   currentFilters: {
-    type: "all", // 'all', 'video', 'audio'
-    duration: "all", // 'all', '<5', '5-20', '>20'
-    source: "all", // 'all', 'youtube', 'local'
-    uploadDate: "all", // 'all', 'this_month', 'this_year', 'older'
+    type: 'all', // 'all', 'video', 'audio'
+    duration: 'all', // 'all', '<5', '5-20', '>20'
+    source: 'all', // 'all', 'youtube', 'local'
+    uploadDate: 'all', // 'all', 'this_month', 'this_year', 'older'
   },
 };
 
@@ -34,7 +34,7 @@ export function setLibrary(media) {
 export function setCurrentlyPlaying(index, queue, context = null) {
   AppState.currentlyPlayingIndex = index;
   AppState.playbackQueue = queue;
-  AppState.playbackContext = context || { type: null, id: null, name: "" };
+  AppState.playbackContext = context || { type: null, id: null, name: '' };
 }
 
 export function setAllPlaylists(playlists) {
@@ -52,5 +52,5 @@ export function setFilters(newFilters) {
 export function resetPlaybackState() {
   AppState.playbackQueue = [];
   AppState.currentlyPlayingIndex = -1;
-  AppState.playbackContext = { type: null, id: null, name: "" };
+  AppState.playbackContext = { type: null, id: null, name: '' };
 }

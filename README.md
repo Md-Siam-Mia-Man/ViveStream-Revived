@@ -95,7 +95,7 @@ Welcome! **ViveStream** is a modern, offline-first media player built for those 
 
 - **Windows:** The uninstaller will ask if you want to keep or delete your media library and database.
 - **Linux / macOS:** Due to OS limitations, uninstalling the app **does not** automatically remove your downloaded media (`~/ViveStream`) or database.
-  - **Tip:** Go to **Settings > Danger Zone > Clear All Media** & **Delete Database** inside the app *before* uninstalling if you want a clean slate.
+  - **Tip:** Go to **Settings > Danger Zone > Clear All Media** & **Delete Database** inside the app _before_ uninstalling if you want a clean slate.
 
 ---
 
@@ -105,54 +105,54 @@ See `docs/DEVELOPMENT.md` for detailed instructions and `docs/ARCHITECTURE.md` f
 
 1. **Clone the repository:**
 
-    ```bash
-    git clone https://github.com/Md-Siam-Mia-Man/ViveStream-Revived.git
-    cd ViveStream-Revived
-    ```
+   ```bash
+   git clone https://github.com/Md-Siam-Mia-Man/ViveStream-Revived.git
+   cd ViveStream-Revived
+   ```
 
 2. **Clone the Portable Python Environment:**
-   *This must be cloned directly into the project root.*
+   _This must be cloned directly into the project root._
 
-    ```bash
-    git clone https://github.com/Md-Siam-Mia-Main/python-portable.git
-    ```
+   ```bash
+   git clone https://github.com/Md-Siam-Mia-Main/python-portable.git
+   ```
 
 3. **Install dependencies:**
-   *This automatically reassembles any large files via the `postinstall` hook.*
+   _This automatically reassembles any large files via the `postinstall` hook._
 
-    ```bash
-    npm install
-    ```
+   ```bash
+   npm install
+   ```
 
 4. **Update/Hydrate Binaries (Optional but Recommended):**
-   *Detects your OS and ensures `yt-dlp` and `static-ffmpeg` are up to date and executable.*
+   _Detects your OS and ensures `yt-dlp` and `static-ffmpeg` are up to date and executable._
 
-    ```bash
-    npm run env:update
-    ```
+   ```bash
+   npm run env:update
+   ```
 
 5. **Run the application:**
 
-    ```bash
-    npm start
-    ```
+   ```bash
+   npm start
+   ```
 
 ---
 
 ## 🎮 How to Use
 
 1. **Download or Import Content**
-    - Navigate to the **Downloads** page to fetch content from a URL.
-    - Go to **Settings > Maintenance** and click **Import Files** to add local media from your computer.
+   - Navigate to the **Downloads** page to fetch content from a URL.
+   - Go to **Settings > Maintenance** and click **Import Files** to add local media from your computer.
 
 2. **Manage Your Library**
-    - The **Home** and **Favorites** pages display your media. Use the filter and sort buttons to refine your view.
-    - The **Playlists** and **Artists** pages provide curated views. Click on a playlist or artist to see their content, where you can also upload custom cover images.
-    - Use the global search bar at the top to find anything in your library.
+   - The **Home** and **Favorites** pages display your media. Use the filter and sort buttons to refine your view.
+   - The **Playlists** and **Artists** pages provide curated views. Click on a playlist or artist to see their content, where you can also upload custom cover images.
+   - Use the global search bar at the top to find anything in your library.
 
 3. **Enjoy Your Media**
-    - Click any thumbnail to begin playback.
-    - The "Up Next" queue will automatically show other videos from the context you started playback from (e.g., the rest of the playlist).
+   - Click any thumbnail to begin playback.
+   - The "Up Next" queue will automatically show other videos from the context you started playback from (e.g., the rest of the playlist).
 
 ---
 

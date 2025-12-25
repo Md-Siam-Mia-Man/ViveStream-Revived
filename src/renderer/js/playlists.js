@@ -1,20 +1,20 @@
-import { AppState, setAllPlaylists } from "./state.js";
+import { AppState, setAllPlaylists } from './state.js';
 import {
   showPage,
   setCurrentPlaylistId,
   showLoader,
   hideLoader,
-} from "./renderer.js";
-import { createGridItem, setHeaderActions } from "./ui.js";
-import { showConfirmationModal, showPromptModal } from "./modals.js";
-import { showNotification } from "./notifications.js";
-import { eventBus } from "./event-bus.js";
+} from './renderer.js';
+import { createGridItem, setHeaderActions } from './ui.js';
+import { showConfirmationModal, showPromptModal } from './modals.js';
+import { showNotification } from './notifications.js';
+import { eventBus } from './event-bus.js';
 
-const playlistsPage = document.getElementById("playlists-page");
-const playlistDetailPage = document.getElementById("playlist-detail-page");
-const addToPlaylistModal = document.getElementById("add-to-playlist-modal");
+const playlistsPage = document.getElementById('playlists-page');
+const playlistDetailPage = document.getElementById('playlist-detail-page');
+const addToPlaylistModal = document.getElementById('add-to-playlist-modal');
 const playlistContextMenu = document.getElementById(
-  "playlist-item-context-menu"
+  'playlist-item-context-menu'
 );
 
 let videoIdToAddToPlaylist = null;
@@ -29,12 +29,12 @@ const lazyLoadObserver = new IntersectionObserver(
         if (src) {
           img.src = src;
         }
-        img.classList.remove("lazy");
+        img.classList.remove('lazy');
         observer.unobserve(img);
       }
     });
   },
-  { rootMargin: "0px 0px 200px 0px" }
+  { rootMargin: '0px 0px 200px 0px' }
 );
 
 export async function renderPlaylistsPage(playlistsToRender) {
@@ -44,18 +44,18 @@ export async function renderPlaylistsPage(playlistsToRender) {
     playlistsToRender = AppState.playlists;
   }
 
-  playlistsPage.innerHTML = "";
+  playlistsPage.innerHTML = '';
   setHeaderActions(null);
 
-  const createBtn = document.createElement("button");
-  createBtn.className = "action-button";
-  createBtn.id = "create-new-playlist-btn";
+  const createBtn = document.createElement('button');
+  createBtn.className = 'action-button';
+  createBtn.id = 'create-new-playlist-btn';
   createBtn.innerHTML = `<span class="material-symbols-outlined">add</span> Create Playlist`;
 
   if (AppState.playlists.length === 0) {
     setHeaderActions(createBtn);
-    const placeholder = document.createElement("div");
-    placeholder.className = "placeholder-page";
+    const placeholder = document.createElement('div');
+    placeholder.className = 'placeholder-page';
     placeholder.innerHTML = `
         <span class="material-symbols-outlined placeholder-icon">playlist_play</span>
         <h2 class="placeholder-title">No Playlists Yet</h2>
@@ -63,12 +63,12 @@ export async function renderPlaylistsPage(playlistsToRender) {
     playlistsPage.appendChild(placeholder);
   } else {
     setHeaderActions(createBtn);
-    const content = document.createElement("div");
-    content.className = "page-content";
+    const content = document.createElement('div');
+    content.className = 'page-content';
 
-    const grid = document.createElement("div");
-    grid.className = "playlist-grid";
-    grid.id = "playlist-grid-main";
+    const grid = document.createElement('div');
+    grid.className = 'playlist-grid';
+    grid.id = 'playlist-grid-main';
 
     if (playlistsToRender.length > 0) {
       const fragment = document.createDocumentFragment();
@@ -78,7 +78,7 @@ export async function renderPlaylistsPage(playlistsToRender) {
       });
       grid.appendChild(fragment);
       grid
-        .querySelectorAll("img.lazy")
+        .querySelectorAll('img.lazy')
         .forEach((img) => lazyLoadObserver.observe(img));
     } else {
       grid.innerHTML =
@@ -92,14 +92,14 @@ export async function renderPlaylistsPage(playlistsToRender) {
 
 export function renderPlaylistCard(playlist) {
   const videoCountText =
-    playlist.videoCount === 1 ? "1 video" : `${playlist.videoCount} videos`;
+    playlist.videoCount === 1 ? '1 video' : `${playlist.videoCount} videos`;
   const placeholderSrc = `${AppState.assetsPath}/logo.png`;
   const thumbnailSrc = playlist.thumbnail
     ? decodeURIComponent(playlist.thumbnail)
     : placeholderSrc;
 
-  const card = document.createElement("div");
-  card.className = "playlist-grid-item";
+  const card = document.createElement('div');
+  card.className = 'playlist-grid-item';
   card.dataset.id = playlist.id;
   card.dataset.name = playlist.name;
 
@@ -127,11 +127,11 @@ export async function renderPlaylistDetailPage(playlistId) {
 
   const playlist = await window.electronAPI.playlistGetDetails(playlistId);
 
-  playlistDetailPage.innerHTML = "";
+  playlistDetailPage.innerHTML = '';
 
   if (!playlist) {
-    showNotification(`Could not find playlist with ID ${playlistId}`, "error");
-    showPage("playlists");
+    showNotification(`Could not find playlist with ID ${playlistId}`, 'error');
+    showPage('playlists');
     hideLoader();
     return;
   }
@@ -140,7 +140,7 @@ export async function renderPlaylistDetailPage(playlistId) {
 
   const videoCountText =
     playlist.videos.length === 1
-      ? "1 video"
+      ? '1 video'
       : `${playlist.videos.length} videos`;
   const placeholderSrc = `${AppState.assetsPath}/logo.png`;
   const coverSrc = playlist.coverPath
@@ -149,9 +149,9 @@ export async function renderPlaylistDetailPage(playlistId) {
       ? decodeURIComponent(playlist.videos[0].coverPath)
       : placeholderSrc;
 
-  const headerWrapper = document.createElement("div");
-  headerWrapper.className = "playlist-detail-header-wrapper";
-  headerWrapper.style.setProperty("--bg-image", `url('${coverSrc}')`);
+  const headerWrapper = document.createElement('div');
+  headerWrapper.className = 'playlist-detail-header-wrapper';
+  headerWrapper.style.setProperty('--bg-image', `url('${coverSrc}')`);
 
   headerWrapper.innerHTML = `
     <div class="playlist-detail-header">
@@ -170,14 +170,14 @@ export async function renderPlaylistDetailPage(playlistId) {
     </div>`;
   playlistDetailPage.appendChild(headerWrapper);
 
-  const content = document.createElement("div");
-  content.className = "page-content";
-  content.id = "playlist-detail-content";
+  const content = document.createElement('div');
+  content.className = 'page-content';
+  content.id = 'playlist-detail-content';
 
   if (playlist.videos.length > 0) {
-    const grid = document.createElement("div");
-    grid.className = "video-grid";
-    grid.id = "video-grid-playlist";
+    const grid = document.createElement('div');
+    grid.className = 'video-grid';
+    grid.id = 'video-grid-playlist';
     grid.dataset.playlistId = playlist.id;
     grid.dataset.playlistName = playlist.name;
 
@@ -188,7 +188,7 @@ export async function renderPlaylistDetailPage(playlistId) {
     });
     grid.appendChild(fragment);
     grid
-      .querySelectorAll("img.lazy")
+      .querySelectorAll('img.lazy')
       .forEach((img) => lazyLoadObserver.observe(img));
 
     content.appendChild(grid);
@@ -196,7 +196,7 @@ export async function renderPlaylistDetailPage(playlistId) {
     if (sortableInstance) sortableInstance.destroy();
     sortableInstance = new Sortable(grid, {
       animation: 150,
-      ghostClass: "sortable-ghost",
+      ghostClass: 'sortable-ghost',
       onEnd: async (evt) => {
         const videoIds = [...evt.to.children].map((el) => el.dataset.id);
         await window.electronAPI.playlistUpdateOrder(playlistId, videoIds);
@@ -217,8 +217,8 @@ export async function renderPlaylistDetailPage(playlistId) {
 
 export async function openAddToPlaylistModal(videoId) {
   videoIdToAddToPlaylist = videoId;
-  const listContainer = addToPlaylistModal.querySelector(".add-playlist-list");
-  const inputField = document.getElementById("add-to-playlist-input");
+  const listContainer = addToPlaylistModal.querySelector('.add-playlist-list');
+  const inputField = document.getElementById('add-to-playlist-input');
 
   const [playlists, checkedPlaylists] = await Promise.all([
     window.electronAPI.playlistGetAll(),
@@ -230,100 +230,101 @@ export async function openAddToPlaylistModal(videoId) {
     playlists.length === 0
       ? `<p class="placeholder-text" style="text-align:center; padding: 20px 0;">No playlists exist. Create one above.</p>`
       : playlists
-        .map(
-          (p) => `
+          .map(
+            (p) => `
             <div class="add-playlist-item" data-id="${p.id}">
-                <input type="checkbox" id="playlist-check-${p.id}" ${checkedIds.has(p.id) ? "checked" : ""
-            }>
+                <input type="checkbox" id="playlist-check-${p.id}" ${
+                  checkedIds.has(p.id) ? 'checked' : ''
+                }>
                 <span class="custom-checkbox"><span class="material-symbols-outlined">done</span></span>
                 <label for="playlist-check-${p.id}">${p.name}</label>
             </div>`
-        )
-        .join("");
+          )
+          .join('');
 
-  addToPlaylistModal.classList.remove("hidden");
-  inputField.value = "";
+  addToPlaylistModal.classList.remove('hidden');
+  inputField.value = '';
   inputField.focus();
 }
 
-playlistsPage.addEventListener("click", async (e) => {
-  const menuBtn = e.target.closest(".playlist-grid-item .menu-btn");
+playlistsPage.addEventListener('click', async (e) => {
+  const menuBtn = e.target.closest('.playlist-grid-item .menu-btn');
   if (menuBtn) {
     e.stopPropagation();
-    const itemEl = e.target.closest(".playlist-grid-item");
+    const itemEl = e.target.closest('.playlist-grid-item');
     const rect = menuBtn.getBoundingClientRect();
-    playlistContextMenu.style.left = `${rect.left - playlistContextMenu.offsetWidth + rect.width
-      }px`;
+    playlistContextMenu.style.left = `${
+      rect.left - playlistContextMenu.offsetWidth + rect.width
+    }px`;
     playlistContextMenu.style.top = `${rect.bottom + 5}px`;
     playlistContextMenu.dataset.playlistId = itemEl.dataset.id;
     playlistContextMenu.dataset.playlistName = itemEl.dataset.name;
-    playlistContextMenu.classList.add("visible");
+    playlistContextMenu.classList.add('visible');
     return;
   }
 
-  const playlistCard = e.target.closest(".playlist-grid-item");
+  const playlistCard = e.target.closest('.playlist-grid-item');
   if (playlistCard) {
     const playlistId = playlistCard.dataset.id;
-    if (e.target.closest(".playlist-thumbnail-container")) {
-      const playlistData = await window.electronAPI.playlistGetDetails(
-        playlistId
-      );
+    if (e.target.closest('.playlist-thumbnail-container')) {
+      const playlistData =
+        await window.electronAPI.playlistGetDetails(playlistId);
       if (playlistData && playlistData.videos.length > 0) {
-        eventBus.emit("player:play_request", {
+        eventBus.emit('player:play_request', {
           index: 0,
           queue: playlistData.videos,
           context: {
-            type: "playlist",
+            type: 'playlist',
             id: playlistId,
             name: playlistData.name,
           },
         });
       } else {
-        showNotification("Playlist is empty.", "info");
+        showNotification('Playlist is empty.', 'info');
       }
     } else {
       await renderPlaylistDetailPage(playlistId);
-      showPage("playlist-detail-page", true);
+      showPage('playlist-detail-page', true);
     }
   }
 });
 
-document.addEventListener("click", async (e) => {
-  if (e.target.closest("#create-new-playlist-btn")) {
+document.addEventListener('click', async (e) => {
+  if (e.target.closest('#create-new-playlist-btn')) {
     const newName = await showPromptModal(
-      "Create New Playlist",
-      "Enter a name for your new playlist:"
+      'Create New Playlist',
+      'Enter a name for your new playlist:'
     );
     if (newName && newName.trim()) {
       const result = await window.electronAPI.playlistCreate(newName.trim());
       if (result.success) {
-        showNotification(`Playlist "${newName.trim()}" created.`, "success");
-        const activePage = document.querySelector(".nav-item.active");
-        if (activePage && activePage.dataset.page === "playlists") {
+        showNotification(`Playlist "${newName.trim()}" created.`, 'success');
+        const activePage = document.querySelector('.nav-item.active');
+        if (activePage && activePage.dataset.page === 'playlists') {
           await renderPlaylistsPage();
         }
       } else {
-        showNotification(`Error: ${result.error}`, "error");
+        showNotification(`Error: ${result.error}`, 'error');
       }
     }
   }
 });
 
-addToPlaylistModal.addEventListener("click", (e) => {
+addToPlaylistModal.addEventListener('click', (e) => {
   if (
-    e.target.id === "add-to-playlist-close-btn" ||
-    (e.target.closest(".modal-overlay") === addToPlaylistModal &&
-      !e.target.closest(".modal-content"))
+    e.target.id === 'add-to-playlist-close-btn' ||
+    (e.target.closest('.modal-overlay') === addToPlaylistModal &&
+      !e.target.closest('.modal-content'))
   ) {
-    addToPlaylistModal.classList.add("hidden");
+    addToPlaylistModal.classList.add('hidden');
     videoIdToAddToPlaylist = null;
   }
 });
 
 addToPlaylistModal
-  .querySelector(".add-playlist-list")
-  .addEventListener("click", async (e) => {
-    const item = e.target.closest(".add-playlist-item");
+  .querySelector('.add-playlist-list')
+  .addEventListener('click', async (e) => {
+    const item = e.target.closest('.add-playlist-item');
     if (item) {
       const checkbox = item.querySelector('input[type="checkbox"]');
       const playlistId = item.dataset.id;
@@ -344,58 +345,58 @@ addToPlaylistModal
   });
 
 document
-  .getElementById("add-to-playlist-input")
-  .addEventListener("input", (e) => {
+  .getElementById('add-to-playlist-input')
+  .addEventListener('input', (e) => {
     const searchTerm = e.target.value.toLowerCase();
-    const items = addToPlaylistModal.querySelectorAll(".add-playlist-item");
+    const items = addToPlaylistModal.querySelectorAll('.add-playlist-item');
     items.forEach((item) => {
-      const label = item.querySelector("label").textContent.toLowerCase();
-      item.classList.toggle("hidden", !label.includes(searchTerm));
+      const label = item.querySelector('label').textContent.toLowerCase();
+      item.classList.toggle('hidden', !label.includes(searchTerm));
     });
   });
 
 document
-  .getElementById("add-to-playlist-input")
-  .addEventListener("keydown", async (e) => {
-    if (e.key === "Enter") {
+  .getElementById('add-to-playlist-input')
+  .addEventListener('keydown', async (e) => {
+    if (e.key === 'Enter') {
       const name = e.target.value.trim();
       if (!name) return;
 
       const result = await window.electronAPI.playlistCreate(name);
       if (result.success) {
-        showNotification(`Playlist "${name}" created.`, "success");
+        showNotification(`Playlist "${name}" created.`, 'success');
         await window.electronAPI.playlistAddVideo(
           result.id,
           videoIdToAddToPlaylist
         );
         await openAddToPlaylistModal(videoIdToAddToPlaylist);
       } else {
-        showNotification(`Error: ${result.error}`, "error");
+        showNotification(`Error: ${result.error}`, 'error');
       }
     }
   });
 
-playlistDetailPage.addEventListener("click", async (e) => {
-  const editCoverBtn = e.target.closest("#edit-playlist-cover-btn");
+playlistDetailPage.addEventListener('click', async (e) => {
+  const editCoverBtn = e.target.closest('#edit-playlist-cover-btn');
   if (editCoverBtn) {
-    const playlistId = document.getElementById("rename-playlist-btn").dataset
+    const playlistId = document.getElementById('rename-playlist-btn').dataset
       .id;
     const result = await window.electronAPI.playlistUpdateCover(playlistId);
     if (result.success) {
-      showNotification("Playlist cover updated.", "success");
+      showNotification('Playlist cover updated.', 'success');
       await renderPlaylistDetailPage(playlistId);
-    } else if (result.error !== "File selection cancelled.") {
-      showNotification(`Error: ${result.error}`, "error");
+    } else if (result.error !== 'File selection cancelled.') {
+      showNotification(`Error: ${result.error}`, 'error');
     }
   }
 
-  const renameBtn = e.target.closest("#rename-playlist-btn");
+  const renameBtn = e.target.closest('#rename-playlist-btn');
   if (renameBtn) {
     const playlistId = renameBtn.dataset.id;
     const currentName = renameBtn.dataset.name;
     const newName = await showPromptModal(
-      "Rename Playlist",
-      "Enter a new name:",
+      'Rename Playlist',
+      'Enter a new name:',
       currentName
     );
     if (newName && newName.trim() && newName.trim() !== currentName) {
@@ -404,29 +405,29 @@ playlistDetailPage.addEventListener("click", async (e) => {
         newName.trim()
       );
       if (result.success) {
-        showNotification("Playlist renamed.", "success");
+        showNotification('Playlist renamed.', 'success');
         await renderPlaylistDetailPage(playlistId);
       } else {
-        showNotification(`Error: ${result.error}`, "error");
+        showNotification(`Error: ${result.error}`, 'error');
       }
     }
   }
 
-  const deleteBtn = e.target.closest("#delete-playlist-btn");
+  const deleteBtn = e.target.closest('#delete-playlist-btn');
   if (deleteBtn) {
     const playlistId = deleteBtn.dataset.id;
     const playlistName = deleteBtn.dataset.name;
     showConfirmationModal(
-      "Delete Playlist?",
+      'Delete Playlist?',
       `Are you sure you want to permanently delete the "${playlistName}" playlist? The videos inside will not be deleted from your library.`,
       async () => {
         const result = await window.electronAPI.playlistDelete(playlistId);
         if (result.success) {
-          showNotification("Playlist deleted.", "success");
+          showNotification('Playlist deleted.', 'success');
           await renderPlaylistsPage();
-          showPage("playlists");
+          showPage('playlists');
         } else {
-          showNotification(`Error: ${result.error}`, "error");
+          showNotification(`Error: ${result.error}`, 'error');
         }
       }
     );
@@ -435,13 +436,13 @@ playlistDetailPage.addEventListener("click", async (e) => {
 
 export function initializePlaylistContextMenus() {
   document
-    .getElementById("context-playlist-rename-btn")
-    .addEventListener("click", async () => {
+    .getElementById('context-playlist-rename-btn')
+    .addEventListener('click', async () => {
       const playlistId = playlistContextMenu.dataset.playlistId;
       const currentName = playlistContextMenu.dataset.playlistName;
       const newName = await showPromptModal(
-        "Rename Playlist",
-        "Enter a new name:",
+        'Rename Playlist',
+        'Enter a new name:',
         currentName
       );
       if (newName && newName.trim() && newName.trim() !== currentName) {
@@ -450,33 +451,33 @@ export function initializePlaylistContextMenus() {
           newName.trim()
         );
         if (result.success) {
-          showNotification("Playlist renamed.", "success");
+          showNotification('Playlist renamed.', 'success');
           await renderPlaylistsPage();
         } else {
-          showNotification(`Error: ${result.error}`, "error");
+          showNotification(`Error: ${result.error}`, 'error');
         }
       }
-      playlistContextMenu.classList.remove("visible");
+      playlistContextMenu.classList.remove('visible');
     });
 
   document
-    .getElementById("context-playlist-delete-btn")
-    .addEventListener("click", () => {
+    .getElementById('context-playlist-delete-btn')
+    .addEventListener('click', () => {
       const playlistId = playlistContextMenu.dataset.playlistId;
       const playlistName = playlistContextMenu.dataset.playlistName;
       showConfirmationModal(
-        "Delete Playlist?",
+        'Delete Playlist?',
         `Are you sure you want to permanently delete the "${playlistName}" playlist? Videos will not be deleted.`,
         async () => {
           const result = await window.electronAPI.playlistDelete(playlistId);
           if (result.success) {
-            showNotification("Playlist deleted.", "success");
+            showNotification('Playlist deleted.', 'success');
             await renderPlaylistsPage();
           } else {
-            showNotification(`Error: ${result.error}`, "error");
+            showNotification(`Error: ${result.error}`, 'error');
           }
         }
       );
-      playlistContextMenu.classList.remove("visible");
+      playlistContextMenu.classList.remove('visible');
     });
 }

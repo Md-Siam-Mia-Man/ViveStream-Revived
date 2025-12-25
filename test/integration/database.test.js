@@ -5,24 +5,29 @@ const path = require('path');
 // Mock `electron` app
 const mockApp = {
   getPath: jest.fn().mockReturnValue('/tmp'),
-  quit: jest.fn()
+  quit: jest.fn(),
 };
 
 describe('Database Integration', () => {
   // Use a unique DB file name to avoid locking conflicts with other tests
-  const dbPath = path.join('/tmp', `ViveStream_Basic_${Date.now()}_${Math.random()}.db`);
+  const dbPath = path.join(
+    '/tmp',
+    `ViveStream_Basic_${Date.now()}_${Math.random()}.db`
+  );
 
   beforeAll(async () => {
     // Initialize DB with custom path
     await database.initialize(mockApp, dbPath);
     // Wait a bit for async init
-    await new Promise(r => setTimeout(r, 500));
+    await new Promise((r) => setTimeout(r, 500));
   });
 
   afterAll(async () => {
     await database.shutdown();
     if (fs.existsSync(dbPath)) {
-      try { fs.unlinkSync(dbPath); } catch (e) { }
+      try {
+        fs.unlinkSync(dbPath);
+      } catch (e) {}
     }
   });
 
@@ -46,7 +51,7 @@ describe('Database Integration', () => {
       upload_date: '2023-01-01',
       originalUrl: 'http://youtube.com/watch?v=vid123',
       filePath: '/tmp/vid123.mp4',
-      type: 'video'
+      type: 'video',
     };
 
     await database.addOrUpdateVideo(videoData);
@@ -65,7 +70,7 @@ describe('Database Integration', () => {
     const videoData = {
       id: 'vidLink',
       title: 'Link Video',
-      filePath: '/tmp/vidLink.mp4'
+      filePath: '/tmp/vidLink.mp4',
     };
     await database.addOrUpdateVideo(videoData);
 
@@ -80,12 +85,15 @@ describe('Database Integration', () => {
   });
 
   test('should handle artists', async () => {
-    const artist = await database.findOrCreateArtist('New Artist', '/tmp/artist.jpg');
+    const artist = await database.findOrCreateArtist(
+      'New Artist',
+      '/tmp/artist.jpg'
+    );
     expect(artist.id).toBeDefined();
     expect(artist.name).toBe('New Artist');
 
     const allArtists = await database.getAllArtistsWithStats();
-    const found = allArtists.find(a => a.name === 'New Artist');
+    const found = allArtists.find((a) => a.name === 'New Artist');
     expect(found).toBeDefined();
   });
 
@@ -93,7 +101,7 @@ describe('Database Integration', () => {
     const item = {
       url: 'http://test.com/vid',
       title: 'History Vid',
-      type: 'video'
+      type: 'video',
     };
     await database.addToHistory(item);
 

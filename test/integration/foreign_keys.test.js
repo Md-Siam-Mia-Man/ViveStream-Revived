@@ -5,11 +5,14 @@ const path = require('path');
 // Mock `electron` app
 const mockApp = {
   getPath: jest.fn().mockReturnValue('/tmp'),
-  quit: jest.fn()
+  quit: jest.fn(),
 };
 
 describe('Database Foreign Key Constraint Bug', () => {
-  const dbPath = path.join('/tmp', `ViveStream_Bug_${Date.now()}_${Math.random()}.db`);
+  const dbPath = path.join(
+    '/tmp',
+    `ViveStream_Bug_${Date.now()}_${Math.random()}.db`
+  );
 
   beforeAll(async () => {
     // Initialize DB with custom path
@@ -19,7 +22,9 @@ describe('Database Foreign Key Constraint Bug', () => {
   afterAll(async () => {
     await database.shutdown();
     if (fs.existsSync(dbPath)) {
-      try { fs.unlinkSync(dbPath); } catch (e) { }
+      try {
+        fs.unlinkSync(dbPath);
+      } catch (e) {}
     }
   });
 
@@ -34,7 +39,7 @@ describe('Database Foreign Key Constraint Bug', () => {
     const videoData = {
       id: 'vid_fk_test',
       title: 'FK Test Video',
-      filePath: '/tmp/vid_fk_test.mp4'
+      filePath: '/tmp/vid_fk_test.mp4',
     };
     await database.addOrUpdateVideo(videoData);
 
@@ -42,14 +47,18 @@ describe('Database Foreign Key Constraint Bug', () => {
     await database.linkVideoToArtist('vid_fk_test', artistId);
 
     // Verify link exists
-    const linkBefore = await db('video_artists').where({ videoId: 'vid_fk_test', artistId }).first();
+    const linkBefore = await db('video_artists')
+      .where({ videoId: 'vid_fk_test', artistId })
+      .first();
     expect(linkBefore).toBeDefined();
 
     // 4. Delete the video using raw delete to test FK specifically.
     await db('videos').where({ id: 'vid_fk_test' }).del();
 
     // 5. Check if link still exists
-    const linkAfter = await db('video_artists').where({ videoId: 'vid_fk_test', artistId }).first();
+    const linkAfter = await db('video_artists')
+      .where({ videoId: 'vid_fk_test', artistId })
+      .first();
 
     // If FKs are working, linkAfter will be undefined.
     expect(linkAfter).toBeUndefined();

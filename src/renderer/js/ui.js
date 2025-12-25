@@ -1,31 +1,31 @@
-import { AppState, setFilters } from "./state.js";
+import { AppState, setFilters } from './state.js';
 import {
   showPage,
   handleNav,
   showLoader,
   hideLoader,
   renderSearchPage,
-} from "./renderer.js";
-import { formatTime, debounce } from "./utils.js";
-import { eventBus } from "./event-bus.js";
-import { openAddToPlaylistModal } from "./playlists.js";
-import { renderUpNextList } from "./player.js";
+} from './renderer.js';
+import { formatTime, debounce } from './utils.js';
+import { eventBus } from './event-bus.js';
+import { openAddToPlaylistModal } from './playlists.js';
+import { renderUpNextList } from './player.js';
 
-const homeSearchInput = document.getElementById("home-search-input");
-const searchContainer = document.querySelector(".search-container");
-const videoContextMenu = document.getElementById("video-item-context-menu");
+const homeSearchInput = document.getElementById('home-search-input');
+const searchContainer = document.querySelector('.search-container');
+const videoContextMenu = document.getElementById('video-item-context-menu');
 const contextRemoveFromPlaylistBtn = document.getElementById(
-  "context-remove-from-playlist-btn"
+  'context-remove-from-playlist-btn'
 );
-const gridItemTemplate = document.getElementById("video-grid-item-template");
-const sidebar = document.querySelector(".sidebar");
-const searchPage = document.getElementById("search-page");
-const scrollSentinel = document.getElementById("scroll-sentinel");
-const fpsCounterEl = document.getElementById("fps-counter");
-const contentWrapper = document.querySelector(".content-wrapper");
+const gridItemTemplate = document.getElementById('video-grid-item-template');
+const sidebar = document.querySelector('.sidebar');
+const searchPage = document.getElementById('search-page');
+const scrollSentinel = document.getElementById('scroll-sentinel');
+const fpsCounterEl = document.getElementById('fps-counter');
+const contentWrapper = document.querySelector('.content-wrapper');
 
-let currentSort = localStorage.getItem("librarySort") || "downloadedAt-desc";
-let lastActivePageId = "home";
+let currentSort = localStorage.getItem('librarySort') || 'downloadedAt-desc';
+let lastActivePageId = 'home';
 
 let fpsAnimationFrameId = null;
 let fpsLastTime = performance.now();
@@ -33,14 +33,14 @@ let fpsFrameCount = 0;
 
 export function toggleFPSCounter(isVisible) {
   if (isVisible) {
-    fpsCounterEl.classList.remove("hidden");
+    fpsCounterEl.classList.remove('hidden');
     if (!fpsAnimationFrameId) {
       fpsLastTime = performance.now();
       fpsFrameCount = 0;
       updateFPS();
     }
   } else {
-    fpsCounterEl.classList.add("hidden");
+    fpsCounterEl.classList.add('hidden');
     if (fpsAnimationFrameId) {
       cancelAnimationFrame(fpsAnimationFrameId);
       fpsAnimationFrameId = null;
@@ -75,31 +75,33 @@ const lazyLoadObserver = new IntersectionObserver(
         if (src) {
           img.src = src;
         }
-        img.classList.remove("lazy");
+        img.classList.remove('lazy');
         observer.unobserve(img);
       }
     });
   },
   {
     root: contentWrapper,
-    rootMargin: "0px 0px 400px 0px"
+    rootMargin: '0px 0px 400px 0px',
   }
 );
 
-const scrollObserver = new IntersectionObserver((entries) => {
-  if (entries[0].isIntersecting && pendingItems.length > 0) {
-    renderNextBatch();
+const scrollObserver = new IntersectionObserver(
+  (entries) => {
+    if (entries[0].isIntersecting && pendingItems.length > 0) {
+      renderNextBatch();
+    }
+  },
+  {
+    root: contentWrapper,
+    rootMargin: '400px',
   }
-}, {
-  root: contentWrapper,
-  rootMargin: "400px"
-});
-
+);
 
 export function setHeaderActions(content) {
-  const container = document.getElementById("header-actions-container");
+  const container = document.getElementById('header-actions-container');
   if (container) {
-    container.innerHTML = "";
+    container.innerHTML = '';
     if (content) {
       container.appendChild(content);
     }
@@ -108,15 +110,15 @@ export function setHeaderActions(content) {
 
 export function createGridItem(item, isPlaylistItem = false) {
   const clone = gridItemTemplate.content.cloneNode(true);
-  const element = clone.querySelector(".video-grid-item");
-  const thumbnail = element.querySelector(".grid-thumbnail");
-  const overlayIconContainer = element.querySelector(".thumbnail-overlay-icon");
-  const favoriteBtn = element.querySelector(".favorite-btn");
-  const favoriteIcon = favoriteBtn.querySelector("span");
+  const element = clone.querySelector('.video-grid-item');
+  const thumbnail = element.querySelector('.grid-thumbnail');
+  const overlayIconContainer = element.querySelector('.thumbnail-overlay-icon');
+  const favoriteBtn = element.querySelector('.favorite-btn');
+  const favoriteIcon = favoriteBtn.querySelector('span');
 
   element.dataset.id = item.id;
   if (isPlaylistItem) {
-    element.dataset.playlistItem = "true";
+    element.dataset.playlistItem = 'true';
   }
 
   const placeholderSrc = `${AppState.assetsPath}/logo.png`;
@@ -130,20 +132,20 @@ export function createGridItem(item, isPlaylistItem = false) {
     thumbnail.src = placeholderSrc;
   };
 
-  if (item.type === "audio") {
+  if (item.type === 'audio') {
     overlayIconContainer.innerHTML =
       '<span class="material-symbols-outlined">music_note</span>';
   }
 
-  element.querySelector(".thumbnail-duration").textContent = formatTime(
+  element.querySelector('.thumbnail-duration').textContent = formatTime(
     item.duration || 0
   );
-  element.querySelector(".grid-item-title").textContent = item.title;
-  element.querySelector(".grid-item-meta").textContent =
-    item.creator || item.uploader || "Unknown";
+  element.querySelector('.grid-item-title').textContent = item.title;
+  element.querySelector('.grid-item-meta').textContent =
+    item.creator || item.uploader || 'Unknown';
 
-  favoriteBtn.classList.toggle("is-favorite", !!item.isFavorite);
-  favoriteBtn.title = item.isFavorite ? "Unfavorite" : "Favorite";
+  favoriteBtn.classList.toggle('is-favorite', !!item.isFavorite);
+  favoriteBtn.title = item.isFavorite ? 'Unfavorite' : 'Favorite';
   if (item.isFavorite) {
     favoriteIcon.style.fontVariationSettings = "'FILL' 1";
   }
@@ -152,21 +154,21 @@ export function createGridItem(item, isPlaylistItem = false) {
 }
 
 function sortLibrary(library, sortKey) {
-  const [key, direction] = sortKey.split("-");
+  const [key, direction] = sortKey.split('-');
   return [...library].sort((a, b) => {
     let valA = a[key];
     let valB = b[key];
 
-    if (valA === undefined || valA === null) valA = "";
-    if (valB === undefined || valB === null) valB = "";
+    if (valA === undefined || valA === null) valA = '';
+    if (valB === undefined || valB === null) valB = '';
 
-    if (key === "title") {
+    if (key === 'title') {
       valA = valA.toLowerCase();
       valB = valB.toLowerCase();
     }
 
-    if (valA < valB) return direction === "asc" ? -1 : 1;
-    if (valA > valB) return direction === "asc" ? 1 : -1;
+    if (valA < valB) return direction === 'asc' ? -1 : 1;
+    if (valA > valB) return direction === 'asc' ? 1 : -1;
     return 0;
   });
 }
@@ -178,29 +180,29 @@ export function applyFilters(library) {
   const currentMonth = now.getMonth() + 1;
 
   return library.filter((item) => {
-    const typeMatch = type === "all" || item.type === type;
+    const typeMatch = type === 'all' || item.type === type;
 
     const durationMatch =
-      duration === "all" ||
-      (duration === "<5" && item.duration < 300) ||
-      (duration === "5-20" && item.duration >= 300 && item.duration <= 1200) ||
-      (duration === ">20" && item.duration > 1200);
+      duration === 'all' ||
+      (duration === '<5' && item.duration < 300) ||
+      (duration === '5-20' && item.duration >= 300 && item.duration <= 1200) ||
+      (duration === '>20' && item.duration > 1200);
 
-    const sourceMatch = source === "all" || item.source === source;
+    const sourceMatch = source === 'all' || item.source === source;
 
     let uploadDateMatch = true;
-    if (uploadDate !== "all" && item.upload_date) {
+    if (uploadDate !== 'all' && item.upload_date) {
       const year = parseInt(item.upload_date.substring(0, 4), 10);
       const month = parseInt(item.upload_date.substring(4, 6), 10);
 
-      if (uploadDate === "this_month") {
+      if (uploadDate === 'this_month') {
         uploadDateMatch = year === currentYear && month === currentMonth;
-      } else if (uploadDate === "this_year") {
+      } else if (uploadDate === 'this_year') {
         uploadDateMatch = year === currentYear;
-      } else if (uploadDate === "older") {
+      } else if (uploadDate === 'older') {
         uploadDateMatch = year < currentYear;
       }
-    } else if (uploadDate !== "all" && !item.upload_date) {
+    } else if (uploadDate !== 'all' && !item.upload_date) {
       uploadDateMatch = false;
     }
 
@@ -214,14 +216,14 @@ function renderNextBatch() {
   const batch = pendingItems.splice(0, BATCH_SIZE);
   const fragment = document.createDocumentFragment();
 
-  batch.forEach(item => {
+  batch.forEach((item) => {
     const gridItem = createGridItem(item, isPlaylistItemState);
     fragment.appendChild(gridItem);
   });
 
   renderContainer.appendChild(fragment);
 
-  renderContainer.querySelectorAll("img.lazy:not(.observed)").forEach(img => {
+  renderContainer.querySelectorAll('img.lazy:not(.observed)').forEach((img) => {
     img.classList.add('observed');
     lazyLoadObserver.observe(img);
   });
@@ -243,7 +245,7 @@ function renderGrid(container, library, isPlaylistItem = false) {
   if (!container) return;
 
   scrollObserver.unobserve(scrollSentinel);
-  container.innerHTML = "";
+  container.innerHTML = '';
   renderContainer = container;
   isPlaylistItemState = isPlaylistItem;
   pendingItems = [];
@@ -260,9 +262,9 @@ function renderGrid(container, library, isPlaylistItem = false) {
         scrollObserver.observe(scrollSentinel);
       }
     } else {
-      const emptyMessage = document.createElement("p");
-      emptyMessage.className = "empty-message";
-      emptyMessage.textContent = "No media matches the current filters.";
+      const emptyMessage = document.createElement('p');
+      emptyMessage.className = 'empty-message';
+      emptyMessage.textContent = 'No media matches the current filters.';
       container.appendChild(emptyMessage);
     }
   }
@@ -271,15 +273,15 @@ function renderGrid(container, library, isPlaylistItem = false) {
 export function createHeaderActionsElement() {
   const fragment = document.createDocumentFragment();
 
-  const filterBtn = document.createElement("button");
-  filterBtn.className = "action-button";
-  filterBtn.id = "filter-btn";
+  const filterBtn = document.createElement('button');
+  filterBtn.className = 'action-button';
+  filterBtn.id = 'filter-btn';
   filterBtn.innerHTML = `<span class="material-symbols-outlined">filter_list</span><span>Filter</span>`;
   fragment.appendChild(filterBtn);
 
-  const sortDropdown = document.createElement("div");
-  sortDropdown.className = "sort-dropdown-container";
-  sortDropdown.id = "sort-dropdown";
+  const sortDropdown = document.createElement('div');
+  sortDropdown.className = 'sort-dropdown-container';
+  sortDropdown.id = 'sort-dropdown';
   sortDropdown.innerHTML = `
         <button class="sort-dropdown-btn">
             <span class="material-symbols-outlined">sort</span>
@@ -306,8 +308,8 @@ export function createHeaderActionsElement() {
 }
 
 export function createFilterPanel() {
-  const panel = document.createElement("div");
-  panel.className = "filter-panel";
+  const panel = document.createElement('div');
+  panel.className = 'filter-panel';
   panel.innerHTML = `
         <div class="filter-group" data-filter="type">
             <div class="filter-selection-indicator"></div>
@@ -344,10 +346,10 @@ export function createFilterPanel() {
 }
 
 function updateFilterIndicators() {
-  const panel = document.querySelector(".page:not(.hidden) .filter-panel");
+  const panel = document.querySelector('.page:not(.hidden) .filter-panel');
   if (!panel) return;
 
-  panel.querySelectorAll(".filter-group").forEach((group) => {
+  panel.querySelectorAll('.filter-group').forEach((group) => {
     const filterType = group.dataset.filter;
     const activeValue = AppState.currentFilters[filterType];
     const activeButton = group.querySelector(
@@ -355,12 +357,12 @@ function updateFilterIndicators() {
     );
 
     group
-      .querySelectorAll(".filter-btn")
-      .forEach((btn) => btn.classList.remove("active"));
+      .querySelectorAll('.filter-btn')
+      .forEach((btn) => btn.classList.remove('active'));
 
     if (activeButton) {
-      activeButton.classList.add("active");
-      const indicator = group.querySelector(".filter-selection-indicator");
+      activeButton.classList.add('active');
+      const indicator = group.querySelector('.filter-selection-indicator');
       indicator.style.left = `${activeButton.offsetLeft}px`;
       indicator.style.width = `${activeButton.offsetWidth}px`;
     }
@@ -368,25 +370,25 @@ function updateFilterIndicators() {
 }
 
 function updateSortUI() {
-  const dropdown = document.querySelector("#sort-dropdown");
+  const dropdown = document.querySelector('#sort-dropdown');
   if (!dropdown) return;
-  const label = dropdown.querySelector("#sort-dropdown-label");
-  const options = dropdown.querySelectorAll(".sort-option-item");
+  const label = dropdown.querySelector('#sort-dropdown-label');
+  const options = dropdown.querySelectorAll('.sort-option-item');
   options.forEach((opt) => {
     const isActive = opt.dataset.value === currentSort;
-    opt.classList.toggle("active", isActive);
+    opt.classList.toggle('active', isActive);
     if (isActive) {
-      label.textContent = opt.textContent.replace("done", "").trim();
+      label.textContent = opt.textContent.replace('done', '').trim();
     }
   });
 }
 
 function reapplyCurrentView() {
   const activePage =
-    document.querySelector(".nav-item.active")?.dataset.page || "home";
+    document.querySelector('.nav-item.active')?.dataset.page || 'home';
 
-  const playerPage = document.getElementById("player-page");
-  if (!playerPage.classList.contains("hidden")) {
+  const playerPage = document.getElementById('player-page');
+  if (!playerPage.classList.contains('hidden')) {
     renderUpNextList({ sortKey: currentSort });
     return;
   }
@@ -394,11 +396,11 @@ function reapplyCurrentView() {
   let gridContainer;
   let librarySource;
 
-  if (activePage === "home") {
-    gridContainer = document.getElementById("video-grid-home");
+  if (activePage === 'home') {
+    gridContainer = document.getElementById('video-grid-home');
     librarySource = AppState.library;
-  } else if (activePage === "favorites") {
-    gridContainer = document.getElementById("video-grid-favorites");
+  } else if (activePage === 'favorites') {
+    gridContainer = document.getElementById('video-grid-favorites');
     librarySource = AppState.library.filter((video) => video.isFavorite);
   }
 
@@ -408,8 +410,8 @@ function reapplyCurrentView() {
 }
 
 export function renderHomePageGrid() {
-  const homePage = document.getElementById("home-page");
-  homePage.innerHTML = "";
+  const homePage = document.getElementById('home-page');
+  homePage.innerHTML = '';
 
   setHeaderActions(null);
 
@@ -419,9 +421,9 @@ export function renderHomePageGrid() {
     setHeaderActions(createHeaderActionsElement());
     homePage.appendChild(createFilterPanel());
 
-    const grid = document.createElement("div");
-    grid.className = "video-grid";
-    grid.id = "video-grid-home";
+    const grid = document.createElement('div');
+    grid.className = 'video-grid';
+    grid.id = 'video-grid-home';
     homePage.appendChild(grid);
     renderGrid(grid, AppState.library);
     updateFilterIndicators();
@@ -431,8 +433,8 @@ export function renderHomePageGrid() {
 }
 
 export function renderFavoritesPage() {
-  const favoritesPage = document.getElementById("favorites-page");
-  favoritesPage.innerHTML = "";
+  const favoritesPage = document.getElementById('favorites-page');
+  favoritesPage.innerHTML = '';
   setHeaderActions(null);
 
   const favoritesLibrary = AppState.library.filter((video) => video.isFavorite);
@@ -440,9 +442,9 @@ export function renderFavoritesPage() {
   if (favoritesLibrary.length > 0) {
     setHeaderActions(createHeaderActionsElement());
     favoritesPage.appendChild(createFilterPanel());
-    const grid = document.createElement("div");
-    grid.className = "video-grid";
-    grid.id = "video-grid-favorites";
+    const grid = document.createElement('div');
+    grid.className = 'video-grid';
+    grid.id = 'video-grid-favorites';
     favoritesPage.appendChild(grid);
     renderGrid(grid, favoritesLibrary);
     updateFilterIndicators();
@@ -461,7 +463,7 @@ export async function toggleFavoriteStatus(videoId) {
     const playbackVideo = AppState.playbackQueue.find((v) => v.id === videoId);
     if (playbackVideo) playbackVideo.isFavorite = result.isFavorite;
 
-    eventBus.emit("ui:favorite_toggled", videoId, result.isFavorite);
+    eventBus.emit('ui:favorite_toggled', videoId, result.isFavorite);
   }
 }
 
@@ -470,9 +472,9 @@ function updateFavoriteUI(videoId, isFavorite) {
     AppState.currentlyPlayingIndex > -1 &&
     AppState.playbackQueue[AppState.currentlyPlayingIndex]?.id === videoId
   ) {
-    const favoriteBtn = document.getElementById("favorite-btn");
-    favoriteBtn.classList.toggle("is-favorite", isFavorite);
-    const playerIcon = favoriteBtn.querySelector("span");
+    const favoriteBtn = document.getElementById('favorite-btn');
+    favoriteBtn.classList.toggle('is-favorite', isFavorite);
+    const playerIcon = favoriteBtn.querySelector('span');
     playerIcon.style.fontVariationSettings = isFavorite
       ? "'FILL' 1"
       : "'FILL' 0";
@@ -481,33 +483,33 @@ function updateFavoriteUI(videoId, isFavorite) {
   document
     .querySelectorAll(`.video-grid-item[data-id="${videoId}"]`)
     .forEach((item) => {
-      const gridBtn = item.querySelector(".favorite-btn");
+      const gridBtn = item.querySelector('.favorite-btn');
       if (gridBtn) {
-        gridBtn.classList.toggle("is-favorite", isFavorite);
-        gridBtn.title = isFavorite ? "Unfavorite" : "Favorite";
-        gridBtn.querySelector("span").style.fontVariationSettings = isFavorite
+        gridBtn.classList.toggle('is-favorite', isFavorite);
+        gridBtn.title = isFavorite ? 'Unfavorite' : 'Favorite';
+        gridBtn.querySelector('span').style.fontVariationSettings = isFavorite
           ? "'FILL' 1"
           : "'FILL' 0";
       }
     });
 
-  const activePage = document.querySelector(".nav-item.active")?.dataset.page;
-  if (activePage === "favorites") {
+  const activePage = document.querySelector('.nav-item.active')?.dataset.page;
+  if (activePage === 'favorites') {
     reapplyCurrentView();
   }
 }
 
-eventBus.on("ui:favorite_toggled", updateFavoriteUI);
+eventBus.on('ui:favorite_toggled', updateFavoriteUI);
 
 export function updateSearchPlaceholder(pageId) {
   let isSearchable = true;
-  if (pageId === "settings" || pageId === "downloads") {
+  if (pageId === 'settings' || pageId === 'downloads') {
     isSearchable = false;
   }
 
   if (isSearchable) {
     searchContainer.classList.remove('hidden');
-    homeSearchInput.placeholder = "Search videos, artists, playlists...";
+    homeSearchInput.placeholder = 'Search videos, artists, playlists...';
     homeSearchInput.disabled = false;
   } else {
     searchContainer.classList.add('hidden');
@@ -518,34 +520,36 @@ export function updateSearchPlaceholder(pageId) {
 }
 
 const debouncedSearchHandler = debounce((term) => {
-  const isPlayerPage = !document.getElementById("player-page").classList.contains("hidden");
-  const isDownloadsPage = !document.getElementById("downloads-page").classList.contains("hidden");
+  const isPlayerPage = !document
+    .getElementById('player-page')
+    .classList.contains('hidden');
+  const isDownloadsPage = !document
+    .getElementById('downloads-page')
+    .classList.contains('hidden');
 
   if (isPlayerPage) {
     renderUpNextList({ searchTerm: term, sortKey: currentSort });
   } else if (isDownloadsPage) {
-    eventBus.emit("search:downloads", term);
+    eventBus.emit('search:downloads', term);
   } else {
     renderSearchPage(term);
   }
 }, 300);
 
 export function setWindowControlsAlignment(alignment) {
-  document.body.classList.remove("platform-win", "platform-mac");
+  document.body.classList.remove('platform-win', 'platform-mac');
   let type = alignment;
 
-  if (!type || type === "auto") {
+  if (!type || type === 'auto') {
     const platform = window.electronAPI.getPlatform();
-    type = platform === "darwin" ? "mac" : "win";
+    type = platform === 'darwin' ? 'mac' : 'win';
   }
 
-  document.body.classList.add(
-    type === "mac" ? "platform-mac" : "platform-win"
-  );
+  document.body.classList.add(type === 'mac' ? 'platform-mac' : 'platform-win');
 }
 
 function initializePlatformStyles() {
-  const saved = localStorage.getItem("windowControlsAlignment") || "auto";
+  const saved = localStorage.getItem('windowControlsAlignment') || 'auto';
   setWindowControlsAlignment(saved);
 }
 
@@ -575,64 +579,64 @@ function initializeGlobalSliderLogic() {
 }
 
 function initializeMainEventListeners() {
-  document.body.addEventListener("click", async (e) => {
-    const itemEl = e.target.closest(".video-grid-item");
+  document.body.addEventListener('click', async (e) => {
+    const itemEl = e.target.closest('.video-grid-item');
     if (itemEl) {
       const videoId = itemEl.dataset.id;
-      const playlistGrid = e.target.closest("#video-grid-playlist");
-      const artistGrid = e.target.closest("#video-grid-artist");
-      const favoritesGrid = e.target.closest("#video-grid-favorites");
+      const playlistGrid = e.target.closest('#video-grid-playlist');
+      const artistGrid = e.target.closest('#video-grid-artist');
+      const favoritesGrid = e.target.closest('#video-grid-favorites');
 
       let sourceLib;
       let context = null;
 
       if (playlistGrid) {
         const playlistId = playlistGrid.dataset.playlistId;
-        const playlist = await window.electronAPI.playlistGetDetails(
-          playlistId
-        );
+        const playlist =
+          await window.electronAPI.playlistGetDetails(playlistId);
         sourceLib = playlist.videos;
-        context = { type: "playlist", id: playlistId, name: playlist.name };
+        context = { type: 'playlist', id: playlistId, name: playlist.name };
       } else if (artistGrid) {
         const artistId = artistGrid.dataset.artistId;
         const artist = await window.electronAPI.artistGetDetails(artistId);
         sourceLib = artist.videos;
-        context = { type: "artist", id: artistId, name: artist.name };
+        context = { type: 'artist', id: artistId, name: artist.name };
       } else if (favoritesGrid) {
         sourceLib = AppState.library.filter((v) => v.isFavorite);
-        context = { type: "favorites", id: null, name: "Favorites" };
+        context = { type: 'favorites', id: null, name: 'Favorites' };
       } else {
         sourceLib = AppState.library;
-        context = { type: "home", id: null, name: "Library" };
+        context = { type: 'home', id: null, name: 'Library' };
       }
 
-      if (e.target.closest(".menu-btn")) {
+      if (e.target.closest('.menu-btn')) {
         e.stopPropagation();
-        const menuBtn = e.target.closest(".menu-btn");
+        const menuBtn = e.target.closest('.menu-btn');
         const rect = menuBtn.getBoundingClientRect();
-        videoContextMenu.style.left = `${rect.left - videoContextMenu.offsetWidth + rect.width
-          }px`;
+        videoContextMenu.style.left = `${
+          rect.left - videoContextMenu.offsetWidth + rect.width
+        }px`;
         videoContextMenu.style.top = `${rect.bottom + 5}px`;
         videoContextMenu.dataset.videoId = videoId;
         contextRemoveFromPlaylistBtn.style.display = itemEl.dataset.playlistItem
-          ? "flex"
-          : "none";
-        videoContextMenu.classList.add("visible");
+          ? 'flex'
+          : 'none';
+        videoContextMenu.classList.add('visible');
         return;
       }
-      if (e.target.closest(".favorite-btn")) {
+      if (e.target.closest('.favorite-btn')) {
         e.stopPropagation();
         toggleFavoriteStatus(videoId);
         return;
       }
-      if (e.target.closest(".add-to-playlist-grid-btn")) {
+      if (e.target.closest('.add-to-playlist-grid-btn')) {
         e.stopPropagation();
         openAddToPlaylistModal(videoId);
         return;
       }
       const videoIndex = sourceLib.findIndex((v) => v.id === videoId);
       if (videoIndex > -1) {
-        eventBus.emit("player:play_request", {
+        eventBus.emit('player:play_request', {
           index: videoIndex,
           queue: sourceLib,
           context: context,
@@ -641,14 +645,14 @@ function initializeMainEventListeners() {
       return;
     }
 
-    if (e.target.closest("#filter-btn")) {
-      const btn = e.target.closest("#filter-btn");
-      const panel = document.querySelector(".page:not(.hidden) .filter-panel");
+    if (e.target.closest('#filter-btn')) {
+      const btn = e.target.closest('#filter-btn');
+      const panel = document.querySelector('.page:not(.hidden) .filter-panel');
       if (panel) {
-        panel.classList.toggle("visible");
-        btn.classList.toggle("active");
+        panel.classList.toggle('visible');
+        btn.classList.toggle('active');
 
-        if (panel.classList.contains("visible")) {
+        if (panel.classList.contains('visible')) {
           requestAnimationFrame(() => {
             updateFilterIndicators();
           });
@@ -656,9 +660,9 @@ function initializeMainEventListeners() {
       }
     }
 
-    if (e.target.closest(".filter-btn")) {
-      const btn = e.target.closest(".filter-btn");
-      const group = btn.closest(".filter-group");
+    if (e.target.closest('.filter-btn')) {
+      const btn = e.target.closest('.filter-btn');
+      const group = btn.closest('.filter-group');
       const filterType = group.dataset.filter;
       const value = btn.dataset.value;
 
@@ -667,52 +671,56 @@ function initializeMainEventListeners() {
       reapplyCurrentView();
     }
 
-    const sortDropdown = e.target.closest("#sort-dropdown");
+    const sortDropdown = e.target.closest('#sort-dropdown');
     if (sortDropdown) {
-      if (e.target.closest(".sort-dropdown-btn")) {
-        sortDropdown.classList.toggle("open");
+      if (e.target.closest('.sort-dropdown-btn')) {
+        sortDropdown.classList.toggle('open');
       }
-      const option = e.target.closest(".sort-option-item");
+      const option = e.target.closest('.sort-option-item');
       if (option) {
         currentSort = option.dataset.value;
-        localStorage.setItem("librarySort", currentSort);
+        localStorage.setItem('librarySort', currentSort);
         updateSortUI();
         reapplyCurrentView();
-        sortDropdown.classList.remove("open");
+        sortDropdown.classList.remove('open');
       }
     } else {
       document
-        .querySelectorAll(".sort-dropdown-container.open")
-        .forEach((d) => d.classList.remove("open"));
+        .querySelectorAll('.sort-dropdown-container.open')
+        .forEach((d) => d.classList.remove('open'));
     }
 
-    const navItem = e.target.closest(".nav-item");
+    const navItem = e.target.closest('.nav-item');
     if (navItem) {
       handleNav(navItem.dataset.page);
       return;
     }
 
-    if (e.target.closest("#logo-home-button")) {
-      const isPinned = sidebar.classList.toggle("pinned");
-      localStorage.setItem("sidebarPinned", isPinned);
+    if (e.target.closest('#logo-home-button')) {
+      const isPinned = sidebar.classList.toggle('pinned');
+      localStorage.setItem('sidebarPinned', isPinned);
       return;
     }
 
-    if (e.target.closest("#go-to-downloads-link")) {
-      handleNav("downloads");
+    if (e.target.closest('#go-to-downloads-link')) {
+      handleNav('downloads');
     }
   });
 
-  homeSearchInput.addEventListener("input", (e) => {
+  homeSearchInput.addEventListener('input', (e) => {
     if (homeSearchInput.disabled) return;
     const searchTerm = e.target.value;
 
-    const isPlayerPage = !document.getElementById("player-page").classList.contains("hidden");
-    const isDownloadsPage = !document.getElementById("downloads-page").classList.contains("hidden");
+    const isPlayerPage = !document
+      .getElementById('player-page')
+      .classList.contains('hidden');
+    const isDownloadsPage = !document
+      .getElementById('downloads-page')
+      .classList.contains('hidden');
 
-    if (searchTerm.trim() === "" && !isPlayerPage && !isDownloadsPage) {
+    if (searchTerm.trim() === '' && !isPlayerPage && !isDownloadsPage) {
       showPage(lastActivePageId);
-      if (searchPage) searchPage.innerHTML = "";
+      if (searchPage) searchPage.innerHTML = '';
       return;
     }
 
@@ -724,8 +732,8 @@ function initializeMainEventListeners() {
 export function initializeUI() {
   initializePlatformStyles();
   initializeGlobalSliderLogic();
-  if (localStorage.getItem("sidebarPinned") === "true") {
-    sidebar.classList.add("pinned");
+  if (localStorage.getItem('sidebarPinned') === 'true') {
+    sidebar.classList.add('pinned');
   }
   initializeMainEventListeners();
 }

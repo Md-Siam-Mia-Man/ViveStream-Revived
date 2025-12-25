@@ -1,12 +1,12 @@
-import { AppState, setAllArtists } from "./state.js";
-import { showPage, showLoader, hideLoader, loadLibrary } from "./renderer.js";
-import { createGridItem, setHeaderActions } from "./ui.js";
-import { eventBus } from "./event-bus.js";
-import { showNotification } from "./notifications.js";
-import { showConfirmationModal, showPromptModal } from "./modals.js";
+import { AppState, setAllArtists } from './state.js';
+import { showPage, showLoader, hideLoader, loadLibrary } from './renderer.js';
+import { createGridItem, setHeaderActions } from './ui.js';
+import { eventBus } from './event-bus.js';
+import { showNotification } from './notifications.js';
+import { showConfirmationModal, showPromptModal } from './modals.js';
 
-const artistsPage = document.getElementById("artists-page");
-const artistDetailPage = document.getElementById("artist-detail-page");
+const artistsPage = document.getElementById('artists-page');
+const artistDetailPage = document.getElementById('artist-detail-page');
 
 const lazyLoadObserver = new IntersectionObserver(
   (entries, observer) => {
@@ -17,12 +17,12 @@ const lazyLoadObserver = new IntersectionObserver(
         if (src) {
           img.src = src;
         }
-        img.classList.remove("lazy");
+        img.classList.remove('lazy');
         observer.unobserve(img);
       }
     });
   },
-  { rootMargin: "0px 0px 200px 0px" }
+  { rootMargin: '0px 0px 200px 0px' }
 );
 
 export async function renderArtistsPage(artistsToRender) {
@@ -32,20 +32,20 @@ export async function renderArtistsPage(artistsToRender) {
     artistsToRender = AppState.artists;
   }
 
-  artistsPage.innerHTML = "";
+  artistsPage.innerHTML = '';
   setHeaderActions(null);
 
   if (AppState.artists.length === 0) {
-    const placeholder = document.createElement("div");
-    placeholder.className = "placeholder-page";
+    const placeholder = document.createElement('div');
+    placeholder.className = 'placeholder-page';
     placeholder.innerHTML = `
       <span class="material-symbols-outlined placeholder-icon">mic_off</span>
       <h2 class="placeholder-title">No Artists Found</h2>
       <p class="placeholder-text">Artists you download will appear here automatically.</p>`;
     artistsPage.appendChild(placeholder);
   } else {
-    const grid = document.createElement("div");
-    grid.className = "artist-grid";
+    const grid = document.createElement('div');
+    grid.className = 'artist-grid';
 
     if (artistsToRender.length > 0) {
       const fragment = document.createDocumentFragment();
@@ -55,7 +55,7 @@ export async function renderArtistsPage(artistsToRender) {
       });
       grid.appendChild(fragment);
       grid
-        .querySelectorAll("img.lazy")
+        .querySelectorAll('img.lazy')
         .forEach((img) => lazyLoadObserver.observe(img));
     } else {
       grid.innerHTML =
@@ -68,14 +68,14 @@ export async function renderArtistsPage(artistsToRender) {
 
 export function renderArtistCard(artist) {
   const videoCountText =
-    artist.videoCount === 1 ? "1 video" : `${artist.videoCount} videos`;
+    artist.videoCount === 1 ? '1 video' : `${artist.videoCount} videos`;
   const placeholderSrc = `${AppState.assetsPath}/logo.png`;
   const thumbnailSrc = artist.thumbnailPath
     ? decodeURIComponent(artist.thumbnailPath)
     : placeholderSrc;
 
-  const card = document.createElement("div");
-  card.className = "artist-grid-item";
+  const card = document.createElement('div');
+  card.className = 'artist-grid-item';
   card.dataset.id = artist.id;
 
   card.innerHTML = `
@@ -94,25 +94,25 @@ export async function renderArtistDetailPage(artistId) {
   setHeaderActions(null);
   const artist = await window.electronAPI.artistGetDetails(artistId);
 
-  artistDetailPage.innerHTML = "";
+  artistDetailPage.innerHTML = '';
 
   if (!artist) {
-    showNotification(`Could not find artist with ID ${artistId}`, "error");
-    showPage("artists");
+    showNotification(`Could not find artist with ID ${artistId}`, 'error');
+    showPage('artists');
     hideLoader();
     return;
   }
 
   const videoCountText =
-    artist.videos.length === 1 ? "1 video" : `${artist.videos.length} videos`;
+    artist.videos.length === 1 ? '1 video' : `${artist.videos.length} videos`;
   const placeholderSrc = `${AppState.assetsPath}/logo.png`;
   const thumbnailSrc = artist.thumbnailPath
     ? decodeURIComponent(artist.thumbnailPath)
     : placeholderSrc;
 
-  const headerWrapper = document.createElement("div");
-  headerWrapper.className = "artist-detail-header-wrapper";
-  headerWrapper.style.setProperty("--bg-image", `url('${thumbnailSrc}')`);
+  const headerWrapper = document.createElement('div');
+  headerWrapper.className = 'artist-detail-header-wrapper';
+  headerWrapper.style.setProperty('--bg-image', `url('${thumbnailSrc}')`);
 
   headerWrapper.innerHTML = `
     <div class="artist-detail-header">
@@ -131,14 +131,14 @@ export async function renderArtistDetailPage(artistId) {
     </div>`;
   artistDetailPage.appendChild(headerWrapper);
 
-  const content = document.createElement("div");
-  content.className = "page-content";
-  content.id = "artist-detail-content";
+  const content = document.createElement('div');
+  content.className = 'page-content';
+  content.id = 'artist-detail-content';
 
   if (artist.videos.length > 0) {
-    const grid = document.createElement("div");
-    grid.className = "video-grid";
-    grid.id = "video-grid-artist";
+    const grid = document.createElement('div');
+    grid.className = 'video-grid';
+    grid.id = 'video-grid-artist';
     grid.dataset.artistId = artist.id;
     grid.dataset.artistName = artist.name;
 
@@ -149,7 +149,7 @@ export async function renderArtistDetailPage(artistId) {
     });
     grid.appendChild(fragment);
     grid
-      .querySelectorAll("img.lazy")
+      .querySelectorAll('img.lazy')
       .forEach((img) => lazyLoadObserver.observe(img));
 
     content.appendChild(grid);
@@ -164,52 +164,65 @@ export async function renderArtistDetailPage(artistId) {
   artistDetailPage.appendChild(content);
 
   document
-    .getElementById("edit-artist-thumbnail-btn")
-    .addEventListener("click", async () => {
+    .getElementById('edit-artist-thumbnail-btn')
+    .addEventListener('click', async () => {
       const result = await window.electronAPI.artistUpdateThumbnail(artistId);
       if (result.success) {
-        showNotification("Artist thumbnail updated.", "success");
+        showNotification('Artist thumbnail updated.', 'success');
         await renderArtistDetailPage(artistId);
-      } else if (result.error !== "File selection cancelled.") {
-        showNotification(`Error: ${result.error}`, "error");
+      } else if (result.error !== 'File selection cancelled.') {
+        showNotification(`Error: ${result.error}`, 'error');
       }
     });
 
-  document.getElementById("rename-artist-btn").addEventListener("click", async () => {
-    const newName = await showPromptModal("Rename Artist", "Enter new artist name:", artist.name);
-    if (newName && newName.trim() && newName.trim() !== artist.name) {
-      const result = await window.electronAPI.artistRename(artistId, newName.trim());
-      if (result.success) {
-        showNotification("Artist renamed.", "success");
-        await renderArtistDetailPage(artistId);
-        await loadLibrary();
-      } else {
-        showNotification(`Error: ${result.error}`, "error");
-      }
-    }
-  });
-
-  document.getElementById("delete-artist-btn").addEventListener("click", () => {
-    showConfirmationModal("Delete Artist?", `Are you sure you want to delete "${artist.name}"? Their videos will NOT be deleted.`, async () => {
-      const result = await window.electronAPI.artistDelete(artistId);
-      if (result.success) {
-        showNotification("Artist deleted.", "success");
-        await renderArtistsPage();
-        showPage("artists");
-      } else {
-        showNotification(`Error: ${result.error}`, "error");
+  document
+    .getElementById('rename-artist-btn')
+    .addEventListener('click', async () => {
+      const newName = await showPromptModal(
+        'Rename Artist',
+        'Enter new artist name:',
+        artist.name
+      );
+      if (newName && newName.trim() && newName.trim() !== artist.name) {
+        const result = await window.electronAPI.artistRename(
+          artistId,
+          newName.trim()
+        );
+        if (result.success) {
+          showNotification('Artist renamed.', 'success');
+          await renderArtistDetailPage(artistId);
+          await loadLibrary();
+        } else {
+          showNotification(`Error: ${result.error}`, 'error');
+        }
       }
     });
+
+  document.getElementById('delete-artist-btn').addEventListener('click', () => {
+    showConfirmationModal(
+      'Delete Artist?',
+      `Are you sure you want to delete "${artist.name}"? Their videos will NOT be deleted.`,
+      async () => {
+        const result = await window.electronAPI.artistDelete(artistId);
+        if (result.success) {
+          showNotification('Artist deleted.', 'success');
+          await renderArtistsPage();
+          showPage('artists');
+        } else {
+          showNotification(`Error: ${result.error}`, 'error');
+        }
+      }
+    );
   });
 
   hideLoader();
 }
 
-artistsPage.addEventListener("click", async (e) => {
-  const artistCard = e.target.closest(".artist-grid-item");
+artistsPage.addEventListener('click', async (e) => {
+  const artistCard = e.target.closest('.artist-grid-item');
   if (artistCard) {
     const artistId = artistCard.dataset.id;
     await renderArtistDetailPage(artistId);
-    showPage("artist-detail-page", true);
+    showPage('artist-detail-page', true);
   }
 });
