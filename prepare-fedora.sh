@@ -16,7 +16,7 @@ dnf check-update
 
 # 2. Install Development Tools (GCC, Make, etc.)
 echo "→ Installing Development Tools..."
-dnf groupinstall -y "Development Tools" "C Development Tools and Libraries"
+dnf group install -y development-tools c-development 
 
 # 3. Install GraphicsMagick (Required for icon resizing)
 echo "→ Installing GraphicsMagick..."
